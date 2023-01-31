@@ -1,0 +1,41 @@
+transforms:
+  - name: enums
+    # Replace instances of a single valued enum with a simple type.
+    flatten_single_enum:
+      - match: date
+        type: string
+        format: date
+        example: "2019-09-12"
+      - match: datetime
+        type: string
+        format: date-time
+        example: "2019-09-12T00:00:00Z"
+      - match: date-time
+        type: string
+        format: date-time
+        example: "2019-09-12T00:00:00Z"
+  - name: rewrites
+    # Fix up date examples
+    rewrites:
+      - rewrite: "/^2019-09-12T00:00:00Z$/2019-09-12/"
+        replace: example
+        match:
+          type: string
+          format: date
+        properties:
+  - name: allOf
+    # Prmote readonly entries that appear as types in allOf statements
+    # to their parent:
+    # allOf:
+    #   - type object
+    #   - readOnly: true
+    # becomes:
+    # allOf:
+    #    - type object
+    #   readOnly: true
+    promoteReadOnly:
+      - creator
+    ignoreReadOnly:
+      - requestor
+    #mergeProperties:
+    #  - DnaOligo

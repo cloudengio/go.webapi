@@ -1,0 +1,30 @@
+openapi: 3.0.1
+components:
+  schemas:
+    api:
+      type: object
+      properties:
+        color:
+          type: string
+        start:
+          type: integer
+          example: example_replacement
+        end:
+          type: integer_error
+          example: example_replacement
+        id:
+          type: string
+          example: example_replacement
+        name:
+          type: string
+          maxLength: 255
+        date:
+          type: string
+          example: Site
+          format: date-time
+          maxLength: 255
+        datetime:
+          type: string
+          example: Site
+          format: date
+          maxLength: 255

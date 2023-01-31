@@ -1,0 +1,5 @@
+--- FAIL: TestWalk (0.10s)
+    walk_test.go:51: got 10051, want 10052
+FAIL
+FAIL	github.com/cosnicolaou/openapi	0.539s
+FAIL
