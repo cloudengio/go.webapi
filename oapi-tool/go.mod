@@ -11,6 +11,7 @@ require (
 
 require (
 	cloudeng.io/text v0.0.11 // indirect
+	cloudeng.io/webapi/openapi v0.0.0-20230131195830-58a14ef3ac55 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect
 	github.com/invopop/yaml v0.2.0 // indirect
