@@ -113,7 +113,7 @@ func (wn nodeWalker) Walk(doc *openapi3.T) error {
 		return err
 	}
 	ok, err = wn.paths([]string{"paths"}, doc, &doc.Paths)
-	if err != nil {
+	if !ok || err != nil {
 		return err
 	}
 	if ok, err = wn.servers([]string{"servers"}, doc, &doc.Servers); !ok || err != nil {
@@ -542,6 +542,9 @@ func (wn nodeWalker) components(path []string, parent any, c *openapi3.Component
 	if ok, err = wn.headers(append(path, "headers"), parent, &c.Headers); !ok || err != nil {
 		return
 	}
+	if ok, err = wn.requestBodies(append(path, "requestBodies"), parent, &c.RequestBodies); !ok || err != nil {
+		return
+	}
 	if ok, err = wn.responses(append(path, "responses"), parent, &c.Responses); !ok || err != nil {
 		return
 	}
@@ -555,7 +558,7 @@ func (wn nodeWalker) components(path []string, parent any, c *openapi3.Component
 		return
 	}
 	ok, err = wn.securitySchemes(append(path, "securitySchemes"), parent, &c.SecuritySchemes)
-	return true, nil
+	return
 }
 
 func (wn nodeWalker) securitySchemes(path []string, parent any, scs *openapi3.SecuritySchemes) (ok bool, err error) {
@@ -581,7 +584,7 @@ func (wn nodeWalker) securitySchemeRef(path []string, parent any, sr *openapi3.S
 		return
 	}
 	ok, err = wn.securityScheme(path, parent, sr.Value)
-	return true, nil
+	return
 }
 
 func (wn nodeWalker) securityScheme(path []string, parent any, sr *openapi3.SecurityScheme) (ok bool, err error) {
@@ -592,7 +595,7 @@ func (wn nodeWalker) securityScheme(path []string, parent any, sr *openapi3.Secu
 		return
 	}
 	ok, err = wn.oauthFlows(append(path, "flows"), parent, sr.Flows)
-	return true, nil
+	return
 }
 
 func (wn nodeWalker) oauthFlows(path []string, parent any, flws *openapi3.OAuthFlows) (ok bool, err error) {
@@ -612,7 +615,7 @@ func (wn nodeWalker) oauthFlows(path []string, parent any, flws *openapi3.OAuthF
 		return
 	}
 	ok, err = wn.oauthFlow(append(path, "authorizationCode"), parent, flws.AuthorizationCode)
-	return true, nil
+	return
 }
 
 func (wn nodeWalker) oauthFlow(path []string, parent any, flw *openapi3.OAuthFlow) (ok bool, err error) {

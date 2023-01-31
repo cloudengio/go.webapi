@@ -32,6 +32,9 @@ func FormatV3(doc *openapi3.T, isYAML bool) ([]byte, error) {
 
 func AsYAML(indent int, doc any) (string, error) {
 	data, err := json.Marshal(doc)
+	if err != nil {
+		return "", err
+	}
 	var tmp any
 	if err := json.Unmarshal(data, &tmp); err != nil {
 		return "", err

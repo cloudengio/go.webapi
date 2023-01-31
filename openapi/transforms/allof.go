@@ -49,7 +49,10 @@ The allOf transform handles cases where the allOf array members are incorrectly
 specified. In particular it currently allows for ignoring, promoting or merging
 allOf entries that are not themselves schemas with type information.`))
 	tmp := &allOfTransformer{}
-	node.Decode(tmp)
+	if err := node.Decode(tmp); err != nil {
+		fmt.Fprintf(out, "error: %v", err)
+		return out.String()
+	}
 	out.WriteString("\noptions:\n")
 	out.WriteString(formatYAML(2, tmp))
 	return out.String()

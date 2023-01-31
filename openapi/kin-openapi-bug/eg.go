@@ -6,5 +6,5 @@ const eg = `{
 `
 
 func main() {
-
+	_ = eg
 }

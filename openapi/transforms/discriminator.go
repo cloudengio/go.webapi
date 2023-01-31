@@ -5,6 +5,7 @@
 package transforms
 
 import (
+	"fmt"
 	"strings"
 
 	"cloudeng.io/text/linewrap"
@@ -45,7 +46,10 @@ func (t *discriminatorTransformer) Describe(node yaml.Node) string {
 	out.WriteString(linewrap.Block(0, 80, `
 The discriminator transform handles cases where a oneOf or anyOf specification is incomplete. For example if its discriminator is not listed as a property. This is typically required by some code generators.`))
 	tmp := &allOfTransformer{}
-	node.Decode(tmp)
+	if err := node.Decode(tmp); err != nil {
+		fmt.Fprintf(out, "error: %v", err)
+		return out.String()
+	}
 	out.WriteString("\noptions:\n")
 	out.WriteString(formatYAML(2, tmp))
 	return out.String()

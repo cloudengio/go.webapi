@@ -5,18 +5,12 @@
 package transforms
 
 import (
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 )
-
-func formatJSON(t any) string {
-	buf, _ := json.MarshalIndent(t, "", " ")
-	return string(buf)
-}
 
 func formatYAML(indent int, v any) string {
 	out := &strings.Builder{}

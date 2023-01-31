@@ -5,6 +5,7 @@
 package transforms
 
 import (
+	"fmt"
 	"strings"
 
 	"cloudeng.io/text/linewrap"
@@ -51,7 +52,10 @@ func (t *replacementTransformer) Describe(node yaml.Node) string {
 The replacement transform handles cases where entire blocks of
 the specification need to be replaced with new ones.`))
 	tmp := &replacementTransformer{}
-	node.Decode(tmp)
+	if err := node.Decode(tmp); err != nil {
+		fmt.Fprintf(out, "error: %v", err)
+		return out.String()
+	}
 	out.WriteString("\noptions:\n")
 	out.WriteString(formatYAML(2, tmp))
 	return out.String()

@@ -57,11 +57,14 @@ func (t *rewriteTransformer) Configure(node yaml.Node) error {
 
 func (t *rewriteTransformer) Describe(node yaml.Node) string {
 	out := &strings.Builder{}
-	fmt.Fprintf(out, linewrap.Block(0, 80, `
+	fmt.Fprintf(out, "%s", linewrap.Block(0, 80, `
 The rewrites transform rewriting of fields using expressions of the form "/regexp/replacement/"
 `))
 	tmp := &rewriteTransformer{}
-	node.Decode(tmp)
+	if err := node.Decode(tmp); err != nil {
+		fmt.Fprintf(out, "error: %v", err)
+		return out.String()
+	}
 	out.WriteString("\noptions:\n")
 	out.WriteString(formatYAML(2, tmp))
 	return out.String()
@@ -75,7 +78,9 @@ func (t *rewriteTransformer) Transform(doc *openapi3.T) (*openapi3.T, error) {
 func jsonMap(v any) map[string]any {
 	var r map[string]any
 	buf, _ := json.Marshal(v)
-	json.Unmarshal(buf, &r)
+	if err := json.Unmarshal(buf, &r); err != nil {
+		return nil
+	}
 	return r
 }
 

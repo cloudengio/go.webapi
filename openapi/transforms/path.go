@@ -15,15 +15,3 @@ func match(a, b []string) bool {
 	}
 	return true
 }
-
-func prefix(a, b []string) bool {
-	if len(b) > len(a) {
-		return false
-	}
-	for i := range b {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}
