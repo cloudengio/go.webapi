@@ -36,13 +36,19 @@ jobs:
         uses: golangci/golangci-lint-action@v3
         with:
           version: latest
-          working-directory: ./gleansdk
+          working-directory: ./operations
 
       - name: Lint
         uses: golangci/golangci-lint-action@v3
         with:
           version: latest
-          working-directory: ./gleancli
+          working-directory: ./openapi
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          working-directory: ./oapi-tool
 
       - name: Vulnerabilities
         run: |
