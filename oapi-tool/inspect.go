@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"strings"
 
+	"cloudeng.io/errors"
 	"cloudeng.io/webapi/openapi"
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
 type InspectFlags struct {
-	Path       string `subcmd:"path,,colon separated path of the component in the spec to inspect"`
+	Spec       string `subcmd:"spec,,openapi spec file to inspect"`
 	FollowRegs bool   `subcmd:"follow-refs,false,set to true to follow/flatter schema references"`
 	Recurse    bool   `subcmd:"recurse,false,recurse into all sub-nodes of the requested path"`
 	TracePaths bool   `subcmd:"trace-paths,false,display each path in the spec as it is visited"`
@@ -18,7 +19,7 @@ type InspectFlags struct {
 
 func inspectCmd(ctx context.Context, values any, args []string) error {
 	fv := values.(*InspectFlags)
-	filename := args[0]
+	filename := fv.Spec
 	loader := openapi3.NewLoader()
 	loader.IsExternalRefsAllowed = true
 	doc, err := loader.LoadFromFile(filename)
@@ -28,13 +29,13 @@ func inspectCmd(ctx context.Context, values any, args []string) error {
 	visitor := &visitor{
 		recurse: fv.Recurse,
 	}
-
-	opts := []openapi.WalkerOption{openapi.WalkerTracePaths(fv.TracePaths)}
-	if len(fv.Path) > 0 {
-		opts = append(opts, openapi.WalkerVisitPrefix(strings.Split(fv.Path, ":")...))
+	var errs errors.M
+	for _, path := range args {
+		opts := []openapi.WalkerOption{openapi.WalkerTracePaths(fv.TracePaths)}
+		opts = append(opts, openapi.WalkerVisitPrefix(strings.Split(path, "/")...))
+		errs.Append(openapi.NewWalker(visitor.visit, opts...).Walk(doc))
 	}
-	walker := openapi.NewWalker(visitor.visit, opts...)
-	return walker.Walk(doc)
+	return errs.Err()
 }
 
 type visitor struct {
@@ -64,7 +65,7 @@ func indent(path []string, indent int, node any) (string, error) {
 func (v visitor) visit(path []string, parent, node any) (bool, error) {
 	buf, err := indent(path, 2, node)
 	if err != nil {
-		fmt.Printf("%v: %v\n", strings.Join(path, ":"), err)
+		fmt.Printf("%v: %v\n", strings.Join(path, "/"), err)
 		return v.recurse, nil
 
 	}

@@ -36,9 +36,10 @@ commands:
     arguments:
       - filename
   - name: inspect
-    summary: display the element at a path in an openapi v3 specification.
+    summary: display the element at paths in an openapi v3 specification. Paths are / separated, eg. /components/schemas/MySchema.
     arguments:
-      - filename
+      - path
+      - ...
 `
 
 var cmdSet *subcmd.CommandSetYAML
