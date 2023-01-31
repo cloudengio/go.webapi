@@ -1,0 +1,45 @@
+openapi: 3.0.1
+components:
+  schemas:
+    API:
+      properties:
+        ignoreEg:
+          type: object
+          allOf:
+            - type: object
+            - readOnly: true
+    API2:
+      properties:
+        promoteEg:
+          type: object
+          allOf:
+            - type: object
+            - readOnly: true
+            - description: something
+    API3:
+      properties:
+        promoteEg:
+          type: object
+          allOf:
+            - type: object
+            - properties:
+                egURL:
+                  description: a URL
+    Base:
+      properties:
+        apiURL:
+          type: string
+          format: uri
+          example: http://example
+        another:
+          type: string
+          example: some text
+    MergeEg:
+      properties:
+        API:
+          type: object
+          allOf:
+            - type: object
+            - properties:
+                egURL:
+                  description: "describe the previous type"
