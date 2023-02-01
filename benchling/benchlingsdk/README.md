@@ -14,7 +14,8 @@ formatted="benchling-formatted-${datestamp}.yaml"
 transformed="benchling-transformed-${datestamp}.yaml"
 oapi-tool download --output="${spec}" 'https://benchling.com/api/v2/openapi.yaml'
 oapi-tool format --output="${formatted}" -validate=false "${spec}"
-oapi-tool transform --output="${transformed}" --config=transformations.yaml ${formatted}
+oapi-tool transform --output="${transformed}" --config=benchling-transformations.yaml "${formatted}"
+oapi-tool validate "${transformed}"
 # this is the earliest usable version, v1.12.5 onward should be fine.
 go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@f4cf8f9
 oapi-codegen --package=benchlingsdk "${transformed}" > benchlingsdk.go
