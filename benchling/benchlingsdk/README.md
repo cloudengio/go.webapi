@@ -7,7 +7,7 @@ before the ```oapi-codegen``` generator can use it. ```oapi-tool``` is used to
 perform these transformations according to the ```transformations.yaml``` configuration file.
 
 ```sh
-go install -x github.com/cosnicolaou/oapi-tool@latest
+go install cloudeng.io/webapi/oapi-tool@latest
 datestamp=$(date +'%m-%d-%Y')
 spec="benchling-${datestamp}.yaml"
 formatted="benchling-formatted-${datestamp}.yaml"
