@@ -36,14 +36,14 @@ func (t *testVisitor) visitor(path []string, parent, node any) (bool, error) {
 }
 
 func TestWalk(t *testing.T) {
-	doc := loadYAML("benchling.yaml")
+	doc := loadYAML("petstore-expanded.yaml")
 	v := &testVisitor{paths: []string{}}
 	wk := openapi.NewWalker(v.visitor)
 	if err := wk.Walk(doc); err != nil {
 		t.Fatal(err)
 	}
 	sort.Strings(v.paths)
-	buf, err := os.ReadFile(filepath.Join("testdata", "benchling.paths.txt"))
+	buf, err := os.ReadFile(filepath.Join("testdata", "petstore-expanded.paths.txt"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,12 +59,12 @@ func TestWalk(t *testing.T) {
 	}
 
 	v.paths = nil
-	wk = openapi.NewWalker(v.visitor, openapi.WalkerVisitPrefix("components", "schemas", "AaSequence", "properties", "webURL"))
+	wk = openapi.NewWalker(v.visitor, openapi.WalkerVisitPrefix("components", "schemas", "Error", "properties", "message"))
 	if err := wk.Walk(doc); err != nil {
 		t.Fatal(err)
 	}
 
-	if got, want := v.paths, []string{"components:schemas:AaSequence:properties:webURL"}; !reflect.DeepEqual(got, want) {
+	if got, want := v.paths, []string{"components:schemas:Error:properties:message"}; !reflect.DeepEqual(got, want) {
 		t.Errorf("got %v, want %v", got, want)
 	}
 }

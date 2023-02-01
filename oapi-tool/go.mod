@@ -4,14 +4,14 @@ go 1.19
 
 require (
 	cloudeng.io/cmdutil v0.0.0-20230131025246-d12a3b87359e
-	github.com/cosnicolaou/openapi v0.0.0-20230105204014-c71f55927cac
+	cloudeng.io/errors v0.0.8
+	cloudeng.io/webapi/openapi v0.0.0-20230131214530-ea090c0217c4
 	github.com/getkin/kin-openapi v0.113.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
 	cloudeng.io/text v0.0.11 // indirect
-	cloudeng.io/webapi/openapi v0.0.0-20230131195830-58a14ef3ac55 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect
 	github.com/invopop/yaml v0.2.0 // indirect

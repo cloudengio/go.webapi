@@ -533,31 +533,31 @@ func (wn nodeWalker) components(path []string, parent any, c *openapi3.Component
 	if ok, err = wn.visit(path, parent, c); !ok || err != nil {
 		return
 	}
-	if ok, err = wn.schemas(append(path, "schemas"), parent, &c.Schemas); !ok || err != nil {
+	if ok, err = wn.schemas(append(path, "schemas"), c, &c.Schemas); !ok || err != nil {
 		return
 	}
-	if ok, err = wn.parametersMap(append(path, "parameters"), parent, &c.Parameters); !ok || err != nil {
+	if ok, err = wn.parametersMap(append(path, "parameters"), c, &c.Parameters); !ok || err != nil {
 		return
 	}
-	if ok, err = wn.headers(append(path, "headers"), parent, &c.Headers); !ok || err != nil {
+	if ok, err = wn.headers(append(path, "headers"), c, &c.Headers); !ok || err != nil {
 		return
 	}
-	if ok, err = wn.requestBodies(append(path, "requestBodies"), parent, &c.RequestBodies); !ok || err != nil {
+	if ok, err = wn.requestBodies(append(path, "requestBodies"), c, &c.RequestBodies); !ok || err != nil {
 		return
 	}
-	if ok, err = wn.responses(append(path, "responses"), parent, &c.Responses); !ok || err != nil {
+	if ok, err = wn.responses(append(path, "responses"), c, &c.Responses); !ok || err != nil {
 		return
 	}
-	if ok, err = wn.links(append(path, "links"), parent, &c.Links); !ok || err != nil {
+	if ok, err = wn.links(append(path, "links"), c, &c.Links); !ok || err != nil {
 		return
 	}
-	if ok, err = wn.examples(append(path, "examples"), parent, &c.Examples); !ok || err != nil {
+	if ok, err = wn.examples(append(path, "examples"), c, &c.Examples); !ok || err != nil {
 		return
 	}
-	if ok, err = wn.callbacks(append(path, "callbacks"), parent, &c.Callbacks); !ok || err != nil {
+	if ok, err = wn.callbacks(append(path, "callbacks"), c, &c.Callbacks); !ok || err != nil {
 		return
 	}
-	ok, err = wn.securitySchemes(append(path, "securitySchemes"), parent, &c.SecuritySchemes)
+	ok, err = wn.securitySchemes(append(path, "securitySchemes"), c, &c.SecuritySchemes)
 	return
 }
 
@@ -569,7 +569,7 @@ func (wn nodeWalker) securitySchemes(path []string, parent any, scs *openapi3.Se
 		return
 	}
 	for n, sc := range *scs {
-		if ok, err = wn.securitySchemeRef(append(path, n), parent, sc); !ok || err != nil {
+		if ok, err = wn.securitySchemeRef(append(path, n), scs, sc); !ok || err != nil {
 			return
 		}
 	}
@@ -605,16 +605,19 @@ func (wn nodeWalker) oauthFlows(path []string, parent any, flws *openapi3.OAuthF
 	if ok, err = wn.visit(path, parent, flws); !ok || err != nil {
 		return
 	}
-	if ok, err = wn.oauthFlow(append(path, "implicit"), parent, flws.Implicit); !ok || err != nil {
+	if ok, err = wn.extensions(append(path, "extensions"), flws, &flws.Extensions); !ok || err != nil {
 		return
 	}
-	if ok, err = wn.oauthFlow(append(path, "password"), parent, flws.Password); !ok || err != nil {
+	if ok, err = wn.oauthFlow(append(path, "implicit"), flws, flws.Implicit); !ok || err != nil {
 		return
 	}
-	if ok, err = wn.oauthFlow(append(path, "clientCredentials"), parent, flws.ClientCredentials); !ok || err != nil {
+	if ok, err = wn.oauthFlow(append(path, "password"), flws, flws.Password); !ok || err != nil {
 		return
 	}
-	ok, err = wn.oauthFlow(append(path, "authorizationCode"), parent, flws.AuthorizationCode)
+	if ok, err = wn.oauthFlow(append(path, "clientCredentials"), flws, flws.ClientCredentials); !ok || err != nil {
+		return
+	}
+	ok, err = wn.oauthFlow(append(path, "authorizationCode"), flws, flws.AuthorizationCode)
 	return
 }
 
@@ -622,7 +625,24 @@ func (wn nodeWalker) oauthFlow(path []string, parent any, flw *openapi3.OAuthFlo
 	if flw == nil {
 		return true, nil
 	}
-	return wn.visit(path, parent, flw)
+	if ok, err = wn.visit(path, parent, flw); !ok || err != nil {
+		return
+	}
+	if ok, err = wn.extensions(append(path, "extensions"), flw, &flw.Extensions); !ok || err != nil {
+		return
+	}
+	ok, err = wn.stringMap(append(path, "scopes"), &flw.Scopes, flw.Scopes)
+	return
+}
+
+func (wn nodeWalker) stringMap(path []string, parent any, sm map[string]string) (ok bool, err error) {
+	ok, err = wn.visit(path, parent, sm)
+	for k, v := range sm {
+		if ok, err = wn.visit(append(path, k), sm, v); !ok || err != nil {
+			return
+		}
+	}
+	return
 }
 
 func (wn nodeWalker) requestBodies(path []string, parent any, rbs *openapi3.RequestBodies) (ok bool, err error) {
@@ -658,7 +678,7 @@ func (wn nodeWalker) schemas(path []string, parent any, schemas *openapi3.Schema
 		return
 	}
 	for name, schema := range *schemas {
-		if ok, err = wn.schemaRef(append(path, name), parent, schema); !ok || err != nil {
+		if ok, err = wn.schemaRef(append(path, name), schemas, schema); !ok || err != nil {
 			return
 		}
 	}
@@ -749,14 +769,14 @@ func (wn nodeWalker) discriminator(path []string, parent any, disc *openapi3.Dis
 	if ok, err = wn.visit(path, parent, disc); !ok || err != nil {
 		return
 	}
-	if ok, err = wn.visit(append(path, "mapping"), parent, disc.Mapping); !ok || err != nil {
+	if ok, err = wn.visit(append(path, "mapping"), disc, disc.Mapping); !ok || err != nil {
 		return
 	}
-	if ok, err = wn.extensions(path, parent, &disc.Extensions); !ok || err != nil {
+	if ok, err = wn.extensions(path, disc, &disc.Extensions); !ok || err != nil {
 		return
 	}
 	for name, mapping := range disc.Mapping {
-		if ok, err = wn.visit(append(path, "mapping", name), parent, mapping); !ok || err != nil {
+		if ok, err = wn.visit(append(path, "mapping", name), disc, mapping); !ok || err != nil {
 			return
 		}
 	}
