@@ -32,7 +32,7 @@ func inspectCmd(ctx context.Context, values any, args []string) error {
 	var errs errors.M
 	for _, path := range args {
 		opts := []openapi.WalkerOption{openapi.WalkerTracePaths(fv.TracePaths)}
-		opts = append(opts, openapi.WalkerVisitPrefix(strings.Split(path, "/")...))
+		opts = append(opts, openapi.WalkerVisitPrefix(strings.Split(path, ":")...))
 		errs.Append(openapi.NewWalker(visitor.visit, opts...).Walk(doc))
 	}
 	return errs.Err()

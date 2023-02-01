@@ -36,7 +36,7 @@ commands:
     arguments:
       - filename
   - name: inspect
-    summary: display the element at paths in an openapi v3 specification. Paths are / separated, eg. /components/schemas/MySchema.
+    summary: display the element at paths in an openapi v3 specification. Paths are colon separated, eg. ':components:schemas:MySchema'.
     arguments:
       - path
       - ...

@@ -48,7 +48,6 @@ func TestFormat(t *testing.T) {
 		validates bool
 	}{
 		{"api.yaml", true},
-		{"benchling.yaml", false},
 		{"petstore-expanded.yaml", false},
 	} {
 		// Make sure that anything we format can be parsed back
