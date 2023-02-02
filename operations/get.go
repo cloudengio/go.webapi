@@ -37,6 +37,10 @@ func NewEndpoint[T any](url string, opts ...Option) *Endpoint[T] {
 
 // Get invokes a GET request on this endpoint.
 func (ep *Endpoint[T]) Get(ctx context.Context) (T, []byte, error) {
+	return ep.get(ctx, ep.url)
+}
+
+func (ep *Endpoint[T]) get(ctx context.Context, url string) (T, []byte, error) {
 	var result T
 	if ep.ticker.C == nil {
 		select {
@@ -56,7 +60,7 @@ func (ep *Endpoint[T]) Get(ctx context.Context) (T, []byte, error) {
 	steps := 0
 	for {
 		var m T
-		r, err := http.NewRequestWithContext(ctx, "GET", ep.url, nil)
+		r, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 		if err != nil {
 			return m, nil, err
 		}
