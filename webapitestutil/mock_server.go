@@ -23,7 +23,6 @@ func NewEchoHandler(value any) http.Handler {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		return
 	})
 }
 
@@ -50,7 +49,9 @@ func (wr *withRetry) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	w.WriteHeader(http.StatusOK)
-	w.Write(body)
+	if _, err := w.Write(body); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 }
 
 // NewHeaderEchoHandler returns an http.Handler that returns the json encoded
@@ -67,7 +68,6 @@ func NewHeaderEchoHandler() http.Handler {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		return
 	})
 }
 

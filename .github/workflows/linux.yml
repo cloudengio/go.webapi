@@ -34,6 +34,6 @@ jobs:
 
       - name: Test
         run: |
-          for dir in ./operations ./openapi ./oapi-tool; do \
+          for dir in ./operations ./webapitestutil ./openapi ./oapi-tool; do \
             cd $dir; go test --race --covermode=atomic ./...; cd ..; \
           done

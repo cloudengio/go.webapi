@@ -38,6 +38,12 @@ jobs:
           version: latest
           working-directory: ./operations
 
+      - name: Lint ./webapitestutil
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          working-directory: ./webapitestutil
+
       - name: Lint ./openapi
         uses: golangci/golangci-lint-action@v3
         with:
@@ -53,6 +59,6 @@ jobs:
       - name: Vulnerabilities
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
-          for dir in ./operations ./openapi ./oapi-tool; do \
+          for dir in ./operations ./webapitestutil ./openapi ./oapi-tool; do \
               cd $dir; govulncheck ./...; cd .. ; \
           done
