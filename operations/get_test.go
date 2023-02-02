@@ -54,7 +54,9 @@ func TestRequestsPerMinute(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		timestamps = append(timestamps, time.Now())
 		enc := json.NewEncoder(w)
-		enc.Encode(len(timestamps))
+		if err := enc.Encode(len(timestamps)); err != nil {
+			t.Fatal(err)
+		}
 	})
 
 	srv := webapitestutil.NewServer(handler)
