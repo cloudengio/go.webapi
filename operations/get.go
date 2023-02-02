@@ -12,7 +12,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -42,15 +41,6 @@ func (ep *Endpoint[T]) Get(ctx context.Context) (T, []byte, error) {
 }
 
 func (ep *Endpoint[T]) get(ctx context.Context, url string) (T, []byte, error) {
-	{
-		var x int
-		y, err := strconv.ParseInt("42", 10, 64)
-		if err != nil {
-			panic(err)
-		}
-		x = int(y)
-		_ = x
-	}
 	var result T
 	if ep.ticker.C == nil {
 		select {
