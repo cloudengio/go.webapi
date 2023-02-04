@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 )
 
 // NewEchoHandler returns an http.Handler that echos the json encoded
@@ -69,6 +70,48 @@ func NewHeaderEchoHandler() http.Handler {
 			return
 		}
 	})
+}
+
+// Paginated is an example return type for a paginated API.
+type Paginated struct {
+	Payload int
+	Current int
+	Last    int
+}
+
+// PaginatedHandler is an example http.Handler that returns a Paginated
+// response, that is accepts a parameter called 'current' which is
+// the page to returned. Last should be initialized the number of available
+// pages.
+type PaginatedHandler struct {
+	invocations int
+	Last        int
+}
+
+func (ph *PaginatedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ph.invocations++
+	current, err := strconv.ParseInt(r.URL.Query().Get("current"), 10, 32)
+	if err != nil {
+		current = 0
+	}
+	if current > int64(ph.Last) {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	p := Paginated{
+		Payload: ph.invocations,
+		Current: int(current),
+		Last:    ph.Last,
+	}
+	body, err := json.Marshal(p)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if _, err := w.Write(body); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }
 
 // NewServer creates a new httptest.Server using the supplied handler.
