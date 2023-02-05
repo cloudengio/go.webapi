@@ -135,3 +135,43 @@ func TestAuth(t *testing.T) {
 		t.Errorf("got %v, want %v", got, want)
 	}
 }
+
+func TestRequestError(t *testing.T) {
+	ctx := context.Background()
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	srv := webapitestutil.NewServer(handler)
+	defer srv.Close()
+
+	client := operations.NewEndpoint[example](srv.URL)
+
+	_, _, err := client.Get(ctx)
+	operr := err.(*operations.Error)
+	if got, want := operr.StatusCode, http.StatusNotFound; got != want {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
+func TestTimeout(t *testing.T) {
+	ctx := context.Background()
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+	})
+
+	srv := webapitestutil.NewServer(handler)
+	defer srv.Close()
+
+	client := operations.NewEndpoint[example](srv.URL, operations.WithBackoffParameters(nil, http.StatusTooManyRequests, time.Millisecond, 10))
+
+	_, _, err := client.Get(ctx)
+	operr := err.(*operations.Error)
+	if got, want := operr.StatusCode, http.StatusTooManyRequests; got != want {
+		t.Errorf("got %v, want %v", got, want)
+	}
+
+	if got, want := operr.Attempts, 10; got != want {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}

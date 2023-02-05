@@ -4,7 +4,9 @@
 
 package operations
 
-import "time"
+import (
+	"time"
+)
 
 // Option represents an option that can be used when creating
 // new Endpoints and Streams.
@@ -17,6 +19,7 @@ type options struct {
 	backoffSteps      int
 	backoffStatusCode int
 	auth              Auth
+	unmarshal         Unmarshal
 }
 
 // WithRequestsPerMinute sets the rate for API requests. If not
@@ -50,5 +53,17 @@ func WithBackoffParameters(retryErr error, retryHTTPStatus int, first time.Durat
 func WithAuth(a Auth) Option {
 	return func(o *options) {
 		o.auth = a
+	}
+}
+
+// Unmarshal represents a function that can be used to unmarshal a response
+// body.
+type Unmarshal func([]byte, any) error
+
+// WithUnmarshal specifies a custom unmarshaling function to use for decoding
+// response bodies. The default is json.Unmarshal.
+func WithUnmarshal(u Unmarshal) Option {
+	return func(o *options) {
+		o.unmarshal = u
 	}
 }
