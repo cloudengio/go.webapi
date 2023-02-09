@@ -70,8 +70,8 @@ func (p *errPaginator) Next(payload webapitestutil.Paginated, resp *http.Respons
 		return "", nil, false, fmt.Errorf("fail immediately")
 	}
 	p.count++
-	nextUrl := fmt.Sprintf(p.url+"?current=%v", payload.Current+1)
-	return nextUrl, nil, payload.Current == payload.Last, nil
+	nextURL := fmt.Sprintf(p.url+"?current=%v", payload.Current+1)
+	return nextURL, nil, payload.Current == payload.Last, nil
 }
 
 func TestScannerErrorImmediately(t *testing.T) {
