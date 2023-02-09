@@ -53,7 +53,7 @@ func (ep *Endpoint[T]) get(ctx context.Context, url string, body io.Reader) (T, 
 	return t, b, err
 }
 
-func (ep *Endpoint[T]) getWithResp(ctx context.Context, url string, body io.Reader) (T, *http.Response, []byte, error) {
+func (ep *Endpoint[T]) getWithResp(ctx context.Context, url string, body io.Reader) (T, *http.Response, []byte, error) { //nolint:gocyclo
 	var result T
 	if ep.ticker.C == nil {
 		select {

@@ -24,8 +24,8 @@ func (p *paginator) Next(payload webapitestutil.Paginated, resp *http.Response) 
 		// first time through, return the url and mark as paginated.
 		return p.url, nil, false, nil
 	}
-	nextUrl := fmt.Sprintf(p.url+"?current=%v", payload.Current+1)
-	return nextUrl, nil, payload.Current == payload.Last, nil
+	nextURL := fmt.Sprintf(p.url+"?current=%v", payload.Current+1)
+	return nextURL, nil, payload.Current == payload.Last, nil
 }
 
 func TestScanner(t *testing.T) {
