@@ -101,7 +101,7 @@ func (wn nodeWalker) visit(path []string, parent, node any) (ok bool, err error)
 	return wn.visitor(path, parent, node)
 }
 
-func (wn nodeWalker) Walk(doc *openapi3.T) error {
+func (wn nodeWalker) Walk(doc *openapi3.T) error { //nolint:gocyclo
 	if doc.Info != nil {
 		ok, err := wn.visit([]string{"info"}, doc, doc.Info)
 		if !ok || err != nil {
@@ -224,7 +224,7 @@ func (wn nodeWalker) pathItem(path []string, parent any, pi *openapi3.PathItem) 
 	return wn.parameters(append(path, "parameters"), pi, &pi.Parameters)
 }
 
-func (wn nodeWalker) operation(path []string, parent any, op *openapi3.Operation) (ok bool, err error) {
+func (wn nodeWalker) operation(path []string, parent any, op *openapi3.Operation) (ok bool, err error) { //nolint:gocyclo
 	if op == nil {
 		return true, nil
 	}
@@ -526,7 +526,7 @@ func (wn nodeWalker) headerRef(path []string, parent any, hdr *openapi3.HeaderRe
 	return wn.parameter(path, parent, &hdr.Value.Parameter)
 }
 
-func (wn nodeWalker) components(path []string, parent any, c *openapi3.Components) (ok bool, err error) {
+func (wn nodeWalker) components(path []string, parent any, c *openapi3.Components) (ok bool, err error) { //nolint:gocyclo
 	if c == nil {
 		return true, nil
 	}
@@ -700,7 +700,7 @@ func (wn nodeWalker) schemaRefs(path []string, parent any, srefs *openapi3.Schem
 	return true, nil
 }
 
-func (wn nodeWalker) schemaRef(path []string, parent any, sref *openapi3.SchemaRef) (ok bool, err error) {
+func (wn nodeWalker) schemaRef(path []string, parent any, sref *openapi3.SchemaRef) (ok bool, err error) { //nolint:gocyclo
 	if sref == nil {
 		return true, nil
 	}

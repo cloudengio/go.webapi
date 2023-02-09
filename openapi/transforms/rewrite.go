@@ -103,7 +103,7 @@ func (t *rewriteTransformer) visitor(path []string, parent, node any) (bool, err
 		fields := jsonMap(node)
 		ov, ok := fields[rw.Replace].(string)
 		if !ok {
-			return false, fmt.Errorf("%v:%v is not a string\n", strings.Join(path, ":"), rw.Replace)
+			return false, fmt.Errorf("%v:%v is not a string", strings.Join(path, ":"), rw.Replace)
 		}
 		if !rw.repl.MatchString(ov) {
 			continue
@@ -111,7 +111,7 @@ func (t *rewriteTransformer) visitor(path []string, parent, node any) (bool, err
 		fields[rw.Replace] = rw.repl.ReplaceAllString(ov)
 		if err := marshalMap(fields, node); err != nil {
 			fields[rw.Replace] = ov
-			return false, fmt.Errorf("%v:%v failed to update new value: %v\n", strings.Join(path, ":"), rw.Replace, err)
+			return false, fmt.Errorf("%v:%v failed to update new value: %v", strings.Join(path, ":"), rw.Replace, err)
 		}
 	}
 	return true, nil
