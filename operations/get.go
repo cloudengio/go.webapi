@@ -9,18 +9,17 @@ package operations
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
-	"time"
+
+	"cloudeng.io/net/ratecontrol"
 )
 
 // Endpoint represents an API endpoint that whose response body is unmarshaled,
 // by default using json.Unmarshal, into the specified type.
 type Endpoint[T any] struct {
 	options
-	ticker time.Ticker
-	url    string
+	url string
 }
 
 // NewEndpoint returns a new endpoint for the specified type and URL.
@@ -29,9 +28,10 @@ func NewEndpoint[T any](url string, opts ...Option) *Endpoint[T] {
 	for _, fn := range opts {
 		fn(&ep.options)
 	}
-	if ep.rateDelay > 0 {
-		ep.ticker = *time.NewTicker(ep.rateDelay)
+	if ep.rateController == nil {
+		ep.rateController = ratecontrol.New()
 	}
+
 	if ep.unmarshal == nil {
 		ep.unmarshal = json.Unmarshal
 	}
@@ -53,55 +53,48 @@ func (ep *Endpoint[T]) get(ctx context.Context, url string, body io.Reader) (T, 
 	return t, b, err
 }
 
-func (ep *Endpoint[T]) getWithResp(ctx context.Context, url string, body io.Reader) (T, *http.Response, []byte, error) { //nolint:gocyclo
-	var result T
-	if ep.ticker.C == nil {
-		select {
-		case <-ctx.Done():
-			return result, nil, nil, ctx.Err()
-		default:
-		}
-	} else {
-		select {
-		case <-ctx.Done():
-			return result, nil, nil, ctx.Err()
-		case <-ep.ticker.C:
+func (ep *Endpoint[T]) isBackoffCode(code int) bool {
+	for _, bc := range ep.backoffStatusCodes {
+		if code == bc {
+			return true
 		}
 	}
+	return false
+}
 
-	delay := ep.backoffStart
-	steps := 0
+func (ep *Endpoint[T]) getWithResp(ctx context.Context, url string, body io.Reader) (T, *http.Response, []byte, error) {
+	var result T
+	if err := ep.rateController.Wait(ctx); err != nil {
+		return result, nil, nil, err
+	}
+	backoff := ep.rateController.Backoff()
 	for {
+		retries := backoff.Retries()
 		var m T
 		r, err := http.NewRequestWithContext(ctx, "GET", url, body)
 		if err != nil {
-			return m, nil, nil, handleError(err, "", 0, steps)
+			return m, nil, nil, handleError(err, "", 0, retries)
 		}
 		if ep.auth != nil {
 			if err := ep.auth.WithAuthorization(ctx, r); err != nil {
-				return m, nil, nil, handleError(err, "", 0, steps)
+				return m, nil, nil, handleError(err, "", 0, retries)
 			}
 		}
 		resp, err := http.DefaultClient.Do(r)
-		if err == nil && resp.StatusCode == http.StatusOK {
-			return ep.handleResponse(resp, steps)
+		if err != nil {
+			return result, nil, nil, handleError(err, "", 0, retries)
 		}
-		if err != nil && !errors.Is(err, ep.backoffErr) {
-			return m, nil, nil, handleError(err, "", 0, steps)
+		if ep.isBackoffCode(resp.StatusCode) {
+			if done, err := backoff.Wait(ctx); done {
+				return result, nil, nil, handleError(err, resp.Status, resp.StatusCode, retries)
+			}
+			continue
 		}
-		if resp != nil && resp.StatusCode != ep.backoffStatusCode {
-			return m, nil, nil, handleError(err, resp.Status, resp.StatusCode, steps)
+		if resp.StatusCode == http.StatusOK {
+			return ep.handleResponse(resp, retries)
 		}
-		if steps >= ep.backoffSteps {
-			return m, nil, nil, handleError(err, resp.Status, resp.StatusCode, steps)
-		}
-		delay *= 2
-		steps++
-		select {
-		case <-ctx.Done():
-			return m, nil, nil, ctx.Err()
-		default:
-		}
+		return m, nil, nil, handleError(nil, resp.Status, resp.StatusCode, retries)
+
 	}
 }
 
