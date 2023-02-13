@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"time"
 
 	"cloudeng.io/net/ratecontrol"
 )
@@ -20,8 +19,7 @@ import (
 // by default using json.Unmarshal, into the specified type.
 type Endpoint[T any] struct {
 	options
-	ticker time.Ticker
-	url    string
+	url string
 }
 
 // NewEndpoint returns a new endpoint for the specified type and URL.
