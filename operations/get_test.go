@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"cloudeng.io/net/ratecontrol"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/webapitestutil"
 )
@@ -63,7 +64,8 @@ func TestRequestsPerMinute(t *testing.T) {
 	defer srv.Close()
 
 	requestsPerMinute := 360
-	client := operations.NewEndpoint[int](srv.URL, operations.WithRequestsPerMinute(requestsPerMinute))
+	rc := ratecontrol.New(ratecontrol.WithRequestsPerTick(requestsPerMinute))
+	client := operations.NewEndpoint[int](srv.URL, operations.WithRateController(rc, http.StatusTooManyRequests))
 	nTimestamps := 5
 	for i := 0; i < nTimestamps; i++ {
 		n, _, err := client.Get(ctx)
@@ -95,7 +97,8 @@ func TestBackoff(t *testing.T) {
 	srv := webapitestutil.NewServer(handler)
 	defer srv.Close()
 
-	client := operations.NewEndpoint[int](srv.URL, operations.WithBackoffParameters(nil, http.StatusTooManyRequests, time.Millisecond, 2))
+	rc := ratecontrol.New(ratecontrol.WithExponentialBackoff(time.Millisecond, 2))
+	client := operations.NewEndpoint[int](srv.URL, operations.WithRateController(rc, http.StatusTooManyRequests))
 	n, _, err := client.Get(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -163,7 +166,8 @@ func TestTimeout(t *testing.T) {
 	srv := webapitestutil.NewServer(handler)
 	defer srv.Close()
 
-	client := operations.NewEndpoint[example](srv.URL, operations.WithBackoffParameters(nil, http.StatusTooManyRequests, time.Millisecond, 10))
+	rc := ratecontrol.New(ratecontrol.WithExponentialBackoff(time.Millisecond, 10))
+	client := operations.NewEndpoint[example](srv.URL, operations.WithRateController(rc, http.StatusTooManyRequests))
 
 	_, _, err := client.Get(ctx)
 	operr := err.(*operations.Error)
