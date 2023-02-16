@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"testing"
 
 	"cloudeng.io/webapi/operations"
@@ -16,6 +17,7 @@ import (
 )
 
 type paginator struct {
+	mu      sync.Mutex
 	url     string
 	nextUrl string
 	saveUrl string
@@ -27,12 +29,16 @@ func (p *paginator) Next(payload webapitestutil.Paginated, resp *http.Response) 
 		return p.url, nil, false, nil
 	}
 	nextURL := fmt.Sprintf(p.url+"?current=%v", payload.Current+1)
+	p.mu.Lock()
 	p.nextUrl = nextURL
+	p.mu.Unlock()
 	return nextURL, nil, payload.Current == payload.Last, nil
 }
 
 func (p *paginator) Save() {
+	p.mu.Lock()
 	p.saveUrl = p.nextUrl
+	p.mu.Unlock()
 }
 
 func TestScanner(t *testing.T) {
@@ -53,6 +59,7 @@ func TestScanner(t *testing.T) {
 		if got, want := r.Current, expected; got != want {
 			t.Errorf("got %v, want %v", got, want)
 		}
+		paginator.mu.Lock()
 		if expected == 0 {
 			if got, want := paginator.saveUrl, ""; got != want {
 				t.Errorf("got %v, want %v", got, want)
@@ -62,6 +69,7 @@ func TestScanner(t *testing.T) {
 				t.Errorf("got %v, want %v", got, want)
 			}
 		}
+		paginator.mu.Unlock()
 		expected++
 	}
 	if err := scanner.Err(); err != nil {
