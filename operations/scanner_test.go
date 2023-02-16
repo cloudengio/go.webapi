@@ -19,8 +19,8 @@ import (
 type paginator struct {
 	mu      sync.Mutex
 	url     string
-	nextUrl string
-	saveUrl string
+	nextURL string
+	saveURL string
 }
 
 func (p *paginator) Next(payload webapitestutil.Paginated, resp *http.Response) (string, io.Reader, bool, error) {
@@ -30,14 +30,14 @@ func (p *paginator) Next(payload webapitestutil.Paginated, resp *http.Response) 
 	}
 	nextURL := fmt.Sprintf(p.url+"?current=%v", payload.Current+1)
 	p.mu.Lock()
-	p.nextUrl = nextURL
+	p.nextURL = nextURL
 	p.mu.Unlock()
 	return nextURL, nil, payload.Current == payload.Last, nil
 }
 
 func (p *paginator) Save() {
 	p.mu.Lock()
-	p.saveUrl = p.nextUrl
+	p.saveURL = p.nextURL
 	p.mu.Unlock()
 }
 
@@ -61,11 +61,11 @@ func TestScanner(t *testing.T) {
 		}
 		paginator.mu.Lock()
 		if expected == 0 {
-			if got, want := paginator.saveUrl, ""; got != want {
+			if got, want := paginator.saveURL, ""; got != want {
 				t.Errorf("got %v, want %v", got, want)
 			}
 		} else {
-			if got, want := paginator.saveUrl, fmt.Sprintf(paginator.url+"?current=%v", expected); got != want {
+			if got, want := paginator.saveURL, fmt.Sprintf(paginator.url+"?current=%v", expected); got != want {
 				t.Errorf("got %v, want %v", got, want)
 			}
 		}
