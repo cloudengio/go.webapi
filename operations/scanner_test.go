@@ -16,7 +16,9 @@ import (
 )
 
 type paginator struct {
-	url string
+	url     string
+	nextUrl string
+	saveUrl string
 }
 
 func (p *paginator) Next(payload webapitestutil.Paginated, resp *http.Response) (string, io.Reader, bool, error) {
@@ -25,7 +27,12 @@ func (p *paginator) Next(payload webapitestutil.Paginated, resp *http.Response) 
 		return p.url, nil, false, nil
 	}
 	nextURL := fmt.Sprintf(p.url+"?current=%v", payload.Current+1)
+	p.nextUrl = nextURL
 	return nextURL, nil, payload.Current == payload.Last, nil
+}
+
+func (p *paginator) Save() {
+	p.saveUrl = p.nextUrl
 }
 
 func TestScanner(t *testing.T) {
@@ -45,6 +52,15 @@ func TestScanner(t *testing.T) {
 		}
 		if got, want := r.Current, expected; got != want {
 			t.Errorf("got %v, want %v", got, want)
+		}
+		if expected == 0 {
+			if got, want := paginator.saveUrl, ""; got != want {
+				t.Errorf("got %v, want %v", got, want)
+			}
+		} else {
+			if got, want := paginator.saveUrl, fmt.Sprintf(paginator.url+"?current=%v", expected); got != want {
+				t.Errorf("got %v, want %v", got, want)
+			}
 		}
 		expected++
 	}
@@ -73,6 +89,8 @@ func (p *errPaginator) Next(payload webapitestutil.Paginated, resp *http.Respons
 	nextURL := fmt.Sprintf(p.url+"?current=%v", payload.Current+1)
 	return nextURL, nil, payload.Current == payload.Last, nil
 }
+
+func (p *errPaginator) Save() {}
 
 func TestScannerErrorImmediately(t *testing.T) {
 	ctx := context.Background()
