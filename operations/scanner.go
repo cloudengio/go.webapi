@@ -29,7 +29,6 @@ type response[T any] struct {
 	response T
 	body     []byte
 	last     bool
-	nextURL  string
 	nextReq  *http.Request
 	err      error
 }
