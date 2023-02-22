@@ -38,16 +38,22 @@ func NewEndpoint[T any](opts ...Option) *Endpoint[T] {
 
 // Get invokes a GET request on this endpoint (without a body).
 func (ep *Endpoint[T]) Get(ctx context.Context, url string) (T, []byte, error) {
-	return ep.get(ctx, url, nil, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		var result T
+		return result, nil, err
+	}
+	return ep.get(ctx, req)
 }
 
-// GetWithHeaderBody invokes a Get request on this endpoint but with the supplied headers and body, either of which may be nil.
-func (ep *Endpoint[T]) GetWithHeaderBody(ctx context.Context, url string, header http.Header, body io.Reader) (T, []byte, error) {
-	return ep.get(ctx, url, header, body)
+// GetUsingRequest invokes a Get request on this endpoint using the
+// supplied http.Request.
+func (ep *Endpoint[T]) GetUsingRequest(ctx context.Context, req *http.Request) (T, []byte, error) {
+	return ep.get(ctx, req)
 }
 
-func (ep *Endpoint[T]) get(ctx context.Context, url string, header http.Header, body io.Reader) (T, []byte, error) {
-	t, _, b, err := ep.getWithResp(ctx, url, header, body)
+func (ep *Endpoint[T]) get(ctx context.Context, req *http.Request) (T, []byte, error) {
+	t, _, b, err := ep.getWithResp(ctx, req)
 	return t, b, err
 }
 
@@ -60,7 +66,7 @@ func (ep *Endpoint[T]) isBackoffCode(code int) bool {
 	return false
 }
 
-func (ep *Endpoint[T]) getWithResp(ctx context.Context, url string, headers http.Header, body io.Reader) (T, *http.Response, []byte, error) {
+func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *http.Response, []byte, error) {
 	var result T
 	if err := ep.rateController.Wait(ctx); err != nil {
 		return result, nil, nil, err
@@ -69,19 +75,12 @@ func (ep *Endpoint[T]) getWithResp(ctx context.Context, url string, headers http
 	for {
 		retries := backoff.Retries()
 		var m T
-		r, err := http.NewRequestWithContext(ctx, "GET", url, body)
-		for k, v := range headers {
-			r.Header[k] = v
-		}
-		if err != nil {
-			return m, nil, nil, handleError(err, "", 0, retries)
-		}
 		if ep.auth != nil {
-			if err := ep.auth.WithAuthorization(ctx, r); err != nil {
+			if err := ep.auth.WithAuthorization(ctx, req); err != nil {
 				return m, nil, nil, handleError(err, "", 0, retries)
 			}
 		}
-		resp, err := http.DefaultClient.Do(r)
+		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			return result, nil, nil, handleError(err, "", 0, retries)
 		}
