@@ -4,18 +4,7 @@
 
 package protocolsiosdk
 
-import (
-	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"io"
-	"net/http"
-	"net/url"
-	"strconv"
-	"time"
-)
-
+/*
 var ErrTooManyRequests = errors.New("too many requests")
 
 func Get[T any](ctx context.Context, url string) (T, []byte, error) {
@@ -62,7 +51,7 @@ func parseJSON[T any](s []byte) (T, []byte, error) {
 		return r, s, err
 	}
 	return r, s, nil
-}
+}*/
 
 type Pagination struct {
 	CurrentPage  int64       `json:"current_page"`
@@ -76,6 +65,7 @@ type Pagination struct {
 	ChangedOn    interface{} `json:"changed_on"`
 }
 
+/*
 func (p Pagination) Done() bool {
 	return p.CurrentPage == p.TotalPages
 }
@@ -98,3 +88,4 @@ func (p Pagination) PageInfo() (next, total int, done bool, err error) {
 	}
 	return npi, int(p.TotalPages), false, nil
 }
+*/

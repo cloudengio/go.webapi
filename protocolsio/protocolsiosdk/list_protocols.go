@@ -39,6 +39,12 @@ type Protocol struct {
 	Creator     Creator
 }
 
+type ProtocolPayload struct {
+	Protocol   Protocol
+	StatusCode int `json:"status_code"`
+}
+
+/*
 func ParsePayload[T any](buf []byte) (T, error) {
 	var t T
 	var payload Payload
@@ -48,3 +54,4 @@ func ParsePayload[T any](buf []byte) (T, error) {
 	err := json.Unmarshal(payload.Payload, &t)
 	return t, err
 }
+*/
