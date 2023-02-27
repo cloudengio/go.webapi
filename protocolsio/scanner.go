@@ -5,18 +5,22 @@
 package protocolsio
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
 
+	"cloudeng.io/file/checkpoint"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/protocolsio/protocolsiosdk"
 )
 
 type paginator struct {
-	CurrentPage int
-	TotalPages  int
+	op          checkpoint.Operation
+	currentPage int
+	totalPages  int
+	done        bool
 	url         string
 }
 
@@ -26,9 +30,9 @@ func (pg paginator) Next(t protocolsiosdk.ListProtocolsV3, r *http.Response) (re
 		return
 	}
 	p := t.Pagination
-	pg.CurrentPage = int(p.CurrentPage)
-	pg.TotalPages = int(p.TotalPages)
-	if done = p.Done(); done {
+	pg.currentPage = int(p.CurrentPage)
+	pg.totalPages = int(p.TotalPages)
+	if p.CurrentPage == p.TotalPages {
 		return
 	}
 	u, err := url.Parse(p.NextPage)
@@ -48,17 +52,11 @@ func (pg paginator) Next(t protocolsiosdk.ListProtocolsV3, r *http.Response) (re
 	return
 }
 
-func (p paginator) Save() {}
-
-func (c Config) NewPaginator() (operations.Paginator[protocolsiosdk.ListProtocolsV3], error) {
-	return &paginator{url: c.Endpoints.ListProtocolsV3}, nil
+func (pg paginator) Save() {
 }
 
-// TODO: load from checkpoint.
-func (c Config) NewScanner() (*operations.Scanner[protocolsiosdk.ListProtocolsV3], error) {
-	paginator, err := c.NewPaginator()
-	if err != nil {
-		return nil, err
-	}
-	return operations.NewScanner(paginator), nil
+func NewPaginator(ctx context.Context, endpoint string, operation checkpoint.Operation) (operations.Paginator[protocolsiosdk.ListProtocolsV3], error) {
+	pg := &paginator{url: endpoint, op: operation}
+	// TODO: checkpointing
+	return pg, nil
 }

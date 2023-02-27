@@ -10,7 +10,6 @@ import (
 	"context"
 
 	"cloudeng.io/cmdutil/flags"
-	"cloudeng.io/webapi/protocolsio"
 )
 
 func ListFilters() []string {
@@ -53,11 +52,10 @@ type CrawlFlags struct {
 }
 
 type Command struct {
-	protocolsio.Config
+	Config
 }
 
 func (c *Command) List(ctx context.Context, fv *ListFlags, args []string) error {
-
 	return nil
 }
 

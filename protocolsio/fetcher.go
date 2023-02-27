@@ -45,29 +45,19 @@ func (f *Fetcher) Fetch(ctx context.Context, page protocolsiosdk.ListProtocolsV3
 	return nil
 }
 
-type publicBearerToken struct {
-	token string
+type PublicBearerToken struct {
+	Token string
 }
 
-func (pbt publicBearerToken) WithAuthorization(ctx context.Context, req *http.Request) error {
-	req.Header.Add("Bearer", pbt.token)
+func (pbt PublicBearerToken) WithAuthorization(ctx context.Context, req *http.Request) error {
+	req.Header.Add("Bearer", pbt.Token)
 	return nil
 }
 
-func (c Config) NewFetcher() (operations.Fetcher[protocolsiosdk.ListProtocolsV3, protocolsiosdk.Protocol], error) {
-	opts := []operations.Option{}
-	if len(c.Auth.PublicToken) > 0 {
-		opts = append(opts,
-			operations.WithAuth(&publicBearerToken{token: c.Auth.PublicToken}))
-	}
-	rc, err := c.RateControl.NewRateController()
-	if err != nil {
-		return nil, err
-	}
-	opts = append(opts, operations.WithRateController(rc))
+func NewFetcher(endpoint string, opts ...operations.Option) (operations.Fetcher[protocolsiosdk.ListProtocolsV3, protocolsiosdk.Protocol], error) {
 	ep := operations.NewEndpoint[protocolsiosdk.ProtocolPayload](opts...)
 	return &Fetcher{
-		url: c.Endpoints.GetProtocolV4,
+		url: endpoint,
 		ep:  ep,
 	}, nil
 }

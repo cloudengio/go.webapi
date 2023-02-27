@@ -5,21 +5,27 @@
 package protocolsio
 
 import (
+	"context"
+
+	"cloudeng.io/file/checkpoint"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/protocolsio/protocolsiosdk"
 )
 
 // NewProtocolCrawler creates a new instance of operations.Crawler
 // that can be used to crawl/download protocols on protocols.io.
-func (c Config) NewProtocolCrawler() (*operations.Crawler[protocolsiosdk.ListProtocolsV3, protocolsiosdk.Protocol], error) {
-	fetcher, err := c.NewFetcher()
+func NewProtocolCrawler(
+	ctx context.Context, paginatorEndpoint string, operation checkpoint.Operation,
+	fetcherEndpoint string, opts ...operations.Option) (*operations.Crawler[protocolsiosdk.ListProtocolsV3, protocolsiosdk.Protocol], error) {
+	fetcher, err := NewFetcher(fetcherEndpoint, opts...)
 	if err != nil {
 		return nil, err
 	}
-	scanner, err := c.NewScanner()
+	paginator, err := NewPaginator(ctx, paginatorEndpoint, operation)
 	if err != nil {
 		return nil, err
 	}
+	scanner := operations.NewScanner(paginator)
 	crawler := operations.NewCrawler(scanner, fetcher)
 	return crawler, nil
 }

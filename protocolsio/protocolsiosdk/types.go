@@ -44,14 +44,14 @@ type ProtocolPayload struct {
 	StatusCode int `json:"status_code"`
 }
 
-/*
-func ParsePayload[T any](buf []byte) (T, error) {
-	var t T
-	var payload Payload
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return t, err
-	}
-	err := json.Unmarshal(payload.Payload, &t)
-	return t, err
+type Pagination struct {
+	CurrentPage  int64       `json:"current_page"`
+	TotalPages   int64       `json:"total_pages"`
+	TotalResults int64       `json:"total_results"`
+	NextPage     string      `json:"next_page"`
+	PrevPage     interface{} `json:"prev_page"`
+	PageSize     int64       `json:"page_size"`
+	First        int64       `json:"first"`
+	Last         int64       `json:"last"`
+	ChangedOn    interface{} `json:"changed_on"`
 }
-*/
