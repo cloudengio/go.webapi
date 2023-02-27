@@ -19,19 +19,17 @@ import (
 // by default using json.Unmarshal, into the specified type.
 type Endpoint[T any] struct {
 	options
-	url string
 }
 
-// NewEndpoint returns a new endpoint for the specified type and URL.
-func NewEndpoint[T any](url string, opts ...Option) *Endpoint[T] {
-	ep := &Endpoint[T]{url: url}
+// NewEndpoint returns a new endpoint for the specified type.
+func NewEndpoint[T any](opts ...Option) *Endpoint[T] {
+	ep := &Endpoint[T]{}
 	for _, fn := range opts {
 		fn(&ep.options)
 	}
 	if ep.rateController == nil {
 		ep.rateController = ratecontrol.New()
 	}
-
 	if ep.unmarshal == nil {
 		ep.unmarshal = json.Unmarshal
 	}
@@ -39,17 +37,23 @@ func NewEndpoint[T any](url string, opts ...Option) *Endpoint[T] {
 }
 
 // Get invokes a GET request on this endpoint (without a body).
-func (ep *Endpoint[T]) Get(ctx context.Context) (T, []byte, error) {
-	return ep.get(ctx, ep.url, nil)
+func (ep *Endpoint[T]) Get(ctx context.Context, url string) (T, []byte, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		var result T
+		return result, nil, err
+	}
+	return ep.get(ctx, req)
 }
 
-// Get invokes a Get request on this endpoint but with a body.
-func (ep *Endpoint[T]) GetWithBody(ctx context.Context, body io.Reader) (T, []byte, error) {
-	return ep.get(ctx, ep.url, body)
+// GetUsingRequest invokes a Get request on this endpoint using the
+// supplied http.Request.
+func (ep *Endpoint[T]) GetUsingRequest(ctx context.Context, req *http.Request) (T, []byte, error) {
+	return ep.get(ctx, req)
 }
 
-func (ep *Endpoint[T]) get(ctx context.Context, url string, body io.Reader) (T, []byte, error) {
-	t, _, b, err := ep.getWithResp(ctx, ep.url, body)
+func (ep *Endpoint[T]) get(ctx context.Context, req *http.Request) (T, []byte, error) {
+	t, _, b, err := ep.getWithResp(ctx, req)
 	return t, b, err
 }
 
@@ -62,7 +66,7 @@ func (ep *Endpoint[T]) isBackoffCode(code int) bool {
 	return false
 }
 
-func (ep *Endpoint[T]) getWithResp(ctx context.Context, url string, body io.Reader) (T, *http.Response, []byte, error) {
+func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *http.Response, []byte, error) {
 	var result T
 	if err := ep.rateController.Wait(ctx); err != nil {
 		return result, nil, nil, err
@@ -71,16 +75,12 @@ func (ep *Endpoint[T]) getWithResp(ctx context.Context, url string, body io.Read
 	for {
 		retries := backoff.Retries()
 		var m T
-		r, err := http.NewRequestWithContext(ctx, "GET", url, body)
-		if err != nil {
-			return m, nil, nil, handleError(err, "", 0, retries)
-		}
 		if ep.auth != nil {
-			if err := ep.auth.WithAuthorization(ctx, r); err != nil {
+			if err := ep.auth.WithAuthorization(ctx, req); err != nil {
 				return m, nil, nil, handleError(err, "", 0, retries)
 			}
 		}
-		resp, err := http.DefaultClient.Do(r)
+		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			return result, nil, nil, handleError(err, "", 0, retries)
 		}

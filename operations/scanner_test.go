@@ -7,7 +7,6 @@ package operations_test
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"sync"
 	"testing"
@@ -23,16 +22,18 @@ type paginator struct {
 	saveURL string
 }
 
-func (p *paginator) Next(payload webapitestutil.Paginated, resp *http.Response) (string, io.Reader, bool, error) {
+func (p *paginator) Next(payload webapitestutil.Paginated, resp *http.Response) (*http.Request, bool, error) {
 	if resp == nil {
 		// first time through, return the url and mark as paginated.
-		return p.url, nil, false, nil
+		req, err := http.NewRequest("GET", p.url, nil)
+		return req, false, err
 	}
 	nextURL := fmt.Sprintf(p.url+"?current=%v", payload.Current+1)
 	p.mu.Lock()
 	p.nextURL = nextURL
 	p.mu.Unlock()
-	return nextURL, nil, payload.Current == payload.Last, nil
+	req, err := http.NewRequest("GET", p.nextURL, nil)
+	return req, payload.Current == payload.Last, err
 }
 
 func (p *paginator) Save() {
@@ -83,19 +84,21 @@ type errPaginator struct {
 	count    int
 }
 
-func (p *errPaginator) Next(payload webapitestutil.Paginated, resp *http.Response) (string, io.Reader, bool, error) {
+func (p *errPaginator) Next(payload webapitestutil.Paginated, resp *http.Response) (*http.Request, bool, error) {
 	if resp == nil {
 		if p.failWhen == 0 {
-			return "", nil, false, fmt.Errorf("fail immediately")
+			return nil, false, fmt.Errorf("fail immediately")
 		}
-		return p.url, nil, false, nil
+		req, err := http.NewRequest("GET", p.url, nil)
+		return req, false, err
 	}
 	if p.count == p.failWhen {
-		return "", nil, false, fmt.Errorf("fail immediately")
+		return nil, false, fmt.Errorf("fail immediately")
 	}
 	p.count++
 	nextURL := fmt.Sprintf(p.url+"?current=%v", payload.Current+1)
-	return nextURL, nil, payload.Current == payload.Last, nil
+	req, err := http.NewRequest("GET", nextURL, nil)
+	return req, payload.Current == payload.Last, err
 }
 
 func (p *errPaginator) Save() {}
