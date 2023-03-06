@@ -30,9 +30,9 @@ func (p *paginator) Next(ctx context.Context, payload webapitestutil.Paginated, 
 		req, err := http.NewRequest("GET", p.url, nil)
 		return req, false, err
 	}
+	p.mu.Lock()
 	p.currentURL = p.nextURL
 	nextURL := fmt.Sprintf(p.url+"?current=%v", payload.Current+1)
-	p.mu.Lock()
 	p.nextURL = nextURL
 	p.mu.Unlock()
 	req, err := http.NewRequest("GET", p.nextURL, nil)
