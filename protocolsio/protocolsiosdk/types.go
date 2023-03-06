@@ -2,10 +2,17 @@
 // Use of this source code is governed by the Apache-2.0
 // license that can be found in the LICENSE file.
 
+// Package protocolsiosdk provides a minimal SDK for the protocols.io API.
+// See https://apidoc.protocols.io for details.
 package protocolsiosdk
 
 import (
 	"encoding/json"
+)
+
+const (
+	ListProtocolsV3Endpoint = "https://www.protocols.io/api/v3/protocols"
+	GetProtocolV4Endpoint   = "https://www.protocols.io/api/v4/protocols"
 )
 
 type ListProtocolsV3 struct {
@@ -40,8 +47,8 @@ type Protocol struct {
 }
 
 type ProtocolPayload struct {
-	Protocol   Protocol
-	StatusCode int `json:"status_code"`
+	Protocol   Protocol `json:"payload"`
+	StatusCode int      `json:"status_code"`
 }
 
 type Pagination struct {

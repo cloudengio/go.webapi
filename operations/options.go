@@ -17,6 +17,7 @@ type options struct {
 	rateController     *ratecontrol.Controller
 	auth               Auth
 	unmarshal          Unmarshal
+	encoding           Encoding
 }
 
 // WithRateController sets the rate controller to use to enforce rate
@@ -41,8 +42,9 @@ type Unmarshal func([]byte, any) error
 
 // WithUnmarshal specifies a custom unmarshaling function to use for decoding
 // response bodies. The default is json.Unmarshal.
-func WithUnmarshal(u Unmarshal) Option {
+func WithUnmarshal(u Unmarshal, e Encoding) Option {
 	return func(o *options) {
 		o.unmarshal = u
+		o.encoding = e
 	}
 }

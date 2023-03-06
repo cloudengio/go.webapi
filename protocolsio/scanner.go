@@ -11,28 +11,36 @@ import (
 	"net/url"
 	"strconv"
 
-	"cloudeng.io/file/checkpoint"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/protocolsio/protocolsiosdk"
 )
 
 type paginator struct {
-	op          checkpoint.Operation
-	currentPage int
-	totalPages  int
-	done        bool
-	url         string
+	completedPage int64
+	currentPage   int64
+	totalPages    int64
+	done          bool
+	PaginatorOptions
 }
 
-func (pg paginator) Next(t protocolsiosdk.ListProtocolsV3, r *http.Response) (req *http.Request, done bool, err error) {
+func (pg *paginator) urlfor(page int64, first bool) string {
+	if first && pg.From != 0 {
+		page = int64(pg.From)
+	}
+	pg.Parameters.Set("page_id", strconv.FormatInt(page, 10))
+	u := fmt.Sprintf("%v?%v", pg.EndpointURL, pg.Parameters.Encode())
+	return u
+}
+
+func (pg *paginator) Next(ctx context.Context, t protocolsiosdk.ListProtocolsV3, r *http.Response) (req *http.Request, done bool, err error) {
 	if r == nil {
-		req, err = http.NewRequest("GET", pg.url, nil)
+		req, err = http.NewRequest("GET", pg.urlfor(pg.currentPage, true), nil)
 		return
 	}
 	p := t.Pagination
-	pg.currentPage = int(p.CurrentPage)
-	pg.totalPages = int(p.TotalPages)
-	if p.CurrentPage == p.TotalPages {
+	pg.completedPage = p.CurrentPage
+	pg.totalPages = p.TotalPages
+	if done = (p.CurrentPage >= p.TotalPages) || (pg.To != 0 && pg.completedPage >= int64(pg.To)); done {
 		return
 	}
 	u, err := url.Parse(p.NextPage)
@@ -44,19 +52,30 @@ func (pg paginator) Next(t protocolsiosdk.ListProtocolsV3, r *http.Response) (re
 		err = fmt.Errorf("%v: failed to find page_id parameter in %v: %#v", p.NextPage, u.String(), p)
 		return
 	}
-	npi, err := strconv.Atoi(np)
+	npi, err := strconv.ParseInt(np, 10, 64)
 	if err != nil {
 		err = fmt.Errorf("failed to parse %q: %v", np, err)
 	}
-	req, err = http.NewRequest("GET", fmt.Sprintf("%v?page_id=%v", pg.url, npi), nil)
+	pg.currentPage = npi
+	req, err = http.NewRequest("GET", pg.urlfor(npi, false), nil)
 	return
 }
 
-func (pg paginator) Save() {
+type PaginatorOptions struct {
+	EndpointURL string
+	Parameters  url.Values
+	From, To    int
 }
 
-func NewPaginator(ctx context.Context, endpoint string, operation checkpoint.Operation) (operations.Paginator[protocolsiosdk.ListProtocolsV3], error) {
-	pg := &paginator{url: endpoint, op: operation}
-	// TODO: checkpointing
+// NewPaginator returns an instance of operations.Paginator for protocols.io
+// 'GetList' operation.
+func NewPaginator(ctx context.Context, cp Checkpoint, opts PaginatorOptions) (operations.Paginator[protocolsiosdk.ListProtocolsV3], error) {
+	pg := &paginator{PaginatorOptions: opts}
+	pg.Parameters.Set("fields", "id,version_id")
+	pg.completedPage = cp.CompletedPage
+	pg.currentPage = cp.CurrentPage
+	if pg.completedPage == 0 && pg.currentPage == 0 {
+		pg.currentPage = 1
+	}
 	return pg, nil
 }
