@@ -11,8 +11,10 @@ import (
 	"net/http"
 	"sync"
 	"testing"
+	"time"
 
 	"cloudeng.io/errors"
+	"cloudeng.io/file/content"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/webapitestutil"
 )
@@ -26,14 +28,27 @@ type fetcher struct {
 	ep  *operations.Endpoint[Object]
 }
 
-func (f *fetcher) Fetch(ctx context.Context, page webapitestutil.Paginated, ch chan<- operations.Crawled[Object]) error {
-	fmt.Printf("fetching for %v\n", page)
-
-	obj, _, err := f.ep.Get(ctx, fmt.Sprintf("%s/get?id=%v", f.url, page.Payload))
+func (f *fetcher) Fetch(ctx context.Context, page webapitestutil.Paginated, ch chan<- []content.Object[Object, operations.Response]) error {
+	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/get?id=%v", f.url, page.Payload), nil)
 	if err != nil {
 		return err
 	}
-	ch <- operations.Crawled[Object]{Object: obj}
+	obj, raw, enc, resp, err := f.ep.GetUsingRequest(ctx, req)
+	if err != nil {
+		return err
+	}
+	r := operations.Response{
+		Encoding:   enc,
+		When:       time.Now().Truncate(0),
+		Bytes:      raw,
+		StatusCode: resp.StatusCode,
+	}
+	r.FromHTTPResponse(resp)
+	ch <- []content.Object[Object, operations.Response]{{
+		Value:    obj,
+		Type:     "content/type",
+		Response: r,
+	}}
 	return nil
 }
 
@@ -59,7 +74,7 @@ func TestCrawler(t *testing.T) {
 	fetcher := &fetcher{url: srv.URL, ep: operations.NewEndpoint[Object]()}
 
 	cr := operations.NewCrawler[webapitestutil.Paginated, Object](scanner, fetcher)
-	ch := make(chan operations.Crawled[Object])
+	ch := make(chan []content.Object[Object, operations.Response])
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -70,11 +85,16 @@ func TestCrawler(t *testing.T) {
 	}()
 
 	id := 1
-	for crawled := range ch {
-		if got, want := crawled.Object.ID, fmt.Sprintf("%v", id); got != want {
-			t.Errorf("got %v, want %v", got, want)
+	for objects := range ch {
+		for _, obj := range objects {
+			if got, want := obj.Value.ID, fmt.Sprintf("%v", id); got != want {
+				t.Errorf("got %v, want %v", got, want)
+			}
+			id++
+			if got, want := obj.Response.StatusCode, http.StatusOK; got != want {
+				t.Errorf("got %v, want %v", got, want)
+			}
 		}
-		id++
 	}
 
 	wg.Wait()

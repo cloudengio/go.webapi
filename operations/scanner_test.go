@@ -16,30 +16,39 @@ import (
 )
 
 type paginator struct {
-	mu      sync.Mutex
-	url     string
-	nextURL string
-	saveURL string
+	mu         sync.Mutex
+	url        string
+	currentURL string
+	nextURL    string
 }
 
-func (p *paginator) Next(payload webapitestutil.Paginated, resp *http.Response) (*http.Request, bool, error) {
+func (p *paginator) Next(ctx context.Context, payload webapitestutil.Paginated, resp *http.Response) (*http.Request, bool, error) {
 	if resp == nil {
-		// first time through, return the url and mark as paginated.
+		// first time through, return the url and return false to indicate
+		// more pages may follow.
+		p.currentURL = p.url
 		req, err := http.NewRequest("GET", p.url, nil)
 		return req, false, err
 	}
-	nextURL := fmt.Sprintf(p.url+"?current=%v", payload.Current+1)
 	p.mu.Lock()
+	p.currentURL = p.nextURL
+	nextURL := fmt.Sprintf(p.url+"?current=%v", payload.Current+1)
 	p.nextURL = nextURL
 	p.mu.Unlock()
 	req, err := http.NewRequest("GET", p.nextURL, nil)
-	return req, payload.Current == payload.Last, err
+	if payload.Current == payload.Last {
+		return nil, true, nil
+	}
+	return req, false, err
 }
 
-func (p *paginator) Save() {
-	p.mu.Lock()
-	p.saveURL = p.nextURL
-	p.mu.Unlock()
+type authToken struct {
+	Token string
+}
+
+func (pbt authToken) WithAuthorization(ctx context.Context, req *http.Request) error {
+	req.Header.Add("Bearer", pbt.Token)
+	return nil
 }
 
 func TestScanner(t *testing.T) {
@@ -50,7 +59,7 @@ func TestScanner(t *testing.T) {
 	srv := webapitestutil.NewServer(handler)
 	defer srv.Close()
 	paginator := &paginator{url: srv.URL}
-	scanner := operations.NewScanner[webapitestutil.Paginated](paginator)
+	scanner := operations.NewScanner[webapitestutil.Paginated](paginator, operations.WithAuth(&authToken{"token"}))
 	expected := 0
 	for scanner.Scan(ctx) {
 		r := scanner.Response()
@@ -62,13 +71,16 @@ func TestScanner(t *testing.T) {
 		}
 		paginator.mu.Lock()
 		if expected == 0 {
-			if got, want := paginator.saveURL, ""; got != want {
+			if got, want := paginator.currentURL, ""; got != want {
 				t.Errorf("got %v, want %v", got, want)
 			}
 		} else {
-			if got, want := paginator.saveURL, fmt.Sprintf(paginator.url+"?current=%v", expected); got != want {
+			if got, want := paginator.currentURL, fmt.Sprintf(paginator.url+"?current=%v", expected); got != want {
 				t.Errorf("got %v, want %v", got, want)
 			}
+		}
+		if got, want := paginator.nextURL, fmt.Sprintf(paginator.url+"?current=%v", expected+1); got != want {
+			t.Errorf("got %v, want %v", got, want)
 		}
 		paginator.mu.Unlock()
 		expected++
@@ -84,7 +96,7 @@ type errPaginator struct {
 	count    int
 }
 
-func (p *errPaginator) Next(payload webapitestutil.Paginated, resp *http.Response) (*http.Request, bool, error) {
+func (p *errPaginator) Next(ctx context.Context, payload webapitestutil.Paginated, resp *http.Response) (*http.Request, bool, error) {
 	if resp == nil {
 		if p.failWhen == 0 {
 			return nil, false, fmt.Errorf("fail immediately")
@@ -100,8 +112,6 @@ func (p *errPaginator) Next(payload webapitestutil.Paginated, resp *http.Respons
 	req, err := http.NewRequest("GET", nextURL, nil)
 	return req, payload.Current == payload.Last, err
 }
-
-func (p *errPaginator) Save() {}
 
 func TestScannerErrorImmediately(t *testing.T) {
 	ctx := context.Background()

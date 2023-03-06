@@ -10,9 +10,17 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 
 	"cloudeng.io/net/ratecontrol"
+)
+
+// Encoding represents the encoding scheme used for the response body.
+type Encoding int
+
+const (
+	JSONEncoding Encoding = iota
 )
 
 // Endpoint represents an API endpoint that whose response body is unmarshaled,
@@ -32,29 +40,32 @@ func NewEndpoint[T any](opts ...Option) *Endpoint[T] {
 	}
 	if ep.unmarshal == nil {
 		ep.unmarshal = json.Unmarshal
+		ep.encoding = JSONEncoding
 	}
 	return ep
 }
 
 // Get invokes a GET request on this endpoint (without a body).
-func (ep *Endpoint[T]) Get(ctx context.Context, url string) (T, []byte, error) {
+func (ep *Endpoint[T]) Get(ctx context.Context, url string) (T, []byte, Encoding, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		var result T
-		return result, nil, err
+		return result, nil, ep.encoding, err
 	}
 	return ep.get(ctx, req)
 }
 
 // GetUsingRequest invokes a Get request on this endpoint using the
-// supplied http.Request.
-func (ep *Endpoint[T]) GetUsingRequest(ctx context.Context, req *http.Request) (T, []byte, error) {
-	return ep.get(ctx, req)
+// supplied http.Request. The Body in the http.Response has already been
+// read and its contents returned as the second return value.
+func (ep *Endpoint[T]) GetUsingRequest(ctx context.Context, req *http.Request) (T, []byte, Encoding, *http.Response, error) {
+	t, r, b, err := ep.getWithResp(ctx, req)
+	return t, b, ep.encoding, r, err
 }
 
-func (ep *Endpoint[T]) get(ctx context.Context, req *http.Request) (T, []byte, error) {
+func (ep *Endpoint[T]) get(ctx context.Context, req *http.Request) (T, []byte, Encoding, error) {
 	t, _, b, err := ep.getWithResp(ctx, req)
-	return t, b, err
+	return t, b, ep.encoding, err
 }
 
 func (ep *Endpoint[T]) isBackoffCode(code int) bool {
@@ -85,6 +96,7 @@ func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *
 			return result, nil, nil, handleError(err, "", 0, retries)
 		}
 		if ep.isBackoffCode(resp.StatusCode) {
+			log.Printf("back off getting type: %T, retries: %v: %v", result, retries, resp.Status)
 			if done, err := backoff.Wait(ctx); done {
 				return result, nil, nil, handleError(err, resp.Status, resp.StatusCode, retries)
 			}
@@ -94,7 +106,6 @@ func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *
 			return ep.handleResponse(resp, retries)
 		}
 		return m, nil, nil, handleError(nil, resp.Status, resp.StatusCode, retries)
-
 	}
 }
 
