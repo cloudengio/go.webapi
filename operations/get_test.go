@@ -33,7 +33,7 @@ func TestEcho(t *testing.T) {
 
 	client := operations.NewEndpoint[example]()
 
-	egr, body, err := client.Get(ctx, srv.URL)
+	egr, body, enc, err := client.Get(ctx, srv.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,6 +45,10 @@ func TestEcho(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got, want := body, data; !bytes.Equal(got, want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+
+	if got, want := enc, operations.JSONEncoding; got != want {
 		t.Errorf("got %v, want %v", got, want)
 	}
 }
@@ -68,7 +72,7 @@ func TestRequestsPerMinute(t *testing.T) {
 	client := operations.NewEndpoint[int](operations.WithRateController(rc, http.StatusTooManyRequests))
 	nTimestamps := 5
 	for i := 0; i < nTimestamps; i++ {
-		n, _, err := client.Get(ctx, srv.URL)
+		n, _, _, err := client.Get(ctx, srv.URL)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -99,7 +103,7 @@ func TestBackoff(t *testing.T) {
 
 	rc := ratecontrol.New(ratecontrol.WithExponentialBackoff(time.Millisecond, 2))
 	client := operations.NewEndpoint[int](operations.WithRateController(rc, http.StatusTooManyRequests))
-	n, _, err := client.Get(ctx, srv.URL)
+	n, _, _, err := client.Get(ctx, srv.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +126,7 @@ func TestAuth(t *testing.T) {
 	srv := webapitestutil.NewServer(handler)
 	defer srv.Close()
 	client := operations.NewEndpoint[map[string][]string](operations.WithAuth(&authorizer{}))
-	headers, _, err := client.Get(ctx, srv.URL)
+	headers, _, _, err := client.Get(ctx, srv.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +153,7 @@ func TestRequestError(t *testing.T) {
 
 	client := operations.NewEndpoint[example]()
 
-	_, _, err := client.Get(ctx, srv.URL)
+	_, _, _, err := client.Get(ctx, srv.URL)
 	operr := err.(*operations.Error)
 	if got, want := operr.StatusCode, http.StatusNotFound; got != want {
 		t.Errorf("got %v, want %v", got, want)
@@ -168,7 +172,7 @@ func TestTimeout(t *testing.T) {
 	rc := ratecontrol.New(ratecontrol.WithExponentialBackoff(time.Millisecond, 10))
 	client := operations.NewEndpoint[example](operations.WithRateController(rc, http.StatusTooManyRequests))
 
-	_, _, err := client.Get(ctx, srv.URL)
+	_, _, _, err := client.Get(ctx, srv.URL)
 	operr := err.(*operations.Error)
 	if got, want := operr.StatusCode, http.StatusTooManyRequests; got != want {
 		t.Errorf("got %v, want %v", got, want)
