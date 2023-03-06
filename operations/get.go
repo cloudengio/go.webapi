@@ -96,7 +96,7 @@ func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *
 			return result, nil, nil, handleError(err, "", 0, retries)
 		}
 		if ep.isBackoffCode(resp.StatusCode) {
-			log.Printf("back off: %v, retries: %v: %v", req.URL, retries, resp.Status)
+			log.Printf("back off getting type: %T, retries: %v: %v", result, retries, resp.Status)
 			if done, err := backoff.Wait(ctx); done {
 				return result, nil, nil, handleError(err, resp.Status, resp.StatusCode, retries)
 			}
