@@ -35,7 +35,7 @@ type CrawlFlags struct {
 	IgnoreCheckpoint bool               `subcmd:"ignore-checkpoint,false,'ignore the checkpoint files'"`
 	Pages            flags.IntRangeSpec `subcmd:"pages,,page range to return"`
 	PageSize         int                `subcmd:"size,50,number of items in each page"`
-	Key              string             `subcmd:"key,,'string may contain any characters, numbers and special symbols. System will seach around protocol name, description, authors. If the search keywords are enclosed into double quotes, then result contains only the exact match of the combined term'"`
+	Key              string             `subcmd:"key,,'string may contain any characters, numbers and special symbols. System will search around protocol name, description, authors. If the search keywords are enclosed in double quotes, then result contains only the exact match of the combined term'"`
 }
 
 type ScanFlags struct {
@@ -136,7 +136,9 @@ func (c *Command) ScanDownloaded(ctx context.Context, fv *ScanFlags) error {
 		if err := obj.ReadObjectBinary(path); err != nil {
 			return err
 		}
-		tpl.Execute(os.Stdout, obj.Value.Protocol)
+		if err := tpl.Execute(os.Stdout, obj.Value.Protocol); err != nil {
+			return err
+		}
 		fmt.Printf("\n")
 		return nil
 	})

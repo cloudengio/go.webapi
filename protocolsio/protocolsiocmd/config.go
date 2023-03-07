@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 // Package protocolsio provides support for working with the
-// protocols.io API. It currently provides the abilty to
+// protocols.io API. It currently provides the ability to
 // crawl public protocols.
 package protocolsiocmd
 

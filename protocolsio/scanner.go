@@ -19,7 +19,6 @@ type paginator struct {
 	completedPage int64
 	currentPage   int64
 	totalPages    int64
-	done          bool
 	PaginatorOptions
 }
 
@@ -55,6 +54,7 @@ func (pg *paginator) Next(ctx context.Context, t protocolsiosdk.ListProtocolsV3,
 	npi, err := strconv.ParseInt(np, 10, 64)
 	if err != nil {
 		err = fmt.Errorf("failed to parse %q: %v", np, err)
+		return
 	}
 	pg.currentPage = npi
 	req, err = http.NewRequest("GET", pg.urlfor(npi, false), nil)

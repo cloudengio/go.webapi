@@ -32,6 +32,10 @@ func (f *fetcher) fetch(ctx context.Context, p protocolsiosdk.Protocol) (protoco
 		return protocolsiosdk.ProtocolPayload{}, response
 	}
 	payload, body, enc, resp, err := f.ep.GetUsingRequest(ctx, req)
+	if err != nil {
+		response.Error = content.Error(err)
+		return protocolsiosdk.ProtocolPayload{}, response
+	}
 	response.Encoding = enc
 	response.When = time.Now().Truncate(0)
 	response.Bytes = body
