@@ -3,9 +3,9 @@ module cloudeng.io/webapi/oapi-tool
 go 1.19
 
 require (
-	cloudeng.io/cmdutil v0.0.0-20230304024356-5d6b315e83f0
+	cloudeng.io/cmdutil v0.0.0-20230306215119-e71b407605cc
 	cloudeng.io/errors v0.0.8
-	cloudeng.io/webapi/openapi v0.0.0-20230222201634-3138cb44b535
+	cloudeng.io/webapi/openapi v0.0.0-20230306214409-b181ee2aa6c0
 	github.com/getkin/kin-openapi v0.114.0
 	gopkg.in/yaml.v3 v3.0.1
 )
