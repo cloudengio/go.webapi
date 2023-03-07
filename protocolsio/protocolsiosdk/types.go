@@ -2,10 +2,17 @@
 // Use of this source code is governed by the Apache-2.0
 // license that can be found in the LICENSE file.
 
+// Package protocolsiosdk provides a minimal SDK for the protocols.io API.
+// See https://apidoc.protocols.io for details.
 package protocolsiosdk
 
 import (
 	"encoding/json"
+)
+
+const (
+	ListProtocolsV3Endpoint = "https://www.protocols.io/api/v3/protocols"
+	GetProtocolV4Endpoint   = "https://www.protocols.io/api/v4/protocols"
 )
 
 type ListProtocolsV3 struct {
@@ -39,12 +46,19 @@ type Protocol struct {
 	Creator     Creator
 }
 
-func ParsePayload[T any](buf []byte) (T, error) {
-	var t T
-	var payload Payload
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return t, err
-	}
-	err := json.Unmarshal(payload.Payload, &t)
-	return t, err
+type ProtocolPayload struct {
+	Protocol   Protocol `json:"payload"`
+	StatusCode int      `json:"status_code"`
+}
+
+type Pagination struct {
+	CurrentPage  int64       `json:"current_page"`
+	TotalPages   int64       `json:"total_pages"`
+	TotalResults int64       `json:"total_results"`
+	NextPage     string      `json:"next_page"`
+	PrevPage     interface{} `json:"prev_page"`
+	PageSize     int64       `json:"page_size"`
+	First        int64       `json:"first"`
+	Last         int64       `json:"last"`
+	ChangedOn    interface{} `json:"changed_on"`
 }
