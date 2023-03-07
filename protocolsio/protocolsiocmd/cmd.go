@@ -81,8 +81,8 @@ func handleCrawledObject(ctx context.Context,
 	return nil
 }
 
-func (c *Command) Crawl(ctx context.Context, fv *CrawlFlags) error {
-	cachePath, op, err := c.Cache.Initialize()
+func (c *Command) Crawl(ctx context.Context, cacheRoot string, fv *CrawlFlags) error {
+	cachePath, op, err := c.Cache.Initialize(cacheRoot)
 	if err != nil {
 		return err
 	}
