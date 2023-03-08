@@ -31,7 +31,7 @@ type Service struct {
 		PublicToken  string `yaml:"public_token"`
 		ClientID     string `yaml:"public_clientid"`
 		ClientSecret string `yaml:"public_secret"`
-	}
+	} `yaml:"auth"`
 	Filter         string `yaml:"filter"`
 	OrderField     string `yaml:"order_field"`
 	OrderDirection string `yaml:"order_direction"`
