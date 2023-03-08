@@ -19,38 +19,39 @@ import (
 
 	"cloudeng.io/file/checkpoint"
 	"cloudeng.io/file/content"
-	"cloudeng.io/file/crawl/crawlcmd"
 	"cloudeng.io/webapi/operations"
+	"cloudeng.io/webapi/operations/apicrawlcmd"
 	"cloudeng.io/webapi/protocolsio"
 	"cloudeng.io/webapi/protocolsio/protocolsiosdk"
 )
 
-// Config represents the configuration information required to
-// access and crawl the protocols.io API.
-type Config struct {
+// Service represents the protocols.io specific confiugaration options.
+type Service struct {
 	Auth struct {
 		PublicToken  string `yaml:"public_token"`
 		ClientID     string `yaml:"public_clientid"`
 		ClientSecret string `yaml:"public_secret"`
 	}
-	RateControl    crawlcmd.RateControl      `yaml:",inline"`
-	Cache          crawlcmd.CrawlCacheConfig `yaml:",inline"`
-	Filter         string                    `yaml:"filter"`
-	OrderField     string                    `yaml:"order_field"`
-	OrderDirection string                    `yaml:"order_direction"`
-	Incremental    bool                      `yaml:"incremental"`
+	Filter         string `yaml:"filter"`
+	OrderField     string `yaml:"order_field"`
+	OrderDirection string `yaml:"order_direction"`
+	Incremental    bool   `yaml:"incremental"`
 }
+
+// Config represents the configuration information required to
+// access and crawl the protocols.io API.
+type Config apicrawlcmd.Crawl[Service]
 
 func (c Config) String() string {
 	var out strings.Builder
 	out.WriteString("protocolsio:\n")
-	if len(c.Auth.PublicToken) > 0 {
+	if len(c.Service.Auth.PublicToken) > 0 {
 		fmt.Fprintf(&out, " public token: **redacted**\n")
 	}
-	if len(c.Auth.ClientID) > 0 {
-		fmt.Fprintf(&out, "    client id: %s\n", c.Auth.ClientID)
+	if len(c.Service.Auth.ClientID) > 0 {
+		fmt.Fprintf(&out, "    client id: %s\n", c.Service.Auth.ClientID)
 	}
-	if len(c.Auth.ClientSecret) > 0 {
+	if len(c.Service.Auth.ClientSecret) > 0 {
 		fmt.Fprintf(&out, "client secret: **redacted**\n")
 	}
 	return out.String()
@@ -108,9 +109,9 @@ func (c Config) NewProtocolCrawler(ctx context.Context, op checkpoint.Operation,
 	}
 	paginatorOpts.EndpointURL = protocolsiosdk.ListProtocolsV3Endpoint
 	paginatorOpts.Parameters = url.Values{}
-	paginatorOpts.Parameters.Add("filter", c.Filter)
-	paginatorOpts.Parameters.Add("order_field", c.OrderField)
-	paginatorOpts.Parameters.Add("order_dir", c.OrderDirection)
+	paginatorOpts.Parameters.Add("filter", c.Service.Filter)
+	paginatorOpts.Parameters.Add("order_field", c.Service.OrderField)
+	paginatorOpts.Parameters.Add("order_dir", c.Service.OrderDirection)
 	paginatorOpts.Parameters.Add("page_size", strconv.FormatInt(int64(fv.PageSize), 10))
 	paginatorOpts.Parameters.Add("key", fv.Key)
 
@@ -118,7 +119,7 @@ func (c Config) NewProtocolCrawler(ctx context.Context, op checkpoint.Operation,
 	var fetcherOptions protocolsio.FetcherOptions
 	fetcherOptions.EndpointURL = protocolsiosdk.GetProtocolV4Endpoint
 
-	if c.Incremental {
+	if c.Service.Incremental {
 		vmap, err := createVersionMap(c.Cache.Prefix, c.Cache.Checkpoint)
 		if err != nil {
 			return nil, err
@@ -140,9 +141,9 @@ func (c Config) NewProtocolCrawler(ctx context.Context, op checkpoint.Operation,
 
 func (c Config) OptionsForEndpoint() ([]operations.Option, error) {
 	opts := []operations.Option{}
-	if len(c.Auth.PublicToken) > 0 {
+	if len(c.Service.Auth.PublicToken) > 0 {
 		opts = append(opts,
-			operations.WithAuth(protocolsio.PublicBearerToken{Token: c.Auth.PublicToken}))
+			operations.WithAuth(protocolsio.PublicBearerToken{Token: c.Service.Auth.PublicToken}))
 	}
 	rc, err := c.RateControl.NewRateController()
 	if err != nil {
