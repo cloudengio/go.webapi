@@ -52,9 +52,7 @@ type Command struct {
 // NewCommand returns a new Command instance for the specified API crawl.
 func NewCommand(crawls apicrawlcmd.Crawls, name string) (*Command, error) {
 	c := &Command{}
-	var apc *apicrawlcmd.Crawl[Service]
-	apc = (*apicrawlcmd.Crawl[Service])(&c.Config)
-	ok, err := apicrawlcmd.ParseCrawlConfig(crawls, name, apc)
+	ok, err := apicrawlcmd.ParseCrawlConfig(crawls, name, (*apicrawlcmd.Crawl[Service])(&c.Config))
 	if !ok {
 		return nil, fmt.Errorf("no configuration found for %v", name)
 	}

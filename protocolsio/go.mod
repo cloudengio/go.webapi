@@ -6,7 +6,7 @@ require (
 	cloudeng.io/cmdutil v0.0.0-20230307171818-e916b1b21441
 	cloudeng.io/file v0.0.0-20230307171818-e916b1b21441
 	cloudeng.io/path v0.0.8
-	cloudeng.io/webapi/operations v0.0.0-20230307052936-9f513698e82c
+	cloudeng.io/webapi/operations v0.0.0-20230308045530-1dfcd593e986
 )
 
 require (
