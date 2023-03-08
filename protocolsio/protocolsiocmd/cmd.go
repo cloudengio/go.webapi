@@ -8,6 +8,7 @@ package protocolsiocmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,6 +19,7 @@ import (
 	"cloudeng.io/file/content"
 	"cloudeng.io/path"
 	"cloudeng.io/webapi/operations"
+	"cloudeng.io/webapi/operations/apicrawlcmd"
 	"cloudeng.io/webapi/protocolsio/protocolsiosdk"
 )
 
@@ -42,8 +44,24 @@ type ScanFlags struct {
 	Template string `subcmd:"template,'{{.ID}}',template to use for printing fields in the downloaded Protocol objects"`
 }
 
+// Çommand implements the command line operations available for protocols.io.
 type Command struct {
 	Config
+}
+
+// NewCommand returns a new Command instance for the specified API crawl.
+func NewCommand(crawls apicrawlcmd.Crawls, name string) (*Command, error) {
+	c := &Command{}
+	var apc *apicrawlcmd.Crawl[Service]
+	apc = (*apicrawlcmd.Crawl[Service])(&c.Config)
+	ok, err := apicrawlcmd.ParseCrawlConfig(crawls, name, apc)
+	if !ok {
+		return nil, fmt.Errorf("no configuration found for %v", name)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 func handleCrawledObject(ctx context.Context,
@@ -92,7 +110,7 @@ func (c *Command) Crawl(ctx context.Context, cacheRoot string, fv *CrawlFlags) e
 	}
 
 	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
-	crawler, err := c.Config.NewProtocolCrawler(ctx, op, fv)
+	crawler, err := c.NewProtocolCrawler(ctx, op, fv)
 	if err != nil {
 		return err
 	}
@@ -104,7 +122,7 @@ func (c *Command) Crawl(ctx context.Context, cacheRoot string, fv *CrawlFlags) e
 }
 
 func (c *Command) Get(ctx context.Context, fv *GetFlags, args []string) error {
-	opts, err := c.OptionsForEndpoint()
+	opts, err := c.Config.OptionsForEndpoint()
 	if err != nil {
 		return err
 	}
@@ -120,12 +138,16 @@ func (c *Command) Get(ctx context.Context, fv *GetFlags, args []string) error {
 	return nil
 }
 
-func (c *Command) ScanDownloaded(ctx context.Context, fv *ScanFlags) error {
+func (c *Command) ScanDownloaded(ctx context.Context, root string, fv *ScanFlags) error {
 	tpl, err := template.New("protocolsio").Parse(fv.Template)
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %q: %v", fv.Template, err)
 	}
-	err = filepath.Walk(c.Cache.Prefix, func(path string, info os.FileInfo, err error) error {
+	cp := filepath.Join(root, c.Cache.Prefix)
+	err = filepath.Walk(cp, func(path string, info os.FileInfo, err error) error {
+		if errors.Is(err, os.ErrNotExist) {
+			return err
+		}
 		if path == c.Cache.Checkpoint {
 			return filepath.SkipDir
 		}
