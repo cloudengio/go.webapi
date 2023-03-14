@@ -14,17 +14,19 @@ import (
 	"path/filepath"
 	"text/template"
 
+	"cloudeng.io/cmdutil"
 	"cloudeng.io/cmdutil/flags"
 	"cloudeng.io/file/checkpoint"
 	"cloudeng.io/file/content"
 	"cloudeng.io/path"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
+	"cloudeng.io/webapi/operations/apitokens"
 	"cloudeng.io/webapi/protocolsio/protocolsiosdk"
 )
 
 type CommonFlags struct {
-	Config string `subcmd:"config,$HOME/.protocolsio.yaml,'protocols.io config file'"`
+	ProtocolsConfig string `subcmd:"protocolsio-config,$HOME/.protocolsio.yaml,'protocols.io auth config file'"`
 }
 
 type GetFlags struct {
@@ -41,16 +43,20 @@ type CrawlFlags struct {
 }
 
 type ScanFlags struct {
+	CommonFlags
 	Template string `subcmd:"template,'{{.ID}}',template to use for printing fields in the downloaded Protocol objects"`
 }
 
 // Çommand implements the command line operations available for protocols.io.
 type Command struct {
+	Auth
 	Config
 }
 
-// NewCommand returns a new Command instance for the specified API crawl.
-func NewCommand(crawls apicrawlcmd.Crawls, name string) (*Command, error) {
+// NewCommand returns a new Command instance for the specified API crawl
+// with API authentication information read from the specified file or
+// from the context.
+func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, name, authFilename string) (*Command, error) {
 	c := &Command{}
 	ok, err := apicrawlcmd.ParseCrawlConfig(crawls, name, (*apicrawlcmd.Crawl[Service])(&c.Config))
 	if !ok {
@@ -58,6 +64,15 @@ func NewCommand(crawls apicrawlcmd.Crawls, name string) (*Command, error) {
 	}
 	if err != nil {
 		return nil, err
+	}
+	if len(authFilename) > 0 {
+		if err := cmdutil.ParseYAMLConfigFile(ctx, authFilename, &c.Auth); err != nil {
+			return nil, err
+		}
+	} else {
+		if ok, err := apitokens.ParseTokensYAML(ctx, name, &c.Auth); ok && err != nil {
+			return nil, err
+		}
 	}
 	return c, nil
 }
@@ -108,7 +123,7 @@ func (c *Command) Crawl(ctx context.Context, cacheRoot string, fv *CrawlFlags) e
 	}
 
 	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
-	crawler, err := c.NewProtocolCrawler(ctx, op, fv)
+	crawler, err := c.NewProtocolCrawler(ctx, op, fv, c.Auth)
 	if err != nil {
 		return err
 	}
@@ -120,7 +135,7 @@ func (c *Command) Crawl(ctx context.Context, cacheRoot string, fv *CrawlFlags) e
 }
 
 func (c *Command) Get(ctx context.Context, fv *GetFlags, args []string) error {
-	opts, err := c.Config.OptionsForEndpoint()
+	opts, err := c.Config.OptionsForEndpoint(c.Auth)
 	if err != nil {
 		return err
 	}

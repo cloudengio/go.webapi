@@ -10,12 +10,10 @@ package protocolsiocmd
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	"cloudeng.io/file/checkpoint"
 	"cloudeng.io/file/content"
@@ -25,13 +23,16 @@ import (
 	"cloudeng.io/webapi/protocolsio/protocolsiosdk"
 )
 
+// Auth represents the authentication information required to
+// access protocols.io.
+type Auth struct {
+	PublicToken  string `yaml:"public_token"`
+	ClientID     string `yaml:"public_clientid"`
+	ClientSecret string `yaml:"public_secret"`
+}
+
 // Service represents the protocols.io specific confiugaration options.
 type Service struct {
-	Auth struct {
-		PublicToken  string `yaml:"public_token"`
-		ClientID     string `yaml:"public_clientid"`
-		ClientSecret string `yaml:"public_secret"`
-	} `yaml:"auth"`
 	Filter         string `yaml:"filter"`
 	OrderField     string `yaml:"order_field"`
 	OrderDirection string `yaml:"order_direction"`
@@ -41,21 +42,6 @@ type Service struct {
 // Config represents the configuration information required to
 // access and crawl the protocols.io API.
 type Config apicrawlcmd.Crawl[Service]
-
-func (c Config) String() string {
-	var out strings.Builder
-	out.WriteString("protocolsio:\n")
-	if len(c.Service.Auth.PublicToken) > 0 {
-		fmt.Fprintf(&out, " public token: **redacted**\n")
-	}
-	if len(c.Service.Auth.ClientID) > 0 {
-		fmt.Fprintf(&out, "    client id: %s\n", c.Service.Auth.ClientID)
-	}
-	if len(c.Service.Auth.ClientSecret) > 0 {
-		fmt.Fprintf(&out, "client secret: **redacted**\n")
-	}
-	return out.String()
-}
 
 func latestCheckpoint(ctx context.Context, op checkpoint.Operation) (protocolsio.Checkpoint, error) {
 	if op == nil {
@@ -94,7 +80,7 @@ func createVersionMap(cachePath, checkpointPath string) (map[int64]int, error) {
 
 // NewProtocolCrawler creates a new instance of operations.Crawler
 // that can be used to crawl/download protocols on protocols.io.
-func (c Config) NewProtocolCrawler(ctx context.Context, op checkpoint.Operation, fv *CrawlFlags) (*operations.Crawler[protocolsiosdk.ListProtocolsV3, protocolsiosdk.ProtocolPayload], error) {
+func (c Config) NewProtocolCrawler(ctx context.Context, op checkpoint.Operation, fv *CrawlFlags, auth Auth) (*operations.Crawler[protocolsiosdk.ListProtocolsV3, protocolsiosdk.ProtocolPayload], error) {
 
 	cp, err := latestCheckpoint(ctx, op)
 	if err != nil {
@@ -128,7 +114,7 @@ func (c Config) NewProtocolCrawler(ctx context.Context, op checkpoint.Operation,
 	}
 
 	// General endpoint options.
-	opts, err := c.OptionsForEndpoint()
+	opts, err := c.OptionsForEndpoint(auth)
 	if err != nil {
 		return nil, err
 	}
@@ -139,11 +125,11 @@ func (c Config) NewProtocolCrawler(ctx context.Context, op checkpoint.Operation,
 
 }
 
-func (c Config) OptionsForEndpoint() ([]operations.Option, error) {
+func (c Config) OptionsForEndpoint(auth Auth) ([]operations.Option, error) {
 	opts := []operations.Option{}
-	if len(c.Service.Auth.PublicToken) > 0 {
+	if len(auth.PublicToken) > 0 {
 		opts = append(opts,
-			operations.WithAuth(protocolsio.PublicBearerToken{Token: c.Service.Auth.PublicToken}))
+			operations.WithAuth(protocolsio.PublicBearerToken{Token: auth.PublicToken}))
 	}
 	rc, err := c.RateControl.NewRateController()
 	if err != nil {

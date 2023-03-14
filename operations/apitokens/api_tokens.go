@@ -7,6 +7,8 @@ package apitokens
 import (
 	"context"
 	"sync"
+
+	"gopkg.in/yaml.v2"
 )
 
 type tokenKey int
@@ -15,14 +17,15 @@ var tokenKeyVal tokenKey
 
 type tokenStore struct {
 	sync.Mutex
-	tokens map[string]string
+	tokens map[string][]byte
 }
 
-// ContextWithToken returns a new context that contains the provided
-// named token in addition to any existing tokens.
-func ContextWithToken(ctx context.Context, name, token string) context.Context {
+// ContextWithTokens returns a new context that contains the provided
+// named tokens in addition to any existing tokens. The tokens are typically
+// encoded as JSON or YAML.
+func ContextWithTokens(ctx context.Context, name string, tokens []byte) context.Context {
 	store := &tokenStore{
-		tokens: map[string]string{name: token},
+		tokens: map[string][]byte{name: tokens},
 	}
 	if ostore, ok := ctx.Value(tokenKeyVal).(*tokenStore); ok {
 		ostore.Lock()
@@ -31,18 +34,29 @@ func ContextWithToken(ctx context.Context, name, token string) context.Context {
 			store.tokens[k] = v
 		}
 	}
-	store.tokens[name] = token
+	store.tokens[name] = tokens
 	return context.WithValue(ctx, tokenKeyVal, store)
 }
 
-// TokenFromContext returns the token for the specified name, if any,
-// that is stored in the context.
-func TokenFromContext(ctx context.Context, name string) (string, bool) {
+// TokensFromContext returns the tokens for the specified name, if any,
+// that are stored in the context.
+func TokensFromContexts(ctx context.Context, name string) ([]byte, bool) {
 	if store, ok := ctx.Value(tokenKeyVal).(*tokenStore); ok {
 		store.Lock()
 		defer store.Unlock()
 		t, ok := store.tokens[name]
 		return t, ok
 	}
-	return "", false
+	return nil, false
+}
+
+// ParseTokensYAML parses the tokens stored in the context for the specified
+// name as JSON. It will return false if there are no tockens stored, true
+// otherwise and an error if the unmsrshal fails.
+func ParseTokensYAML(ctx context.Context, name string, cfg any) (bool, error) {
+	tokens, ok := TokensFromContexts(ctx, name)
+	if !ok {
+		return false, nil
+	}
+	return true, yaml.Unmarshal(tokens, cfg)
 }
