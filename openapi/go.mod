@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	cloudeng.io/text v0.0.11
-	github.com/getkin/kin-openapi v0.114.0
+	github.com/getkin/kin-openapi v0.115.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
