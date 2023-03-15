@@ -15,10 +15,6 @@ import (
 const protocolsioSpec = `
 protocols.io:
   service:
-    auth:
-      public_token: token
-      public_clientid: clientid
-      public_secret: clientsecret
     order_field: id
   rate_control:
     requests_per_tick: 3
@@ -35,9 +31,6 @@ func TestConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got, want := ok, true; got != want {
-		t.Errorf("got %v, want %v", got, want)
-	}
-	if got, want := cfg.Service.Auth.PublicToken, "token"; got != want {
 		t.Errorf("got %v, want %v", got, want)
 	}
 	if got, want := cfg.Service.OrderField, "id"; got != want {
