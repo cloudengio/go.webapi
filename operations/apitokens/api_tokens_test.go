@@ -5,6 +5,7 @@
 package apitokens_test
 
 import (
+	"bytes"
 	"context"
 	"testing"
 
@@ -13,30 +14,30 @@ import (
 
 func TestAPITokens(t *testing.T) {
 	ctx := context.Background()
-	has := func(n, v string) {
-		token, ok := apitokens.TokenFromContext(ctx, n)
+	has := func(n string, v []byte) {
+		token, ok := apitokens.TokensFromContext(ctx, n)
 		if got, want := ok, true; got != want {
 			t.Errorf("got %v, want %v", got, want)
 		}
-		if got, want := token, v; got != want {
+		if got, want := token, v; !bytes.Equal(got, want) {
 			t.Errorf("got %v, want %v", got, want)
 		}
 	}
 	notHas := func(n string) {
-		token, ok := apitokens.TokenFromContext(ctx, n)
+		token, ok := apitokens.TokensFromContext(ctx, n)
 		if got, want := ok, false; got != want {
 			t.Errorf("got %v, want %v", got, want)
 		}
-		if got, want := token, ""; got != want {
+		if got, want := token, ([]byte)(nil); !bytes.Equal(got, want) {
 			t.Errorf("got %v, want %v", got, want)
 		}
 	}
 
-	ctx = apitokens.ContextWithToken(ctx, "n1", "v1")
-	has("n1", "v1")
+	ctx = apitokens.ContextWithTokens(ctx, "n1", []byte("v1"))
+	has("n1", []byte("v1"))
 	notHas("n2")
-	ctx = apitokens.ContextWithToken(ctx, "n2", "v2")
-	has("n1", "v1")
-	has("n2", "v2")
+	ctx = apitokens.ContextWithTokens(ctx, "n2", []byte("v2"))
+	has("n1", []byte("v1"))
+	has("n2", []byte("v2"))
 	notHas("n3")
 }
