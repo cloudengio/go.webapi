@@ -4,27 +4,20 @@
 import cloudeng.io/webapi/protocolsio/protocolsiosdk
 ```
 
+Package protocolsiosdk provides a minimal SDK for the protocols.io API.
+See https://apidoc.protocols.io for details.
 
-## Variables
-### ErrTooManyRequests
+## Constants
+### ListProtocolsV3Endpoint, GetProtocolV4Endpoint
 ```go
-ErrTooManyRequests = errors.New("too many requests")
+ListProtocolsV3Endpoint = "https://www.protocols.io/api/v3/protocols"
+GetProtocolV4Endpoint = "https://www.protocols.io/api/v4/protocols"
 
 ```
 
 
 
 ## Functions
-### Func Get
-```go
-func Get[T any](ctx context.Context, url string) (T, []byte, error)
-```
-
-### Func ParsePayload
-```go
-func ParsePayload[T any](buf []byte) (T, error)
-```
-
 ### Func WithPublicToken
 ```go
 func WithPublicToken(ctx context.Context, token string) context.Context
@@ -71,19 +64,6 @@ type Pagination struct {
 }
 ```
 
-### Methods
-
-```go
-func (p Pagination) Done() bool
-```
-
-
-```go
-func (p Pagination) PageInfo() (next, total int, done bool, err error)
-```
-
-
-
 
 ### Type Payload
 ```go
@@ -105,6 +85,15 @@ type Protocol struct {
 	VersionID   int    `json:"version_id"`
 	CreatedOn   int    `json:"created_on"`
 	Creator     Creator
+}
+```
+
+
+### Type ProtocolPayload
+```go
+type ProtocolPayload struct {
+	Protocol   Protocol `json:"payload"`
+	StatusCode int      `json:"status_code"`
 }
 ```
 
