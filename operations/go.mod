@@ -9,6 +9,7 @@ require (
 	cloudeng.io/errors v0.0.8
 	cloudeng.io/file v0.0.0-20230307171818-e916b1b21441
 	cloudeng.io/net v0.0.0-20230307171818-e916b1b21441
+	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
