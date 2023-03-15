@@ -40,7 +40,7 @@ func ContextWithTokens(ctx context.Context, name string, tokens []byte) context.
 
 // TokensFromContext returns the tokens for the specified name, if any,
 // that are stored in the context.
-func TokensFromContexts(ctx context.Context, name string) ([]byte, bool) {
+func TokensFromContext(ctx context.Context, name string) ([]byte, bool) {
 	if store, ok := ctx.Value(tokenKeyVal).(*tokenStore); ok {
 		store.Lock()
 		defer store.Unlock()
@@ -54,7 +54,7 @@ func TokensFromContexts(ctx context.Context, name string) ([]byte, bool) {
 // name as JSON. It will return false if there are no tockens stored, true
 // otherwise and an error if the unmsrshal fails.
 func ParseTokensYAML(ctx context.Context, name string, cfg any) (bool, error) {
-	tokens, ok := TokensFromContexts(ctx, name)
+	tokens, ok := TokensFromContext(ctx, name)
 	if !ok {
 		return false, nil
 	}
