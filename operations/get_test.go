@@ -113,7 +113,7 @@ func TestBackoff(t *testing.T) {
 
 type authorizer struct{}
 
-func (a *authorizer) WithAuthorization(ctx context.Context, req *http.Request) error {
+func (a *authorizer) WithAuthorization(_ context.Context, req *http.Request) error {
 	req.Header.Add("something", "secret")
 	return nil
 }

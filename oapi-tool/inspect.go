@@ -17,7 +17,7 @@ type InspectFlags struct {
 	TracePaths bool   `subcmd:"trace-paths,false,display each path in the spec as it is visited"`
 }
 
-func inspectCmd(ctx context.Context, values any, args []string) error {
+func inspectCmd(_ context.Context, values any, args []string) error {
 	fv := values.(*InspectFlags)
 	filename := fv.Spec
 	loader := openapi3.NewLoader()
@@ -62,7 +62,7 @@ func indent(path []string, indent int, node any) (string, error) {
 	return out.String(), nil
 }
 
-func (v visitor) visit(path []string, parent, node any) (bool, error) {
+func (v visitor) visit(path []string, _, node any) (bool, error) {
 	buf, err := indent(path, 2, node)
 	if err != nil {
 		fmt.Printf("%v: %v\n", strings.Join(path, "/"), err)

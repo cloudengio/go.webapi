@@ -60,7 +60,7 @@ func latestCheckpoint(ctx context.Context, op checkpoint.Operation) (protocolsio
 
 func createVersionMap(cachePath, checkpointPath string) (map[int64]int, error) {
 	vmap := map[int64]int{}
-	err := filepath.Walk(cachePath, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(cachePath, func(path string, info os.FileInfo, _ error) error {
 		if path == checkpointPath {
 			return filepath.SkipDir
 		}

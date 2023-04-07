@@ -17,7 +17,7 @@ type DownloadFlags struct {
 	Output string `subcmd:"output,,'filename to save the downloaded file as, if not set, the contents will be written to stdout'"`
 }
 
-func downloadCmd(ctx context.Context, values any, args []string) error {
+func downloadCmd(_ context.Context, values any, args []string) error {
 	fv := values.(*DownloadFlags)
 	buf := &bytes.Buffer{}
 	downloadURL := args[0]

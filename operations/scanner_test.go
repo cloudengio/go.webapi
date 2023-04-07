@@ -22,7 +22,7 @@ type paginator struct {
 	nextURL    string
 }
 
-func (p *paginator) Next(ctx context.Context, payload webapitestutil.Paginated, resp *http.Response) (*http.Request, bool, error) {
+func (p *paginator) Next(_ context.Context, payload webapitestutil.Paginated, resp *http.Response) (*http.Request, bool, error) {
 	if resp == nil {
 		// first time through, return the url and return false to indicate
 		// more pages may follow.
@@ -46,7 +46,7 @@ type authToken struct {
 	Token string
 }
 
-func (pbt authToken) WithAuthorization(ctx context.Context, req *http.Request) error {
+func (pbt authToken) WithAuthorization(_ context.Context, req *http.Request) error {
 	req.Header.Add("Bearer", pbt.Token)
 	return nil
 }
@@ -96,7 +96,7 @@ type errPaginator struct {
 	count    int
 }
 
-func (p *errPaginator) Next(ctx context.Context, payload webapitestutil.Paginated, resp *http.Response) (*http.Request, bool, error) {
+func (p *errPaginator) Next(_ context.Context, payload webapitestutil.Paginated, resp *http.Response) (*http.Request, bool, error) {
 	if resp == nil {
 		if p.failWhen == 0 {
 			return nil, false, fmt.Errorf("fail immediately")

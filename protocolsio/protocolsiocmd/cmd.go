@@ -134,7 +134,7 @@ func (c *Command) Crawl(ctx context.Context, cacheRoot string, fv *CrawlFlags) e
 
 }
 
-func (c *Command) Get(ctx context.Context, fv *GetFlags, args []string) error {
+func (c *Command) Get(ctx context.Context, _ *GetFlags, args []string) error {
 	opts, err := c.Config.OptionsForEndpoint(c.Auth)
 	if err != nil {
 		return err
@@ -151,7 +151,7 @@ func (c *Command) Get(ctx context.Context, fv *GetFlags, args []string) error {
 	return nil
 }
 
-func (c *Command) ScanDownloaded(ctx context.Context, root string, fv *ScanFlags) error {
+func (c *Command) ScanDownloaded(_ context.Context, root string, fv *ScanFlags) error {
 	tpl, err := template.New("protocolsio").Parse(fv.Template)
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %q: %v", fv.Template, err)
