@@ -133,7 +133,7 @@ func (t *allOfTransformer) handleTransformation(r allOf, schema *openapi3.Schema
 	return nil
 }
 
-func (t *allOfTransformer) visitor(path []string, parent, node any) (bool, error) {
+func (t *allOfTransformer) visitor(path []string, _, node any) (bool, error) {
 	schema, ok := node.(*openapi3.SchemaRef)
 	if !ok {
 		return true, nil

@@ -39,7 +39,7 @@ type withRetry struct {
 	count   int
 }
 
-func (wr *withRetry) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (wr *withRetry) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 	if wr.count < wr.retries {
 		wr.count++
 		w.WriteHeader(http.StatusTooManyRequests)

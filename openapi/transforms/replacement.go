@@ -66,7 +66,7 @@ func (t *replacementTransformer) Transform(doc *openapi3.T) (*openapi3.T, error)
 	return doc, walker.Walk(doc)
 }
 
-func (t *replacementTransformer) visitor(path []string, parent, node any) (bool, error) {
+func (t *replacementTransformer) visitor(path []string, parent, _ any) (bool, error) {
 	for _, repl := range t.ReplacementRules {
 		if !match(path, repl.Path) {
 			continue

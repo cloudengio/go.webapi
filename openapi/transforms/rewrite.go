@@ -92,7 +92,7 @@ func marshalMap(in map[string]any, out any) error {
 	return json.Unmarshal(buf, out)
 }
 
-func (t *rewriteTransformer) visitor(path []string, parent, node any) (bool, error) {
+func (t *rewriteTransformer) visitor(path []string, _, node any) (bool, error) {
 	for _, rw := range t.Rewrites {
 		if len(rw.Replace) == 0 {
 			continue

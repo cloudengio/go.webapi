@@ -31,7 +31,7 @@ func (pg *paginator) urlfor(page int64, first bool) string {
 	return u
 }
 
-func (pg *paginator) Next(ctx context.Context, t protocolsiosdk.ListProtocolsV3, r *http.Response) (req *http.Request, done bool, err error) {
+func (pg *paginator) Next(_ context.Context, t protocolsiosdk.ListProtocolsV3, r *http.Response) (req *http.Request, done bool, err error) {
 	if r == nil {
 		req, err = http.NewRequest("GET", pg.urlfor(pg.currentPage, true), nil)
 		return
@@ -69,7 +69,7 @@ type PaginatorOptions struct {
 
 // NewPaginator returns an instance of operations.Paginator for protocols.io
 // 'GetList' operation.
-func NewPaginator(ctx context.Context, cp Checkpoint, opts PaginatorOptions) (operations.Paginator[protocolsiosdk.ListProtocolsV3], error) {
+func NewPaginator(_ context.Context, cp Checkpoint, opts PaginatorOptions) (operations.Paginator[protocolsiosdk.ListProtocolsV3], error) {
 	pg := &paginator{PaginatorOptions: opts}
 	pg.Parameters.Set("fields", "id,version_id")
 	pg.completedPage = cp.CompletedPage

@@ -53,7 +53,7 @@ func TestEcho(t *testing.T) {
 	}
 }
 
-func TestRequestsPerMinute(t *testing.T) {
+func TestRequestRate(t *testing.T) {
 	ctx := context.Background()
 	timestamps := []time.Time{}
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -66,9 +66,8 @@ func TestRequestsPerMinute(t *testing.T) {
 
 	srv := webapitestutil.NewServer(handler)
 	defer srv.Close()
-
-	requestsPerMinute := 360
-	rc := ratecontrol.New(ratecontrol.WithRequestsPerTick(requestsPerMinute))
+	rc := ratecontrol.New(
+		ratecontrol.WithRequestsPerTick(time.Millisecond*100, 1))
 	client := operations.NewEndpoint[int](operations.WithRateController(rc, http.StatusTooManyRequests))
 	nTimestamps := 5
 	for i := 0; i < nTimestamps; i++ {
@@ -85,7 +84,7 @@ func TestRequestsPerMinute(t *testing.T) {
 		t.Errorf("got %v, want %v", got, want)
 	}
 
-	expectedDelay := time.Minute / time.Duration(requestsPerMinute)
+	expectedDelay := time.Millisecond * 100
 	for i := 0; i < nTimestamps-1; i++ {
 		elapsed := timestamps[i+1].Sub(timestamps[i])
 		if got, want := elapsed, expectedDelay; got < (want-want/2) || got > (want+want/2) {
@@ -114,7 +113,7 @@ func TestBackoff(t *testing.T) {
 
 type authorizer struct{}
 
-func (a *authorizer) WithAuthorization(ctx context.Context, req *http.Request) error {
+func (a *authorizer) WithAuthorization(_ context.Context, req *http.Request) error {
 	req.Header.Add("something", "secret")
 	return nil
 }

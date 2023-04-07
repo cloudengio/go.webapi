@@ -30,7 +30,7 @@ type testVisitor struct {
 	paths []string
 }
 
-func (t *testVisitor) visitor(path []string, parent, node any) (bool, error) {
+func (t *testVisitor) visitor(path []string, _, _ any) (bool, error) {
 	t.paths = append(t.paths, strings.Join(path, ":"))
 	return true, nil
 }
