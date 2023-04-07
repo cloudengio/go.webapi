@@ -98,8 +98,8 @@ func handleCrawledObject(ctx context.Context,
 	// Save the protocol object to disk.
 	prefix, suffix := sharder.Assign(fmt.Sprintf("%v", obj.Value.Protocol.ID))
 	path := filepath.Join(cachePath, prefix, suffix)
-	if err := obj.WriteObjectBinary(path); err != nil {
-		fmt.Printf("failed to write: %v as %v: %v\n", obj.Value.Protocol.ID, path, err)
+	if err := WriteDownload(path, obj); err != nil {
+		return err
 	}
 	if state := obj.Response.Checkpoint; len(state) > 0 {
 		name, err := chk.Checkpoint(ctx, "", state)
@@ -167,8 +167,8 @@ func (c *Command) ScanDownloaded(ctx context.Context, root string, fv *ScanFlags
 		if !info.Mode().IsRegular() {
 			return nil
 		}
-		var obj content.Object[protocolsiosdk.ProtocolPayload, operations.Response]
-		if err := obj.ReadObjectBinary(path); err != nil {
+		obj, err := ReadDownload(path)
+		if err != nil {
 			return err
 		}
 		if err := tpl.Execute(os.Stdout, obj.Value.Protocol); err != nil {

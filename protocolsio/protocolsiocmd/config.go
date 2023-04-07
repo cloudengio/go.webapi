@@ -16,7 +16,6 @@ import (
 	"strconv"
 
 	"cloudeng.io/file/checkpoint"
-	"cloudeng.io/file/content"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
 	"cloudeng.io/webapi/protocolsio"
@@ -68,8 +67,8 @@ func createVersionMap(cachePath, checkpointPath string) (map[int64]int, error) {
 		if !info.Mode().IsRegular() {
 			return nil
 		}
-		var obj content.Object[protocolsiosdk.ProtocolPayload, operations.Response]
-		if err := obj.ReadObjectBinary(path); err != nil {
+		obj, err := ReadDownload(path)
+		if err != nil {
 			return err
 		}
 		vmap[obj.Value.Protocol.ID] = obj.Value.Protocol.VersionID
