@@ -20,11 +20,12 @@ type Paginator[T any] interface {
 }
 
 type response[T any] struct {
-	response T
-	body     []byte
-	last     bool
-	nextReq  *http.Request
-	err      error
+	response     T
+	httpResponse *http.Response
+	body         []byte
+	last         bool
+	nextReq      *http.Request
+	err          error
 }
 
 // Scanner provides the ability to iterate over a paginated API a page at a time.
@@ -90,6 +91,11 @@ func (sc *Scanner[T]) Response() T {
 	return sc.resp.response
 }
 
+// HTTPResponse returns the response for the current page.
+func (sc *Scanner[T]) HTTPResponse() *http.Response {
+	return sc.resp.httpResponse
+}
+
 // Body returns the body for the current page.
 func (sc *Scanner[T]) Body() []byte {
 	return sc.resp.body
@@ -107,11 +113,12 @@ func (sc *Scanner[T]) get(ctx context.Context, req *http.Request) {
 		return
 	}
 	sc.ch <- response[T]{
-		response: payload,
-		body:     body,
-		last:     last,
-		err:      nil,
-		nextReq:  req,
+		response:     payload,
+		body:         body,
+		last:         last,
+		err:          nil,
+		nextReq:      req,
+		httpResponse: resp,
 	}
 }
 
