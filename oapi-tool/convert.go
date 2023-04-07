@@ -15,7 +15,7 @@ type ConvertFlags struct {
 	ConvertToYAML bool   `subcmd:"yaml,false,the output will be in YAML format regardless of the input format"`
 }
 
-func convertCmd(ctx context.Context, values any, args []string) error {
+func convertCmd(_ context.Context, values any, args []string) error {
 	fv := values.(*ConvertFlags)
 	filename := args[0]
 	data, err := os.ReadFile(filename)

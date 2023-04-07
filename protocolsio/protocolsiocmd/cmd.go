@@ -98,8 +98,8 @@ func handleCrawledObject(ctx context.Context,
 	// Save the protocol object to disk.
 	prefix, suffix := sharder.Assign(fmt.Sprintf("%v", obj.Value.Protocol.ID))
 	path := filepath.Join(cachePath, prefix, suffix)
-	if err := obj.WriteObjectBinary(path); err != nil {
-		fmt.Printf("failed to write: %v as %v: %v\n", obj.Value.Protocol.ID, path, err)
+	if err := WriteDownload(path, obj); err != nil {
+		return err
 	}
 	if state := obj.Response.Checkpoint; len(state) > 0 {
 		name, err := chk.Checkpoint(ctx, "", state)
@@ -134,7 +134,7 @@ func (c *Command) Crawl(ctx context.Context, cacheRoot string, fv *CrawlFlags) e
 
 }
 
-func (c *Command) Get(ctx context.Context, fv *GetFlags, args []string) error {
+func (c *Command) Get(ctx context.Context, _ *GetFlags, args []string) error {
 	opts, err := c.Config.OptionsForEndpoint(c.Auth)
 	if err != nil {
 		return err
@@ -151,7 +151,7 @@ func (c *Command) Get(ctx context.Context, fv *GetFlags, args []string) error {
 	return nil
 }
 
-func (c *Command) ScanDownloaded(ctx context.Context, root string, fv *ScanFlags) error {
+func (c *Command) ScanDownloaded(_ context.Context, root string, fv *ScanFlags) error {
 	tpl, err := template.New("protocolsio").Parse(fv.Template)
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %q: %v", fv.Template, err)
@@ -167,8 +167,8 @@ func (c *Command) ScanDownloaded(ctx context.Context, root string, fv *ScanFlags
 		if !info.Mode().IsRegular() {
 			return nil
 		}
-		var obj content.Object[protocolsiosdk.ProtocolPayload, operations.Response]
-		if err := obj.ReadObjectBinary(path); err != nil {
+		obj, err := ReadDownload(path)
+		if err != nil {
 			return err
 		}
 		if err := tpl.Execute(os.Stdout, obj.Value.Protocol); err != nil {

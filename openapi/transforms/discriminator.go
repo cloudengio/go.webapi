@@ -93,7 +93,7 @@ func (t *discriminatorTransformer) handleRequired(dr discriminatorRule, schema *
 	schema.Required = append(schema.Required, discName)
 }
 
-func (t *discriminatorTransformer) visitor(path []string, parent, node any) (bool, error) {
+func (t *discriminatorTransformer) visitor(_ []string, _, node any) (bool, error) {
 	schema, ok := node.(*openapi3.SchemaRef)
 	if !ok {
 		return true, nil

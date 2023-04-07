@@ -16,7 +16,6 @@ import (
 	"strconv"
 
 	"cloudeng.io/file/checkpoint"
-	"cloudeng.io/file/content"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
 	"cloudeng.io/webapi/protocolsio"
@@ -61,15 +60,15 @@ func latestCheckpoint(ctx context.Context, op checkpoint.Operation) (protocolsio
 
 func createVersionMap(cachePath, checkpointPath string) (map[int64]int, error) {
 	vmap := map[int64]int{}
-	err := filepath.Walk(cachePath, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(cachePath, func(path string, info os.FileInfo, _ error) error {
 		if path == checkpointPath {
 			return filepath.SkipDir
 		}
 		if !info.Mode().IsRegular() {
 			return nil
 		}
-		var obj content.Object[protocolsiosdk.ProtocolPayload, operations.Response]
-		if err := obj.ReadObjectBinary(path); err != nil {
+		obj, err := ReadDownload(path)
+		if err != nil {
 			return err
 		}
 		vmap[obj.Value.Protocol.ID] = obj.Value.Protocol.VersionID

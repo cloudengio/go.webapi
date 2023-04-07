@@ -10,7 +10,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
-func validateCmd(ctx context.Context, values any, args []string) error {
+func validateCmd(ctx context.Context, _ any, args []string) error {
 	filename := args[0]
 	loader := openapi3.NewLoader()
 	loader.IsExternalRefsAllowed = true
