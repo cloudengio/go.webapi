@@ -9,11 +9,9 @@ package operations
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"time"
 
 	"cloudeng.io/net/ratecontrol"
 )
@@ -81,11 +79,9 @@ func (ep *Endpoint[T]) isBackoffCode(code int) bool {
 
 func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *http.Response, []byte, error) {
 	var result T
-	then := time.Now()
 	if err := ep.rateController.Wait(ctx); err != nil {
 		return result, nil, nil, err
 	}
-	fmt.Printf("waited: %v\n", time.Since(then))
 	backoff := ep.rateController.Backoff()
 	for {
 		retries := backoff.Retries()
@@ -101,6 +97,14 @@ func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *
 		}
 		if ep.isBackoffCode(resp.StatusCode) {
 			log.Printf("back off getting type: %T, retries: %v: %v", result, retries, resp.Status)
+			/*			if resp.Body != nil {
+						buf, _ := io.ReadAll(resp.Body)
+						fmt.Printf("BUF: %s\n", buf)
+						hdr := resp.Header
+						for k, v := range hdr {
+							fmt.Printf("HDR: %v %v\n", k, v)
+						}
+					}*/
 			if done, err := backoff.Wait(ctx); done {
 				return result, nil, nil, handleError(err, resp.Status, resp.StatusCode, retries)
 			}

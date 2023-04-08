@@ -125,5 +125,3 @@ func RunCrawl[ScanT, EndpointT any](ctx context.Context, crawler *Crawler[ScanT,
 		}
 	}
 }
-
-type DownloadHandler[EndpointT any] func(ctx context.Context, path string, obj content.Object[EndpointT, Response]) error
