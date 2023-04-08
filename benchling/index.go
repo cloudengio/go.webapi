@@ -139,7 +139,7 @@ func (di *DocumentIndexer) dayText(entry *benchlingsdk.Entry) string {
 	return notes.String()
 }
 
-func (di *DocumentIndexer) index(ctx context.Context) error {
+func (di *DocumentIndexer) index(_ context.Context) error {
 	if err := filepath.Walk(di.root, di.walk); err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func (di *DocumentIndexer) index(ctx context.Context) error {
 		di.addUsers(&doc, entry.Authors)
 		di.addUsers(&doc, entry.AssignedReviewers)
 		if entry.Creator != nil {
-			v, _ := di.users["user:"+*entry.Creator.Id]
+			v := di.users["user:"+*entry.Creator.Id]
 			doc.Users[*entry.Creator.Id] = v
 			if v.Name == nil {
 				fmt.Printf("failed to find user: %v\n", *entry.Creator.Id)

@@ -13,11 +13,6 @@ import (
 	"cloudeng.io/webapi/operations"
 )
 
-type tokenIfc interface {
-	Next() string
-	SetNext(t *string)
-}
-
 func getNextToken(p any) *string {
 	switch c := p.(type) {
 	case Users:
@@ -70,11 +65,10 @@ type ScanPayload[T any] struct {
 
 type paginator[T any] struct {
 	serviceURL string
-	payload    ScanPayload[T]
 	params     any
 }
 
-func (pg *paginator[T]) Next(ctx context.Context, t T, r *http.Response) (req *http.Request, done bool, err error) {
+func (pg *paginator[T]) Next(_ context.Context, t T, r *http.Response) (req *http.Request, done bool, err error) {
 	if r == nil {
 		req, err = createRequest(pg.serviceURL, pg.params)
 		return
@@ -86,7 +80,7 @@ func (pg *paginator[T]) Next(ctx context.Context, t T, r *http.Response) (req *h
 	return
 }
 
-func newPaginator[T Scanners](ctx context.Context, serviceURL string, params any) operations.Paginator[T] {
+func newPaginator[T Scanners](_ context.Context, serviceURL string, params any) operations.Paginator[T] {
 	pg := &paginator[T]{
 		serviceURL: serviceURL,
 		params:     params,

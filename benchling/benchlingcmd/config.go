@@ -32,28 +32,28 @@ type Service struct {
 
 type Config apicrawlcmd.Crawl[Service]
 
-func (c Config) ListUsersConfig(ctx context.Context) *benchlingsdk.ListUsersParams {
+func (c Config) ListUsersConfig(_ context.Context) *benchlingsdk.ListUsersParams {
 	return &benchlingsdk.ListUsersParams{
 		Sort:     &c.Service.UsersSort,
 		PageSize: &c.Service.UsersPageSize,
 	}
 }
 
-func (c Config) ListEntriesConfig(ctx context.Context) *benchlingsdk.ListEntriesParams {
+func (c Config) ListEntriesConfig(_ context.Context) *benchlingsdk.ListEntriesParams {
 	return &benchlingsdk.ListEntriesParams{
 		Sort:     &c.Service.EntriesSort,
 		PageSize: &c.Service.EntriesPageSize,
 	}
 }
 
-func (c Config) ListFoldersConfig(ctx context.Context) *benchlingsdk.ListFoldersParams {
+func (c Config) ListFoldersConfig(_ context.Context) *benchlingsdk.ListFoldersParams {
 	return &benchlingsdk.ListFoldersParams{
 		Sort:     &c.Service.FoldersSort,
 		PageSize: &c.Service.FoldersPageSize,
 	}
 }
 
-func (c Config) ListProjectsConfig(ctx context.Context) *benchlingsdk.ListProjectsParams {
+func (c Config) ListProjectsConfig(_ context.Context) *benchlingsdk.ListProjectsParams {
 	return &benchlingsdk.ListProjectsParams{
 		Sort:     &c.Service.ProjectsSort,
 		PageSize: &c.Service.ProjectsPageSize,

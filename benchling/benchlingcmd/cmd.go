@@ -72,7 +72,7 @@ func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, name, authFilena
 	return c, nil
 }
 
-func (c *Command) Crawl(ctx context.Context, cacheRoot string, flags CrawlFlags, entities ...string) error {
+func (c *Command) Crawl(ctx context.Context, cacheRoot string, _ CrawlFlags, entities ...string) error {
 	opts, err := c.OptionsForEndpoint(c.Auth)
 	if err != nil {
 		return err
@@ -189,7 +189,7 @@ func (c *crawler[ScannerT, ParamsT]) run(ctx context.Context, ch chan<- any, opt
 	return sc.Err()
 }
 
-func save[ObjectT benchling.Objects](ctx context.Context, cachePath string, sharder path.Sharder, obj []ObjectT) error {
+func save[ObjectT benchling.Objects](_ context.Context, cachePath string, sharder path.Sharder, obj []ObjectT) error {
 	for _, o := range obj {
 		id := benchling.ObjectID(o)
 		prefix, suffix := sharder.Assign(fmt.Sprintf("%v", id))
@@ -210,7 +210,9 @@ func save[ObjectT benchling.Objects](ctx context.Context, cachePath string, shar
 	return nil
 }
 
-func (c *Command) Index(ctx context.Context, root string, flags IndexFlags, entities ...string) error {
+// CreateIndexableDocuments constructs the documents to be indexed from the
+// various objects crawled from the benchling.com API.
+func (c *Command) CreateIndexableDocuments(ctx context.Context, root string, _ IndexFlags) error {
 	cp := filepath.Join(root, c.Cache.Prefix)
 	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
 	nd := benchling.NewDocumentIndexer(cp, sharder)

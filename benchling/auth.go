@@ -18,7 +18,7 @@ type APIToken struct {
 	Token string
 }
 
-func (pbt APIToken) WithAuthorization(ctx context.Context, req *http.Request) error {
+func (pbt APIToken) WithAuthorization(_ context.Context, req *http.Request) error {
 	token := pbt.Token + ":"
 	b64 := base64.RawURLEncoding.EncodeToString([]byte(token))
 	req.Header.Add("Authorization", fmt.Sprintf("Basic %v", b64))
