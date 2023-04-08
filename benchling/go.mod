@@ -5,7 +5,7 @@ go 1.19
 require (
 	cloudeng.io/cmdutil v0.0.0-20230407173430-009f9463094e
 	cloudeng.io/errors v0.0.8
-	cloudeng.io/file v0.0.0-20230407173430-009f9463094e
+	cloudeng.io/file v0.0.0-20230408225100-e6b3b9644e60
 	cloudeng.io/path v0.0.8
 	cloudeng.io/sync v0.0.8
 	cloudeng.io/webapi/operations v0.0.0-20230407185120-18dedd7bb854
@@ -15,8 +15,8 @@ require (
 )
 
 require (
-	cloudeng.io/net v0.0.0-20230407173430-009f9463094e // indirect
-	cloudeng.io/os v0.0.0-20230407173430-009f9463094e // indirect
+	cloudeng.io/net v0.0.0-20230408194454-a3ea69cf3b9f // indirect
+	cloudeng.io/os v0.0.0-20230408194454-a3ea69cf3b9f // indirect
 	cloudeng.io/text v0.0.11 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
