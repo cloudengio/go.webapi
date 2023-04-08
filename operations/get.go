@@ -83,13 +83,15 @@ func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *
 		return result, nil, nil, err
 	}
 	backoff := ep.rateController.Backoff()
+	authSet := false
 	for {
 		retries := backoff.Retries()
 		var m T
-		if ep.auth != nil {
+		if !authSet && ep.auth != nil {
 			if err := ep.auth.WithAuthorization(ctx, req); err != nil {
 				return m, nil, nil, handleError(err, "", 0, retries)
 			}
+			authSet = true
 		}
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
@@ -97,15 +99,7 @@ func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *
 		}
 		if ep.isBackoffCode(resp.StatusCode) {
 			log.Printf("back off getting type: %T, retries: %v: %v", result, retries, resp.Status)
-			/*			if resp.Body != nil {
-						buf, _ := io.ReadAll(resp.Body)
-						fmt.Printf("BUF: %s\n", buf)
-						hdr := resp.Header
-						for k, v := range hdr {
-							fmt.Printf("HDR: %v %v\n", k, v)
-						}
-					}*/
-			if done, err := backoff.Wait(ctx); done {
+			if done, err := backoff.Wait(ctx, resp); done {
 				return result, nil, nil, handleError(err, resp.Status, resp.StatusCode, retries)
 			}
 			continue
