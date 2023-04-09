@@ -8,14 +8,14 @@ require (
 	cloudeng.io/file v0.0.0-20230408225100-e6b3b9644e60
 	cloudeng.io/path v0.0.8
 	cloudeng.io/sync v0.0.8
-	cloudeng.io/webapi/operations v0.0.0-20230407185120-18dedd7bb854
+	cloudeng.io/webapi/operations v0.0.0-20230409012317-b163e202f7ff
 	github.com/deepmap/oapi-codegen v1.12.4
 	github.com/getkin/kin-openapi v0.115.0
 	github.com/labstack/echo/v4 v4.10.2
 )
 
 require (
-	cloudeng.io/net v0.0.0-20230408194454-a3ea69cf3b9f // indirect
+	cloudeng.io/net v0.0.0-20230408225100-e6b3b9644e60 // indirect
 	cloudeng.io/os v0.0.0-20230408194454-a3ea69cf3b9f // indirect
 	cloudeng.io/text v0.0.11 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
