@@ -7,6 +7,7 @@ package benchling
 import (
 	"context"
 	"log"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
@@ -20,10 +21,15 @@ type Backoff struct {
 	steps     int
 	retries   int
 	nextDelay time.Duration
+	rnd       *rand.Rand
 }
 
 func NewBackoff(initial time.Duration, steps int) *Backoff {
-	return &Backoff{nextDelay: initial, steps: steps}
+	return &Backoff{
+		nextDelay: initial,
+		steps:     steps,
+		rnd:       rand.New(rand.NewSource(time.Now().Unix())),
+	}
 }
 
 func (bb *Backoff) Retries() int {
@@ -40,6 +46,8 @@ func (bb *Backoff) Wait(ctx context.Context, resp *http.Response) (bool, error) 
 	delay := bb.nextDelay
 	if secs > 0 {
 		delay = time.Second * time.Duration(secs)
+		// Add some jitter.
+		delay += time.Second * time.Duration(bb.rnd.Intn(bb.retries+1))
 		log.Printf("waiting %v for the current rate limit period to end", delay)
 	}
 	select {
