@@ -7,6 +7,7 @@ package benchlingcmd
 import (
 	"context"
 
+	"cloudeng.io/net/ratecontrol"
 	"cloudeng.io/webapi/benchling"
 	"cloudeng.io/webapi/benchling/benchlingsdk"
 	"cloudeng.io/webapi/operations"
@@ -66,10 +67,22 @@ func (c Config) OptionsForEndpoint(auth Auth) ([]operations.Option, error) {
 		opts = append(opts,
 			operations.WithAuth(benchling.APIToken{Token: auth.APIKey}))
 	}
-	rc, err := c.RateControl.NewRateController()
-	if err != nil {
-		return nil, err
+	rateCfg := c.RateControl
+	rcopts := []ratecontrol.Option{}
+	if rateCfg.Rate.BytesPerTick > 0 {
+		rcopts = append(rcopts, ratecontrol.WithBytesPerTick(rateCfg.Rate.Tick, rateCfg.Rate.BytesPerTick))
 	}
+	if rateCfg.Rate.RequestsPerTick > 0 {
+		rcopts = append(rcopts, ratecontrol.WithRequestsPerTick(rateCfg.Rate.Tick, rateCfg.Rate.RequestsPerTick))
+	}
+	if rateCfg.ExponentialBackoff.InitialDelay > 0 {
+		rcopts = append(rcopts,
+			ratecontrol.WithCustomBackoff(
+				func() ratecontrol.Backoff {
+					return benchling.NewBackoff(rateCfg.ExponentialBackoff.InitialDelay, rateCfg.ExponentialBackoff.Steps)
+				}))
+	}
+	rc := ratecontrol.New(rcopts...)
 	opts = append(opts, operations.WithRateController(rc, c.RateControl.ExponentialBackoff.StatusCodes...))
 	return opts, nil
 }
