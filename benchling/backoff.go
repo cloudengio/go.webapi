@@ -15,7 +15,7 @@ import (
 
 // Backoff implements a backoff strategy that first looks for the
 // specific backoff period specified in the x-rate-limit-reset header
-// in benchling.com's http respone when a rate limit is reached. If no
+// in benchling.com's http response when a rate limit is reached. If no
 // such header is found then exponential backoff is used.
 type Backoff struct {
 	steps     int
