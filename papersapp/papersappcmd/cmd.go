@@ -69,7 +69,7 @@ func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, name, authFilena
 	return c, nil
 }
 
-func (c *Command) Crawl(ctx context.Context, cacheRoot string, fv *CrawlFlags) error {
+func (c *Command) Crawl(ctx context.Context, cacheRoot string, _ *CrawlFlags) error {
 	cachePath, _, err := c.Cache.Initialize(cacheRoot)
 	if err != nil {
 		return err
@@ -188,6 +188,9 @@ func (c *Command) ScanDownloaded(_ context.Context, root string, fv *ScanFlags) 
 		}
 
 		ctype, buf, err := content.ReadObjectFile(path)
+		if err != nil {
+			return err
+		}
 		switch ctype {
 		case papersapp.CollectionType:
 			var obj content.Object[papersappsdk.Collection, operations.Response]
