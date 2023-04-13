@@ -47,7 +47,7 @@ func (pbt *APIToken) Refresh(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	tok, _, _, _, err := ep.GetUsingRequest(ctx, req)
+	tok, _, _, _, err := ep.IssueRequest(ctx, req)
 	if err != nil {
 		return "", err
 	}

@@ -3,6 +3,7 @@ module cloudeng.io/webapi/papersapp
 go 1.20
 
 require (
+	cloudeng.io/webapi/operations v0.0.0-20230413184744-f6c8e94ab6e7
 	github.com/antihax/optional v1.0.0
 	github.com/go-openapi/errors v0.20.3
 	github.com/go-openapi/strfmt v0.21.7
@@ -12,6 +13,8 @@ require (
 )
 
 require (
+	cloudeng.io/file v0.0.0-20230408225100-e6b3b9644e60 // indirect
+	cloudeng.io/net v0.0.0-20230408225100-e6b3b9644e60 // indirect
 	github.com/PuerkitoBio/purell v1.2.0 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
