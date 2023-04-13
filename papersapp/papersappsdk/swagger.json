@@ -1,0 +1,2107 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "ReadCube Enterprise API. For setup instructions please email your account manager.",
+    "version": "2.11.3",
+    "title": "Enterprise API"
+  },
+  "host": "api.papers.ai",
+  "tags": [
+    {
+      "name": "collections",
+      "description": "Used for grabbing collection data. A collection is any shared library."
+    },
+    {
+      "name": "lists",
+      "description": "Creating, editing, viewing, and updating lists"
+    },
+    {
+      "name": "items",
+      "description": "Creating, editing, viewing, and updating references"
+    },
+    {
+      "name": "annotations",
+      "description": "Creating, editing, viewing, and updating annotations"
+    },
+    {
+      "name": "files",
+      "description": "Viewing, downloading and uploading files"
+    }
+  ],
+  "schemes": [
+    "https"
+  ],
+  "paths": {
+    "/auth": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "description": "Get Authentication Bearer Token",
+        "operationId": "Get Token",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "api_key",
+            "in": "query",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/Token"
+            }
+          },
+          "400": {
+            "description": "400 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          }
+        }
+      }
+    },
+    "/collections": {
+      "get": {
+        "tags": [
+          "collections"
+        ],
+        "description": "Get available collections. These collections must be part of the organization.",
+        "operationId": "Get All Collections",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/Collections"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          }
+        },
+        "security": [
+          {
+            "enterprise-api-authorizer": []
+          }
+        ]
+      }
+    },
+    "/collections/{collection-id}/delete_all": {
+      "post": {
+        "tags": [
+          "collections"
+        ],
+        "description": "Queues deletion of all items and lists in the collection. This will DELETE ALL data and cannot be undone.",
+        "operationId": "Delete Collection Data",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "collection-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/Collections"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "404": {
+            "description": "404 response",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "security": [
+          {
+            "enterprise-api-authorizer": []
+          }
+        ]
+      }
+    },
+    "/collections/{collection-id}/items": {
+      "get": {
+        "tags": [
+          "items"
+        ],
+        "description": "Get items for the given collection. Limited to 50 items at a time. Use scroll_id parameter to fetch the next batch of results.",
+        "operationId": "Get Collection Items",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "scroll_id",
+            "in": "query",
+            "description": "Unique id used to fetch the next batch of results",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "description": "Filter the result set based on the given criteria. Currently supports annotation types and tags (e.g.: `annotations:*, annotations:highlight, tags:sometag, tags:*, annotation_tags:sometag`)",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "collection-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "Size of the result set",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/Items"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "404": {
+            "description": "404 response",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "security": [
+          {
+            "enterprise-api-authorizer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "items"
+        ],
+        "description": "Create a new metadata-only item for the given ExtIds or Metadata object. The object requires at least one field and collection id of the library is required.",
+        "operationId": "Create Item",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "collection-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "ItemCreateInput",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ItemCreateInput"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/Item"
+            }
+          },
+          "400": {
+            "description": "400 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "404": {
+            "description": "404 response",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "security": [
+          {
+            "enterprise-api-authorizer": []
+          }
+        ]
+      }
+    },
+    "/collections/{collection-id}/items/bulk": {
+      "post": {
+        "tags": [
+          "items"
+        ],
+        "description": "Perform a list of create, update and delete actions on items in the same request.",
+        "operationId": "Bulk",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "collection-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "ItemBulkInput",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ItemBulkInput"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/ItemBulkResponse"
+            }
+          },
+          "400": {
+            "description": "400 response",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "404": {
+            "description": "404 response",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "security": [
+          {
+            "enterprise-api-authorizer": []
+          }
+        ]
+      }
+    },
+    "/collections/{collection-id}/items/{item-id}": {
+      "get": {
+        "tags": [
+          "items"
+        ],
+        "description": "Get a singular item's properties. Requires item-id and collection-id",
+        "operationId": "Get Item Properties",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "item-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "collection-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/Item"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "404": {
+            "description": "404 response",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "security": [
+          {
+            "enterprise-api-authorizer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "items"
+        ],
+        "description": "Delete an item. Requires an item-id and collection-id. This is a permanent deletion from all list and the library. To simply remove from a list see ```DELETE /collections/{collection-id}/lists/{list-id}/items/```",
+        "operationId": "Delete Item",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "item-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "collection-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "404": {
+            "description": "404 response",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "security": [
+          {
+            "enterprise-api-authorizer": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "items"
+        ],
+        "description": "Update a singular item's properties. Only accepts tags, star, unread, and color. Requires item-id and collection-id",
+        "operationId": "Update Item",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "item-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "collection-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "ItemUpdateInput",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ItemUpdateInput"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/Item"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "404": {
+            "description": "404 response",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "security": [
+          {
+            "enterprise-api-authorizer": []
+          }
+        ]
+      }
+    },
+    "/collections/{collection-id}/items/{item-id}/annotations": {
+      "get": {
+        "tags": [
+          "annotations"
+        ],
+        "description": "Get a singular item's annotations. Requires item-id and collection-id.",
+        "operationId": "Get Item Annotations",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "item-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "collection-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/Annotations"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "404": {
+            "description": "404 response",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "security": [
+          {
+            "enterprise-api-authorizer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "annotations"
+        ],
+        "description": "Create a new annotation for the given item. Requires item-id and collection-id and the annotation object you are creating.",
+        "operationId": "Create Annotation",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "item-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "collection-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "Annotation",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Annotation"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/Annotation"
+            }
+          },
+          "400": {
+            "description": "400 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "404": {
+            "description": "404 response",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "security": [
+          {
+            "enterprise-api-authorizer": []
+          }
+        ]
+      }
+    },
+    "/collections/{collection-id}/items/{item-id}/annotations/{annotation-id}": {
+      "get": {
+        "tags": [
+          "annotations"
+        ],
+        "description": "Get a singular annotation's properties. Requires annotation-id, item-id, and collection-id",
+        "operationId": "Get Annotation Properties",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "annotation-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "item-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "collection-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/Annotation"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "404": {
+            "description": "404 response",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "security": [
+          {
+            "enterprise-api-authorizer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "annotations"
+        ],
+        "description": "Delete a singular annotation. Requires annotation-id, item-id, and collection-id",
+        "operationId": "Delete Annotation",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "annotation-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "item-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "collection-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "404": {
+            "description": "404 response",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "security": [
+          {
+            "enterprise-api-authorizer": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "annotations"
+        ],
+        "description": "Update a singular annotation. Requires annotation-id, item-id, and collection-id",
+        "operationId": "Update Annotation",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "annotation-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "item-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "collection-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "Annotation",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Annotation"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/Annotation"
+            }
+          },
+          "400": {
+            "description": "400 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "404": {
+            "description": "404 response",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "security": [
+          {
+            "enterprise-api-authorizer": []
+          }
+        ]
+      }
+    },
+    "/collections/{collection-id}/items/{item-id}/file_urls": {
+      "get": {
+        "tags": [
+          "files"
+        ],
+        "description": "Get a singular item's files with download URLs. Requires item-id and collection-id.",
+        "operationId": "Get Item Files",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "item-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "collection-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/Files"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "404": {
+            "description": "404 response",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "security": [
+          {
+            "enterprise-api-authorizer": []
+          }
+        ]
+      }
+    },
+    "/collections/{collection-id}/items/{item-id}/resolve": {
+      "put": {
+        "tags": [
+          "items"
+        ],
+        "description": "Resolve Item metadata based on the given ExtIds. Requires item-id and collection-id. This will ERASE current metdata!! Failing to resolve will return a 400 response",
+        "operationId": "Resolve Item Metadata",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "item-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "collection-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "ExtIds",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ExtIds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/Item"
+            }
+          },
+          "400": {
+            "description": "400 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "404": {
+            "description": "404 response",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "security": [
+          {
+            "enterprise-api-authorizer": []
+          }
+        ]
+      }
+    },
+    "/collections/{collection-id}/items/{item-id}/upload_url": {
+      "get": {
+        "tags": [
+          "files"
+        ],
+        "description": "Create a file upload request. Requires item-id and collection-id. Returns a url you can PUT your file to.",
+        "operationId": "Create File Upload Request",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "item-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "collection-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "file_name",
+            "in": "query",
+            "description": "File name including extension, e.g. 'article.pdf'",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/UploadUrl"
+            }
+          },
+          "400": {
+            "description": "400 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "404": {
+            "description": "404 response",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "security": [
+          {
+            "enterprise-api-authorizer": []
+          }
+        ]
+      }
+    },
+    "/collections/{collection-id}/lists": {
+      "get": {
+        "tags": [
+          "lists"
+        ],
+        "description": "Get a collections lists. Requires Collection ID.",
+        "operationId": "Get Collection Lists",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "collection-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/Lists"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "404": {
+            "description": "404 response",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "security": [
+          {
+            "enterprise-api-authorizer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "lists"
+        ],
+        "description": "Create a new collection list. Requires a collection-id and the list object you are creating. You may add items to this list at the same time by adding item-ids to the object, however, this is optional",
+        "operationId": "Create List",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "collection-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "List",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/List"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/List"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "404": {
+            "description": "404 response",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "security": [
+          {
+            "enterprise-api-authorizer": []
+          }
+        ]
+      }
+    },
+    "/collections/{collection-id}/lists/{list-id}": {
+      "get": {
+        "tags": [
+          "lists"
+        ],
+        "description": "Get a collection list. Requires list-id and collection-id. Will return the list name as well as item_ids of all items in an array. To get detailed item information use ```GET /collections/{collection-id}/lists/{list-id}/items``` instead.",
+        "operationId": "Get List Properties",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "list-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "collection-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/List"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "404": {
+            "description": "404 response",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "security": [
+          {
+            "enterprise-api-authorizer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "lists"
+        ],
+        "description": "Delete a list. Requires list-id and collection-id. Only deletes the list and not the items inside the list. To delete items see `DELETE /collections/{collection-id}/items/{item-id}` instead.",
+        "operationId": "Delete List",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "list-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "collection-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/List"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "404": {
+            "description": "404 response",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "security": [
+          {
+            "enterprise-api-authorizer": []
+          }
+        ]
+      }
+    },
+    "/collections/{collection-id}/lists/{list-id}/items": {
+      "get": {
+        "tags": [
+          "items",
+          "lists"
+        ],
+        "description": "Get item properties for the given list. Default is 50 items returned. Use scroll_id to paginate or size paramter to return more items.",
+        "operationId": "Get Item From List",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "scroll_id",
+            "in": "query",
+            "description": "Unique id used to fetch the next batch of results",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "list-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "description": "Filter the result set based on the given criteria. Currently supports annotation types and tags (e.g. annotations:*, annotations:highlight, tags:#sometag, tags:*, annotation_tags:#sometag)",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "collection-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "Size of the result set",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/Items"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "404": {
+            "description": "404 response",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "security": [
+          {
+            "enterprise-api-authorizer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "lists"
+        ],
+        "description": "Remove items from the list. Can be an array of items. Items are removed from the list but not deleted from the collection. To remove items permantly see `DELETE /collections/{collection-id}/items/{item-id}` instead.",
+        "operationId": "Remove Item From List",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "list-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "collection-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "ItemIds",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ItemIds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/List"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "404": {
+            "description": "404 response",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "security": [
+          {
+            "enterprise-api-authorizer": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "lists"
+        ],
+        "description": "Add items to the list. Must be an array and can contain multiple item-ids. Requires list-id and collection-id and the object contatining the items you are adding. To remove items from the list see `DELETE /collections/{collection-id}/lists/{lists-id}/items` instead.",
+        "operationId": "Update List",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "list-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "collection-id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "ItemIds",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ItemIds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/List"
+            }
+          },
+          "401": {
+            "description": "401 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          },
+          "404": {
+            "description": "404 response",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "security": [
+          {
+            "enterprise-api-authorizer": []
+          }
+        ]
+      }
+    },
+    "/schema": {
+      "get": {
+        "tags": [
+          "schema"
+        ],
+        "description": "Get Enterprise API Schema",
+        "operationId": "Get Schema",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": {
+              "$ref": "#/definitions/Empty"
+            }
+          }
+        }
+      }
+    }
+  },
+  "securityDefinitions": {
+    "enterprise-api-authorizer": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header",
+      "x-amazon-apigateway-authtype": "custom"
+    }
+  },
+  "definitions": {
+    "UploadUrl": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "A pre-signed S3 PUT URL to upload the file to"
+        }
+      }
+    },
+    "UserData": {
+      "type": "object",
+      "properties": {
+        "color": {
+          "type": "string",
+          "description": "Hex color (e.g. \"#fe3018\")"
+        },
+        "tags": {
+          "type": "array",
+          "description": "Item hashtags/keywords (e.g. Shark)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "star": {
+          "type": "boolean",
+          "description": "Item flag/star"
+        },
+        "notes": {
+          "type": "string",
+          "description": "User note"
+        },
+        "created": {
+          "type": "string",
+          "description": "Item creation timestamp"
+        }
+      },
+      "title": "UserData Schema"
+    },
+    "ItemType": {
+      "type": "string",
+      "title": "ItemType schema",
+      "enum": [
+        "abstract",
+        "article",
+        "artwork",
+        "audio_recording",
+        "bill",
+        "blog_post",
+        "book",
+        "book_section",
+        "case",
+        "clinical_trial",
+        "computer_program",
+        "conference_paper",
+        "dictionary_entry",
+        "document",
+        "email",
+        "encyclopedia_article",
+        "film",
+        "forum_post",
+        "guidance_documents",
+        "hearing",
+        "instant_message",
+        "interview",
+        "letter",
+        "magazine",
+        "manuscript",
+        "map",
+        "newspaper_article",
+        "patent",
+        "podcast",
+        "poster_presentation",
+        "presentation",
+        "radio_broadcast",
+        "report",
+        "statute",
+        "thesis",
+        "tv_broadcast",
+        "video_recording",
+        "webpage"
+      ]
+    },
+    "Token": {
+      "type": "object",
+      "properties": {
+        "token": {
+          "type": "string"
+        }
+      }
+    },
+    "ItemInput": {
+      "type": "object",
+      "properties": {
+        "item_type": {
+          "$ref": "#/definitions/ItemType"
+        },
+        "ext_ids": {
+          "$ref": "#/definitions/ExtIds"
+        },
+        "article": {
+          "$ref": "#/definitions/ArticleMetadata"
+        },
+        "user_data": {
+          "$ref": "#/definitions/UserData"
+        },
+        "custom_type": {
+          "type": "string"
+        },
+        "custom_metadata": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    },
+    "ItemBulkResponse": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "saved": {
+            "type": "boolean"
+          },
+          "merged": {
+            "type": "boolean"
+          },
+          "object": {
+            "$ref": "#/definitions/Item"
+          },
+          "error": {
+            "type": "string"
+          },
+          "data": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ArticleMetadata": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "Publisher URL (e.g. https://asbmr.onlinelibrary.wiley.com/doi/10.1002/jbmr.178)"
+        },
+        "issn": {
+          "type": "string",
+          "description": "Journal ISSN (e.g. 1523-4681)"
+        },
+        "year": {
+          "type": "number",
+          "description": "Publication year (e.g. 1523-4681)"
+        },
+        "isbn": {
+          "type": "string"
+        },
+        "eisbn": {
+          "type": "string"
+        },
+        "eissn": {
+          "type": "string"
+        },
+        "issue": {
+          "type": "string",
+          "description": "Issue number (e.g. 12)"
+        },
+        "title": {
+          "type": "string",
+          "description": "Article or book title (e.g. Parathyroid hormone: past and present)"
+        },
+        "volume": {
+          "type": "string",
+          "description": "Volume number (e.g. 1)"
+        },
+        "authors": {
+          "type": "array",
+          "description": "Authors names",
+          "items": {
+            "type": "string",
+            "description": "Author name (e.g. Janine A Danks)"
+          }
+        },
+        "journal": {
+          "type": "string",
+          "description": "Journal name (e.g. Journal of Bone and Mineral Research)"
+        },
+        "abstract": {
+          "type": "string",
+          "description": "Abstract text"
+        },
+        "chapter": {
+          "type": "string",
+          "description": "Chapter title (books only)"
+        },
+        "pagination": {
+          "type": "string"
+        },
+        "journal_abbrev": {
+          "type": "string",
+          "description": "Abbreviation of journal title (e.g. J Bone Miner Res)"
+        }
+      },
+      "title": "Article Metadata Schema"
+    },
+    "ItemCreateInput": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/ItemInput"
+        },
+        "merge": {
+          "type": "boolean"
+        },
+        "resolve": {
+          "type": "boolean"
+        }
+      },
+      "title": "Item create schema"
+    },
+    "Item": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique item id (e.g. 3cdfbfb9-07c2-4924-9eb3-3b790df74c0e)"
+        },
+        "item_type": {
+          "$ref": "#/definitions/ItemType"
+        },
+        "ext_ids": {
+          "$ref": "#/definitions/ExtIds"
+        },
+        "article": {
+          "$ref": "#/definitions/ArticleMetadata"
+        },
+        "user_data": {
+          "$ref": "#/definitions/UserData"
+        },
+        "import_data": {
+          "$ref": "#/definitions/ImportData"
+        },
+        "files": {
+          "$ref": "#/definitions/Files"
+        },
+        "pdf_hash": {
+          "type": "string",
+          "description": "SHA256 hash of the primary item PDF file"
+        },
+        "custom_type": {
+          "type": "string"
+        },
+        "custom_metadata": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      "title": "Item Response Schema"
+    },
+    "Empty": {
+      "type": "object",
+      "title": "Empty Schema"
+    },
+    "Annotations": {
+      "type": "object",
+      "properties": {
+        "annotations": {
+          "type": "array",
+          "description": "Annotations list",
+          "items": {
+            "$ref": "#/definitions/Annotation"
+          }
+        }
+      },
+      "title": "Annotations Schema",
+      "description": "Set of annotations"
+    },
+    "Lists": {
+      "type": "object",
+      "properties": {
+        "lists": {
+          "type": "array",
+          "description": "Lists list",
+          "items": {
+            "$ref": "#/definitions/List"
+          }
+        }
+      },
+      "title": "Lists Schema"
+    },
+    "Items": {
+      "type": "object",
+      "properties": {
+        "scroll_id": {
+          "type": "string",
+          "description": "Scroll id to be used to fetch the next batch of results"
+        },
+        "items": {
+          "type": "array",
+          "description": "Items list",
+          "items": {
+            "$ref": "#/definitions/Item"
+          }
+        }
+      },
+      "title": "Items Response Schema",
+      "description": "Set of items"
+    },
+    "List": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "List name (e.g. Shark Folder)"
+        },
+        "id": {
+          "type": "string",
+          "description": "List id (e.g. 61a19540-77b8-46b2-9b82-5ca8a3af88d7)"
+        },
+        "parent_id": {
+          "type": "string",
+          "description": "List parent id"
+        },
+        "modified": {
+          "type": "string",
+          "description": "List modification timestamp (e.g. 2020-04-29T16:12:17Z)"
+        },
+        "deleted": {
+          "type": "boolean",
+          "description": "Indicates whether the list was deleted or not"
+        }
+      },
+      "title": "List Schema"
+    },
+    "Collections": {
+      "type": "object",
+      "properties": {
+        "collections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Collection"
+          }
+        }
+      },
+      "title": "Collections Schema",
+      "description": "Set of collections"
+    },
+    "Files": {
+      "type": "object",
+      "properties": {
+        "files": {
+          "type": "array",
+          "description": "Files list",
+          "items": {
+            "$ref": "#/definitions/File"
+          }
+        }
+      },
+      "title": "Files Schema",
+      "description": "Set of files"
+    },
+    "ItemIds": {
+      "type": "object",
+      "properties": {
+        "item_ids": {
+          "type": "array",
+          "description": "Item ids (e.g. [3cdfbfb9-07c2-4924-9eb3-3b790df74c0e])",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "title": "ItemIds Schema"
+    },
+    "ItemUpdateInput": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/ItemInput"
+        }
+      },
+      "title": "Item update schema"
+    },
+    "Error": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Error code",
+          "enum": [
+            "collection_not_found",
+            "invalid_action",
+            "not_found"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "description": "Message that can be displayed to user"
+        }
+      },
+      "title": "Error Schema"
+    },
+    "ItemBulkAction": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "create",
+            "import",
+            "update",
+            "resolve",
+            "add_file",
+            "destroy"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "item_type": {
+              "$ref": "#/definitions/ItemType"
+            },
+            "ext_ids": {
+              "$ref": "#/definitions/ExtIds"
+            },
+            "article": {
+              "$ref": "#/definitions/ArticleMetadata"
+            },
+            "user_data": {
+              "$ref": "#/definitions/UserData"
+            },
+            "import_data": {
+              "$ref": "#/definitions/ImportData"
+            },
+            "custom_type": {
+              "type": "string"
+            },
+            "custom_metadata": {
+              "type": "object",
+              "properties": {}
+            },
+            "merge": {
+              "type": "boolean"
+            },
+            "resolve": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "Annotation": {
+      "type": "object",
+      "required": [
+        "sha256",
+        "type"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique annotation id"
+        },
+        "note": {
+          "type": "string",
+          "description": "A textual note"
+        },
+        "has_note": {
+          "type": "boolean",
+          "description": "Boolean indicating if note is set. Note can be created, but can be empty"
+        },
+        "modified": {
+          "type": "string",
+          "description": "Annotation modification timestamp"
+        },
+        "created": {
+          "type": "string",
+          "description": "Annotation creation timestamp"
+        },
+        "sha256": {
+          "type": "string",
+          "description": "This is the SHA256 of the file onto which the annotation is applied. This is required for any annotations that are linked to a file"
+        },
+        "page_start": {
+          "type": "number",
+          "description": "0-based article page number the annotation is associated with"
+        },
+        "position": {
+          "type": "array",
+          "description": "[note only] The position of the note relative to the page bottom left corner",
+          "items": {
+            "type": "number"
+          }
+        },
+        "rects": {
+          "type": "array",
+          "description": "[highlight, underline, strikethrough only] Array of rectangles defining the highlight in page coordinates. The coordinate origin is the page lower left corner",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "text": {
+          "type": "string",
+          "description": "Highlighted text"
+        },
+        "color_id": {
+          "type": "number",
+          "description": "Color of the annotation (1-11)"
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of the annotation. Effectively underline and strikethrough are represented as an array of rects which are just 'thinner' than highlights and have a different color palette",
+          "enum": [
+            "highlight",
+            "underline",
+            "strikethrough",
+            "freehand",
+            "note"
+          ]
+        },
+        "paths": {
+          "type": "array",
+          "description": "[freehand only] An array of freehand annotation paths (polylines) where each path is represented as an array of pairs (arrays) of coordinates in the form of [x, y]",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      },
+      "title": "Annotation Schema"
+    },
+    "CustomField": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "field": {
+          "type": "string"
+        },
+        "display": {
+          "type": "string"
+        },
+        "show_in_table": {
+          "type": "boolean"
+        },
+        "show_in_details": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ExtIds": {
+      "type": "object",
+      "properties": {
+        "doi": {
+          "type": "string",
+          "description": "Item DOI (e.g. 10.1002/jbmr.178)"
+        },
+        "pmid": {
+          "type": "string",
+          "description": "Item PMID (e.g. 20614475)"
+        },
+        "gsid": {
+          "type": "string"
+        },
+        "pmcid": {
+          "type": "string"
+        },
+        "arxiv": {
+          "type": "string"
+        },
+        "patent_id": {
+          "type": "string",
+          "description": "Item patent ID (e.g. CH-708619-A1)"
+        }
+      },
+      "title": "ExtIds schema"
+    },
+    "ImportData": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Source from which the item is imported"
+        },
+        "original_id": {
+          "type": "string"
+        },
+        "original_type": {
+          "type": "string"
+        },
+        "imported_by": {
+          "type": "string",
+          "description": "Client that did the import"
+        }
+      }
+    },
+    "Collection": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique collection id (e.g. 7f5e3fe2-bcd7-42b5-972e-c271f5449977)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Collection name (e.g. Elephant Shark Shared Library)"
+        },
+        "shared": {
+          "type": "boolean",
+          "description": "Indicates if the collection is shared or personal"
+        },
+        "owner": {
+          "type": "object",
+          "description": "Owner of collection (can be null)",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "User unique ID"
+            },
+            "name": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string"
+            }
+          }
+        },
+        "custom_fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CustomField"
+          }
+        }
+      },
+      "title": "Collection Schema"
+    },
+    "ItemBulkInput": {
+      "type": "object",
+      "properties": {
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ItemBulkAction"
+          }
+        }
+      }
+    },
+    "File": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "File name"
+        },
+        "size": {
+          "type": "number",
+          "description": "File size in bytes"
+        },
+        "pages": {
+          "type": "number",
+          "description": "Number of pages"
+        },
+        "sha256": {
+          "type": "string",
+          "description": "SHA256 hash of the file"
+        },
+        "created": {
+          "type": "string",
+          "description": "File creation timestamp"
+        },
+        "file_type": {
+          "type": "string",
+          "description": "File format"
+        },
+        "type": {
+          "type": "string",
+          "description": "File type",
+          "enum": [
+            "article",
+            "supplement"
+          ]
+        },
+        "url": {
+          "type": "string",
+          "description": "File download url"
+        }
+      },
+      "title": "File Schema"
+    }
+  }
+}
