@@ -33,7 +33,7 @@ func (f *fetcher) Fetch(ctx context.Context, page webapitestutil.Paginated, ch c
 	if err != nil {
 		return err
 	}
-	obj, raw, enc, resp, err := f.ep.GetUsingRequest(ctx, req)
+	obj, raw, enc, resp, err := f.ep.IssueRequest(ctx, req)
 	if err != nil {
 		return err
 	}

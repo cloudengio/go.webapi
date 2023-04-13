@@ -55,10 +55,10 @@ func (ep *Endpoint[T]) Get(ctx context.Context, url string) (T, []byte, Encoding
 	return ep.get(ctx, req)
 }
 
-// GetUsingRequest invokes a Get request on this endpoint using the
+// IssueRequest invokes an arbitrary request on this endpoint using the
 // supplied http.Request. The Body in the http.Response has already been
 // read and its contents returned as the second return value.
-func (ep *Endpoint[T]) GetUsingRequest(ctx context.Context, req *http.Request) (T, []byte, Encoding, *http.Response, error) {
+func (ep *Endpoint[T]) IssueRequest(ctx context.Context, req *http.Request) (T, []byte, Encoding, *http.Response, error) {
 	t, r, b, err := ep.getWithResp(ctx, req)
 	return t, b, ep.encoding, r, err
 }
@@ -85,6 +85,11 @@ func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *
 	backoff := ep.rateController.Backoff()
 	authSet := false
 	for {
+		select {
+		case <-ctx.Done():
+			return result, nil, nil, ctx.Err()
+		default:
+		}
 		retries := backoff.Retries()
 		var m T
 		if !authSet && ep.auth != nil {
