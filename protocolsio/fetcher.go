@@ -31,7 +31,7 @@ func (f *fetcher) fetch(ctx context.Context, p protocolsiosdk.Protocol) (protoco
 		response.Error = content.Error(err)
 		return protocolsiosdk.ProtocolPayload{}, response
 	}
-	payload, body, enc, resp, err := f.ep.GetUsingRequest(ctx, req)
+	payload, body, enc, resp, err := f.ep.IssueRequest(ctx, req)
 	if err != nil {
 		response.Error = content.Error(err)
 		return protocolsiosdk.ProtocolPayload{}, response
