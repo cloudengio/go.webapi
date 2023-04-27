@@ -9,7 +9,6 @@ package benchlingcmd
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"cloudeng.io/cmdutil"
@@ -198,9 +197,6 @@ func save[ObjectT benchling.Objects](_ context.Context, cachePath string, sharde
 			Type:     benchling.ContentType(o),
 			Value:    o,
 			Response: &operations.Response{},
-		}
-		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-			return err
 		}
 		if err := obj.WriteObjectFile(path, content.JSONObjectEncoding, content.GOBObjectEncoding); err != nil {
 			fmt.Printf("failed to write user: %v as %v: %v\n", id, path, err)
