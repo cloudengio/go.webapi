@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"sync/atomic"
 
 	"cloudeng.io/file/content"
@@ -33,9 +32,6 @@ var written int64
 
 // WriteItemDownload writes the downloaded object to the specified path.
 func WriteDownload[T any](path string, obj content.Object[T, operations.Response]) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return err
-	}
 	if err := obj.WriteObjectFile(path, content.JSONObjectEncoding, content.GOBObjectEncoding); err != nil {
 		fmt.Printf("failed to write: %T %v as %v: %v\n", obj.Value, obj.Value, path, err)
 	}

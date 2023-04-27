@@ -6,8 +6,9 @@ package protocolsiocmd
 
 import (
 	"fmt"
+	"log"
 	"os"
-	"path/filepath"
+	"sync/atomic"
 
 	"cloudeng.io/file/content"
 	"cloudeng.io/webapi/operations"
@@ -27,13 +28,15 @@ func ReadDownload(path string) (*content.Object[protocolsiosdk.ProtocolPayload, 
 	return obj, nil
 }
 
+var written int64
+
 // WriteDownload writes the downloaded object to the specified path.
 func WriteDownload(path string, obj content.Object[protocolsiosdk.ProtocolPayload, operations.Response]) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return err
-	}
 	if err := obj.WriteObjectFile(path, content.GOBObjectEncoding, content.GOBObjectEncoding); err != nil {
 		fmt.Printf("failed to write: %v as %v: %v\n", obj.Value.Protocol.ID, path, err)
+	}
+	if w := atomic.AddInt64(&written, 1); w%100 == 0 {
+		log.Printf("files written: %v", w)
 	}
 	return nil
 }
