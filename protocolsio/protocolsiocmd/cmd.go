@@ -113,13 +113,17 @@ func handleCrawledObject(ctx context.Context,
 }
 
 func (c *Command) Crawl(ctx context.Context, cacheRoot string, fv *CrawlFlags) error {
-	cachePath, op, err := c.Cache.Initialize(cacheRoot)
+	cachePath, checkpointPath, err := c.Cache.Initialize(cacheRoot)
 	if err != nil {
 		return err
 	}
 
-	if fv.IgnoreCheckpoint {
-		op = nil
+	var op checkpoint.Operation
+	if !fv.IgnoreCheckpoint {
+		op, err = checkpoint.NewDirectoryOperation(checkpointPath)
+		if err != nil {
+			return err
+		}
 	}
 
 	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
