@@ -1,26 +1,25 @@
-module cloudeng.io/webapi/benchling
+module cloudeng.io/webapi/biorxiv
 
-go 1.19
+go 1.20
 
 require (
-	cloudeng.io/cmdutil v0.0.0-20230626173734-59e0cb432e38
 	cloudeng.io/errors v0.0.8
 	cloudeng.io/file v0.0.0-20230626173734-59e0cb432e38
-	cloudeng.io/net v0.0.0-20230626173734-59e0cb432e38
 	cloudeng.io/path v0.0.8
-	cloudeng.io/sync v0.0.8
+	cloudeng.io/webapi/benchling v0.0.0-20230626182604-891e389e34c3
 	cloudeng.io/webapi/operations v0.0.0-20230626182604-891e389e34c3
-	github.com/deepmap/oapi-codegen v1.13.0
-	github.com/getkin/kin-openapi v0.118.0
-	github.com/labstack/echo/v4 v4.10.2
 )
 
 require (
+	cloudeng.io/net v0.0.0-20230626173734-59e0cb432e38
+	cloudeng.io/sync v0.0.8 // indirect
 	cloudeng.io/text v0.0.11 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/bytedance/sonic v1.9.2 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
+	github.com/deepmap/oapi-codegen v1.13.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
+	github.com/getkin/kin-openapi v0.118.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.9.1 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
@@ -34,6 +33,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
+	github.com/labstack/echo/v4 v4.10.2 // indirect
 	github.com/labstack/gommon v0.4.0 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
@@ -54,6 +54,5 @@ require (
 	golang.org/x/sys v0.9.0 // indirect
 	golang.org/x/text v0.10.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
