@@ -57,7 +57,7 @@ type Command struct {
 }
 
 // NewCommand returns a new Command instance for the specified API crawl.
-func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, name string) (*Command, error) {
+func NewCommand(_ context.Context, crawls apicrawlcmd.Crawls, name string) (*Command, error) {
 	c := &Command{}
 	ok, err := apicrawlcmd.ParseCrawlConfig(crawls, name, (*apicrawlcmd.Crawl[Service])(&c.Config))
 	if !ok {
@@ -221,7 +221,6 @@ func (c *Command) LookupDownloaded(_ context.Context, root string, fv *LookupFla
 			return err
 		}
 		fmt.Printf("\n")
-		return nil
 	}
-	return err
+	return nil
 }
