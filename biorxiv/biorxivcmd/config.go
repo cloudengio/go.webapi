@@ -25,7 +25,7 @@ type Service struct {
 
 type Config apicrawlcmd.Crawl[Service]
 
-func (c Config) OptionsForEndpoint(auth Auth) ([]operations.Option, error) {
+func (c Config) OptionsForEndpoint(_ Auth) ([]operations.Option, error) {
 	opts := []operations.Option{}
 	rateCfg := c.RateControl
 	rcopts := []ratecontrol.Option{}

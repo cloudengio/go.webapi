@@ -45,12 +45,12 @@ func (pg *paginator) Next(_ context.Context, t Response, r *http.Response) (req 
 			return
 		}
 	}
-	if cursor+int64(msg.Count) >= int64(msg.Total) {
+	if cursor+msg.Count >= msg.Total {
 		done = true
 		return
 	}
 	u, err := url.JoinPath(pg.serviceURL, pg.from.Format("2006-01-02"), pg.to.Format("2006-01-02"),
-		strconv.FormatInt(cursor+int64(msg.Count), 10))
+		strconv.FormatInt(cursor+msg.Count, 10))
 	if err != nil {
 		return
 	}
