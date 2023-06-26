@@ -9,6 +9,7 @@ package operations
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -100,7 +101,14 @@ func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *
 		}
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
-			return result, nil, nil, handleError(err, "", 0, retries)
+			if !errors.Is(err, context.DeadlineExceeded) {
+				return result, nil, nil, handleError(err, "", 0, retries)
+			}
+			log.Printf("network back off getting type: %T, retries: %v: %v", result, retries, err)
+			if done, err := backoff.Wait(ctx, nil); done {
+				return result, nil, nil, handleError(err, "", 0, retries)
+			}
+			continue
 		}
 		if ep.isBackoffCode(resp.StatusCode) {
 			log.Printf("back off getting type: %T, retries: %v: %v", result, retries, resp.Status)
