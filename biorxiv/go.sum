@@ -1,5 +1,4 @@
 cloudeng.io/cmdutil v0.0.0-20230626173734-59e0cb432e38 h1:gziaKHLuSKysY403JStxwJLqWgQclEuWHKJCpqCUW7c=
-cloudeng.io/cmdutil v0.0.0-20230626173734-59e0cb432e38/go.mod h1:61z66hghBT6seTJlHsFMJwdNEfP1xOpj/H36uojYX0A=
 cloudeng.io/debug v0.0.0-20230105021008-948d22470af5 h1:zsKXQfoCtN7whSQIdpArUNxKTtQG3+vpd1XJ8qzcWBA=
 cloudeng.io/errors v0.0.8 h1:WEpTcAYnL2wsPm0qfMpXRupoO61DahxbD4doPKbsaGY=
 cloudeng.io/errors v0.0.8/go.mod h1:xWamLL6tn3roKI6MRRFkw1jUkJL9s7CJzFYfaxuhHZk=
@@ -13,6 +12,8 @@ cloudeng.io/sync v0.0.8 h1:N8o5Qo5sjxwDktWIW/7rfK14O74jGS3pprefjF3EFKA=
 cloudeng.io/sync v0.0.8/go.mod h1:76qdZzMQSN+iPeQxY9MSbnSELKQmcd9E6pnfRgWgN8s=
 cloudeng.io/text v0.0.11 h1:q3+p3gxwNdr/V+k4+77fj9QxVpUU8G7B4+v26m+sE8I=
 cloudeng.io/text v0.0.11/go.mod h1:99L3CQ55YhUy2+lHlFPowYyCoXO86fmkvNtcMT2X3GU=
+cloudeng.io/webapi/benchling v0.0.0-20230626182604-891e389e34c3 h1:wbunfveBSd5fEYxAdKuKctpoVrHXr6poltp2MUfG5Ns=
+cloudeng.io/webapi/benchling v0.0.0-20230626182604-891e389e34c3/go.mod h1:kY23JJpaPuoCCsoHDtoewz5HH27yDAclJUZVXjmAZAQ=
 cloudeng.io/webapi/operations v0.0.0-20230626182604-891e389e34c3 h1:3W9nd/dm4kzmsKB9nakUiTRW5TE853nenpkn9fo4JAI=
 cloudeng.io/webapi/operations v0.0.0-20230626182604-891e389e34c3/go.mod h1:YGGHQ41UpiOVmGEpmvjEcnMpwxK3hSxcmr5YiHM9ldk=
 cloudeng.io/webapi/webapitestutil v0.0.0-20230204003545-f310593967e5 h1:jzjeFPX1nflSztwDt2Xv+IiqjBGkkSB6vvwb5j7fjLQ=
@@ -187,7 +188,6 @@ gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127/go.mod h1:Co6ibVJAznAaIkqp8
 gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c h1:Hei/4ADfdWqJk1ZMxUNpqntNwaWcugrBjAiHlqqRiVk=
 gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c/go.mod h1:JHkPIbrfpd72SG/EVd6muEfDQjcINNoR0C8j2r3qZ4Q=
 gopkg.in/yaml.v2 v2.2.2/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
-gopkg.in/yaml.v2 v2.4.0 h1:D8xgwECY7CYvx+Y2n4sBz93Jn9JRvxdiyyo8CTfuKaY=
 gopkg.in/yaml.v2 v2.4.0/go.mod h1:RDklbk79AGWmwhnvt/jBztapEOGDOx6ZbXqjP6csGnQ=
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=

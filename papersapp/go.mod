@@ -6,7 +6,7 @@ require (
 	cloudeng.io/cmdutil v0.0.0-20230626173734-59e0cb432e38
 	cloudeng.io/file v0.0.0-20230626173734-59e0cb432e38
 	cloudeng.io/path v0.0.8
-	cloudeng.io/webapi/operations v0.0.0-20230626175845-31ba38ab7421
+	cloudeng.io/webapi/operations v0.0.0-20230626182604-891e389e34c3
 	github.com/go-openapi/errors v0.20.4
 	github.com/go-openapi/strfmt v0.21.7
 	github.com/go-openapi/swag v0.22.4

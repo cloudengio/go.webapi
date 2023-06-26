@@ -5,7 +5,7 @@ go 1.19
 require (
 	cloudeng.io/cmdutil v0.0.0-20230626173734-59e0cb432e38
 	cloudeng.io/errors v0.0.8
-	cloudeng.io/webapi/openapi v0.0.0-20230626175845-31ba38ab7421
+	cloudeng.io/webapi/openapi v0.0.0-20230626182604-891e389e34c3
 	github.com/getkin/kin-openapi v0.118.0
 	gopkg.in/yaml.v3 v3.0.1
 )
