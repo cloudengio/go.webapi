@@ -18,10 +18,8 @@ const serviceURL = "https://api.biorxiv.org/pubs/biorxiv"
 
 func main() {
 	ctx := context.Background()
-
 	from, _ := time.Parse("2006-01-02", "2000-01-01")
 	sc := biorxiv.NewScanner(serviceURL, from, time.Now(), 0)
-
 	for sc.Scan(ctx) {
 		u := sc.Response()
 		fmt.Printf("%v %v %v\n", u.Messages[0].Cursor, u.Messages[0].Count, u.Messages[0].Total)

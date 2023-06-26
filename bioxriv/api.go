@@ -21,7 +21,7 @@ type PreprintDetail struct {
 	PreprintDate                           string `json:"preprint_date"`
 	PublishedDate                          string `json:"published_date"`
 	PreprintAbstract                       string `json:"preprint_abstract"`
-	PreprintAuthroCorresponding            string `json:"preprint_author_corresponding"`
+	PreprintAuthorCorresponding            string `json:"preprint_author_corresponding"`
 	PreprintAuthorCoresspondingInstitution string `json:"preprint_author_corresponding_institution"`
 }
 
