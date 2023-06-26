@@ -58,6 +58,10 @@ func (pg *paginator) Next(_ context.Context, t Response, r *http.Response) (req 
 	return
 }
 
+// NewScanner returns an instance of operations.Scanner for scanning
+// biorxiv or medrxiv via api.biorxiv.org. The from, to and cursor
+// values corresponding to URL path components as documented at:
+// https://api.biorxiv.org/
 func NewScanner(serviceURL string, from, to time.Time, cursor int64, opts ...operations.Option) *operations.Scanner[Response] {
 	pg := &paginator{
 		serviceURL: serviceURL,

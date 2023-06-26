@@ -17,14 +17,18 @@ type Auth struct {
 	// Currently api.biorxiv.org does not require an api key.
 }
 
+// Service represents biorxiv specific configuration parameters.
 type Service struct {
 	ServiceURL string    `yaml:"service_url"`
 	StartDate  time.Time `yaml:"start_date"`
 	EndDate    time.Time `yaml:"end_date"`
+	// Note, that the Cursor value is generally obtained a from a checkpoint file.
 }
 
 type Config apicrawlcmd.Crawl[Service]
 
+// OptionsForEndpoint returns the operations.Option's derived from the
+// apicrawlcmd configuration.
 func (c Config) OptionsForEndpoint(_ Auth) ([]operations.Option, error) {
 	opts := []operations.Option{}
 	rateCfg := c.RateControl

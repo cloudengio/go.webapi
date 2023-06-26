@@ -10,6 +10,7 @@ import (
 	"cloudeng.io/file/content"
 )
 
+// PreprintDetail represents the details of a single preprint.
 type PreprintDetail struct {
 	PreprintDOI                            string `json:"preprint_doi"`
 	PublishedDOI                           string `json:"published_doi"`
@@ -25,6 +26,10 @@ type PreprintDetail struct {
 	PreprintAuthorCoresspondingInstitution string `json:"preprint_author_corresponding_institution"`
 }
 
+// Message represents the detailed response from api.biorxiv.org for an
+// API request. The status will 'ok' for successful requests.
+// Each request will return a Collection containing at most 100 Preprints.
+// Pagination is achieved using the Cursor value.
 type Message struct {
 	Status   string `json:"status"`
 	Interval string `json:"interval"`
@@ -33,11 +38,14 @@ type Message struct {
 	Total    int64  `json:"total"`
 }
 
+// Response represents the response from api.biorxiv.org for an API request
+// and is wrapper for the actual Message response and Collection.
 type Response struct {
 	Messages   []Message        `json:"messages"`
 	Collection []PreprintDetail `json:"collection"`
 }
 
 const (
-	DocumentType = content.Type("api.biorxiv.org/article")
+	// PreprintType is the content type for Preprints.
+	PreprintType = content.Type("api.biorxiv.org/article")
 )

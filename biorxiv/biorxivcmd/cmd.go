@@ -69,6 +69,13 @@ func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, name string) (*C
 	return c, nil
 }
 
+// Crawl implements the crawl command. The crawl is incremental and utilizes
+// an internal state file to track progress and restart from that point in
+// a subsequent crawl. This makes it possible to have a start date that
+// predates the creation of biorxiv and an end date of 'now' with each
+// incremental crawl picking up where the previous one left off assuming
+// that biorxiv doesn't add new preprints with dates that predate the
+// current one.
 func (c *Command) Crawl(ctx context.Context, cacheRoot string, flags CrawlFlags) error {
 	opts, err := c.OptionsForEndpoint(c.Auth)
 	if err != nil {
@@ -130,7 +137,7 @@ func (c *Command) crawlSaver(ctx context.Context, ch <-chan biorxiv.Response, cs
 		}
 		for _, preprint := range resp.Collection {
 			obj := content.Object[biorxiv.PreprintDetail, struct{}]{
-				Type:     biorxiv.DocumentType,
+				Type:     biorxiv.PreprintType,
 				Value:    preprint,
 				Response: struct{}{},
 			}
@@ -157,6 +164,8 @@ func (c *Command) crawlSaver(ctx context.Context, ch <-chan biorxiv.Response, cs
 	}
 }
 
+// ScanDownloaded scans downloaded preprints printing out fields using
+// the specified template.
 func (c *Command) ScanDownloaded(ctx context.Context, root string, fv *ScanFlags) error {
 	tpl, err := template.New("biorxiv").Parse(fv.Template)
 	if err != nil {
@@ -191,6 +200,8 @@ func (c *Command) ScanDownloaded(ctx context.Context, root string, fv *ScanFlags
 	return err
 }
 
+// LookupDownloaded looks up the specified preprints via their 'PreprintDOI'
+// printing out fields using the specified template.
 func (c *Command) LookupDownloaded(_ context.Context, root string, fv *LookupFlags, dois ...string) error {
 	tpl, err := template.New("biorxiv").Parse(fv.Template)
 	if err != nil {
