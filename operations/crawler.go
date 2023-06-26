@@ -33,6 +33,11 @@ type Response struct {
 	// Any error encountered during the operation.
 	Error error
 
+	// Checkpoint is an opaque value that can be used to resume an
+	// operation at a later time. This is used generally used by implementations
+	// of Crawler/Fetcher.
+	Checkpoint []byte
+
 	// Current and Total, if non-zero, provide an indication of progress.
 	Current int64
 	Total   int64

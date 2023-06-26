@@ -8,7 +8,7 @@ require (
 	cloudeng.io/cmdutil v0.0.0-20230130231933-fe585c604aed
 	cloudeng.io/errors v0.0.8
 	cloudeng.io/file v0.0.0-20230626173734-59e0cb432e38
-	cloudeng.io/net v0.0.0-20230621165441-1c2497a5edc2
+	cloudeng.io/net v0.0.0-20230626173734-59e0cb432e38
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 )
