@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"cloudeng.io/net/ratecontrol"
-	"cloudeng.io/webapi/benchling"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
 )
@@ -41,10 +40,7 @@ func (c Config) OptionsForEndpoint(_ Auth) ([]operations.Option, error) {
 	}
 	if rateCfg.ExponentialBackoff.InitialDelay > 0 {
 		rcopts = append(rcopts,
-			ratecontrol.WithCustomBackoff(
-				func() ratecontrol.Backoff {
-					return benchling.NewBackoff(rateCfg.ExponentialBackoff.InitialDelay, rateCfg.ExponentialBackoff.Steps)
-				}))
+			ratecontrol.WithExponentialBackoff(rateCfg.ExponentialBackoff.InitialDelay, rateCfg.ExponentialBackoff.Steps))
 	}
 	rc := ratecontrol.New(rcopts...)
 	opts = append(opts, operations.WithRateController(rc, c.RateControl.ExponentialBackoff.StatusCodes...))
