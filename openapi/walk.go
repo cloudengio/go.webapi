@@ -284,7 +284,7 @@ func (wn nodeWalker) callbackRef(path []string, parent any, req *openapi3.Callba
 }
 
 func (wn nodeWalker) responses(path []string, parent any, resps map[string]*openapi3.ResponseRef) (ok bool, err error) {
-	if resps == nil || len(resps) == 0 {
+	if len(resps) == 0 {
 		return true, nil
 	}
 	if ok, err = wn.visit(path, parent, resps); !ok || err != nil {
