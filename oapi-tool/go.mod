@@ -5,7 +5,7 @@ go 1.21
 require (
 	cloudeng.io/cmdutil v0.0.0-20240117000235-f25d4d69956f
 	cloudeng.io/errors v0.0.9
-	cloudeng.io/webapi/openapi v0.0.0-20230830005306-7a8f83fd22c4
+	cloudeng.io/webapi/openapi v0.0.0-20240118162100-04bf98a629a1
 	github.com/getkin/kin-openapi v0.122.0
 	gopkg.in/yaml.v3 v3.0.1
 )
