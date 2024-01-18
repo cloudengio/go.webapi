@@ -112,7 +112,7 @@ func (wn nodeWalker) Walk(doc *openapi3.T) error { //nolint:gocyclo
 	if !ok || err != nil {
 		return err
 	}
-	ok, err = wn.paths([]string{"paths"}, doc, &doc.Paths)
+	ok, err = wn.paths([]string{"paths"}, doc, doc.Paths)
 	if !ok || err != nil {
 		return err
 	}
@@ -179,14 +179,15 @@ func (wn nodeWalker) securityReqs(path []string, parent any, reqs *openapi3.Secu
 }
 
 func (wn nodeWalker) paths(path []string, parent any, paths *openapi3.Paths) (ok bool, err error) {
-	if paths == nil || len(*paths) == 0 {
+	if paths == nil || paths.Len() == 0 {
 		return true, nil
 	}
 	if ok, err = wn.visit(path, parent, paths); !ok || err != nil {
 		return
 	}
-	for p, pi := range *paths {
-		if ok, err = wn.pathItem(append(path, p), paths, pi); !ok || err != nil {
+	mp := paths.Map()
+	for _, p := range paths.InMatchingOrder() {
+		if ok, err = wn.pathItem(append(path, p), paths, mp[p]); !ok || err != nil {
 			return
 		}
 	}
@@ -237,7 +238,7 @@ func (wn nodeWalker) operation(path []string, parent any, op *openapi3.Operation
 	if ok, err = wn.servers(append(path, "servers"), op, op.Servers); !ok || err != nil {
 		return
 	}
-	if ok, err = wn.responses(append(path, "responses"), op, &op.Responses); !ok || err != nil {
+	if ok, err = wn.responses(append(path, "responses"), op, op.Responses.Map()); !ok || err != nil {
 		return
 	}
 	if ok, err = wn.securityReqs(append(path, "security"), op, op.Security); !ok || err != nil {
@@ -268,13 +269,13 @@ func (wn nodeWalker) callbacks(path []string, parent any, cbs *openapi3.Callback
 }
 
 func (wn nodeWalker) callbackRef(path []string, parent any, req *openapi3.CallbackRef) (ok bool, err error) {
-	if req == nil || len(*req.Value) == 0 {
+	if req == nil || req.Value.Len() == 0 {
 		return true, nil
 	}
 	if ok, err = wn.visit(path, parent, req); !ok || err != nil {
 		return
 	}
-	for n, pi := range *req.Value {
+	for n, pi := range req.Value.Map() {
 		if ok, err = wn.visit(append(path, n), parent, pi); !ok || err != nil {
 			return
 		}
@@ -282,14 +283,14 @@ func (wn nodeWalker) callbackRef(path []string, parent any, req *openapi3.Callba
 	return true, nil
 }
 
-func (wn nodeWalker) responses(path []string, parent any, resps *openapi3.Responses) (ok bool, err error) {
-	if resps == nil || len(*resps) == 0 {
+func (wn nodeWalker) responses(path []string, parent any, resps map[string]*openapi3.ResponseRef) (ok bool, err error) {
+	if len(resps) == 0 {
 		return true, nil
 	}
 	if ok, err = wn.visit(path, parent, resps); !ok || err != nil {
 		return
 	}
-	for n, r := range *resps {
+	for n, r := range resps {
 		if ok, err = wn.responseRef(append(path, n), parent, r); !ok || err != nil {
 			return
 		}
@@ -545,7 +546,7 @@ func (wn nodeWalker) components(path []string, parent any, c *openapi3.Component
 	if ok, err = wn.requestBodies(append(path, "requestBodies"), c, &c.RequestBodies); !ok || err != nil {
 		return
 	}
-	if ok, err = wn.responses(append(path, "responses"), c, &c.Responses); !ok || err != nil {
+	if ok, err = wn.responses(append(path, "responses"), c, c.Responses); !ok || err != nil {
 		return
 	}
 	if ok, err = wn.links(append(path, "links"), c, &c.Links); !ok || err != nil {

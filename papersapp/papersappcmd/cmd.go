@@ -16,7 +16,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"cloudeng.io/cmdutil"
+	"cloudeng.io/cmdutil/cmdyaml"
 	"cloudeng.io/file/content"
 	"cloudeng.io/path"
 	"cloudeng.io/webapi/operations"
@@ -58,7 +58,7 @@ func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, name, authFilena
 		return nil, err
 	}
 	if len(authFilename) > 0 {
-		if err := cmdutil.ParseYAMLConfigFile(ctx, authFilename, &c.Auth); err != nil {
+		if err := cmdyaml.ParseConfigFile(ctx, authFilename, &c.Auth); err != nil {
 			return nil, err
 		}
 	} else {

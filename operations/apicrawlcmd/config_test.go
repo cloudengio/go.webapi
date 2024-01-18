@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"cloudeng.io/cmdutil"
+	"cloudeng.io/cmdutil/cmdyaml"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
 )
 
@@ -35,7 +35,7 @@ type api2 struct {
 
 func TestAPICrawlConfig(t *testing.T) {
 	var crawls apicrawlcmd.Crawls
-	if err := cmdutil.ParseYAMLConfigString(apiCrawlSpec, &crawls); err != nil {
+	if err := cmdyaml.ParseConfigString(apiCrawlSpec, &crawls); err != nil {
 		t.Fatal(err)
 	}
 

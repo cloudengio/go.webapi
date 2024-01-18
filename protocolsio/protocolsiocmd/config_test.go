@@ -7,7 +7,7 @@ package protocolsiocmd_test
 import (
 	"testing"
 
-	"cloudeng.io/cmdutil"
+	"cloudeng.io/cmdutil/cmdyaml"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
 	"cloudeng.io/webapi/protocolsio/protocolsiocmd"
 )
@@ -22,7 +22,7 @@ protocols.io:
 
 func TestConfig(t *testing.T) {
 	var crawls apicrawlcmd.Crawls
-	if err := cmdutil.ParseYAMLConfigString(protocolsioSpec, &crawls); err != nil {
+	if err := cmdyaml.ParseConfigString(protocolsioSpec, &crawls); err != nil {
 		t.Fatal(err)
 	}
 	var cfg protocolsiocmd.Config
