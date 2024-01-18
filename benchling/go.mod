@@ -2,8 +2,6 @@ module cloudeng.io/webapi/benchling
 
 go 1.21
 
-toolchain go1.21.6
-
 require (
 	cloudeng.io/cmdutil v0.0.0-20240117000235-f25d4d69956f
 	cloudeng.io/errors v0.0.9

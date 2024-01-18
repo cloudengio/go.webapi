@@ -2,8 +2,6 @@ module cloudeng.io/webapi/operations
 
 go 1.21
 
-toolchain go1.21.6
-
 require cloudeng.io/webapi/webapitestutil v0.0.0-20230204003545-f310593967e5
 
 require (
