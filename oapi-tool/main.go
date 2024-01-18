@@ -46,18 +46,12 @@ var cmdSet *subcmd.CommandSetYAML
 
 func init() {
 	cmdSet = subcmd.MustFromYAML(spec)
-	cmdSet.Set("download").MustRunnerAndFlags(downloadCmd,
-		subcmd.MustRegisteredFlagSet(&DownloadFlags{}))
-	cmdSet.Set("format").MustRunnerAndFlags(formatCmd,
-		subcmd.MustRegisteredFlagSet(&FormatFlags{}))
-	cmdSet.Set("transform").MustRunnerAndFlags(transformCmd,
-		subcmd.MustRegisteredFlagSet(&TransformFlags{}))
-	cmdSet.Set("validate").MustRunnerAndFlags(validateCmd,
-		subcmd.MustRegisteredFlagSet(&struct{}{}))
-	cmdSet.Set("convert").MustRunnerAndFlags(convertCmd,
-		subcmd.MustRegisteredFlagSet(&ConvertFlags{}))
-	cmdSet.Set("inspect").MustRunnerAndFlags(inspectCmd,
-		subcmd.MustRegisteredFlagSet(&InspectFlags{}))
+	cmdSet.Set("download").MustRunner(downloadCmd, &DownloadFlags{})
+	cmdSet.Set("format").MustRunner(formatCmd, &FormatFlags{})
+	cmdSet.Set("transform").MustRunner(transformCmd, &TransformFlags{})
+	cmdSet.Set("validate").MustRunner(validateCmd, &struct{}{})
+	cmdSet.Set("convert").MustRunner(convertCmd, &ConvertFlags{})
+	cmdSet.Set("inspect").MustRunner(inspectCmd, &InspectFlags{})
 }
 
 func main() {
