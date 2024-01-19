@@ -16,19 +16,19 @@ import (
 )
 
 type Auth struct {
-	APIKey string `yaml:"api_key"`
+	APIKey string `yaml:"api_key" cmd:"API key for benchling"`
 }
 
 type Service struct {
-	ServiceURL       string                              `yaml:"service_url"`
-	UsersSort        benchlingsdk.ListUsersParamsSort    `yaml:"users_sort"`
-	UsersPageSize    int                                 `yaml:"users_page_size"`
-	EntriesSort      benchlingsdk.ListEntriesParamsSort  `yaml:"entries_sort"`
-	EntriesPageSize  int                                 `yaml:"entries_page_size"`
-	FoldersSort      benchlingsdk.ListFoldersParamsSort  `yaml:"folders_sort"`
-	FoldersPageSize  int                                 `yaml:"folders_page_size"`
-	ProjectsSort     benchlingsdk.ListProjectsParamsSort `yaml:"projects_sort"`
-	ProjectsPageSize int                                 `yaml:"projects_page_size"`
+	ServiceURL       string                              `yaml:"service_url" cmd:"benchling service URL, typically https://altoslabs.benchling.com/api/v2/"`
+	UsersSort        benchlingsdk.ListUsersParamsSort    `yaml:"users_sort" cmd:"sort order for users, typically name:asc"`
+	UsersPageSize    int                                 `yaml:"users_page_size" cmd:"number of users in each page of results, typically 50"`
+	EntriesSort      benchlingsdk.ListEntriesParamsSort  `yaml:"entries_sort" cmd:"sort order for entries, typically name:asc"`
+	EntriesPageSize  int                                 `yaml:"entries_page_size" cmd:"number of entries in each page of results, typically 50"`
+	FoldersSort      benchlingsdk.ListFoldersParamsSort  `yaml:"folders_sort" cmd:"sort order for folders, typically name:asc"`
+	FoldersPageSize  int                                 `yaml:"folders_page_size" cmd:"number of folders in each page of results, typically 50"`
+	ProjectsSort     benchlingsdk.ListProjectsParamsSort `yaml:"projects_sort" cmd:"sort order for projects, typically modifiedAt"`
+	ProjectsPageSize int                                 `yaml:"projects_page_size" cmd:"number of projects in each page of results, typically 50"`
 }
 
 type Config apicrawlcmd.Crawl[Service]

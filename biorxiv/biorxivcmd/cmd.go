@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"cloudeng.io/errors"
 	"cloudeng.io/file/content"
@@ -92,7 +93,7 @@ func (c *Command) Crawl(ctx context.Context, cacheRoot string, flags CrawlFlags)
 	if err != nil {
 		return err
 	}
-	crawlState.sync(flags.Restart, c.Config.Service.StartDate, c.Config.Service.EndDate)
+	crawlState.sync(flags.Restart, time.Time(c.Config.Service.StartDate), time.Time(c.Config.Service.EndDate))
 
 	fmt.Printf("starting crawl from %v to %v, cursor: %v\n", crawlState.From, crawlState.To, crawlState.Cursor)
 

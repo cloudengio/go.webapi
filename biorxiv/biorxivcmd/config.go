@@ -5,8 +5,7 @@
 package biorxivcmd
 
 import (
-	"time"
-
+	"cloudeng.io/cmdutil/cmdyaml"
 	"cloudeng.io/net/ratecontrol"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
@@ -18,9 +17,9 @@ type Auth struct {
 
 // Service represents biorxiv specific configuration parameters.
 type Service struct {
-	ServiceURL string    `yaml:"service_url"`
-	StartDate  time.Time `yaml:"start_date"`
-	EndDate    time.Time `yaml:"end_date"`
+	ServiceURL string           `yaml:"service_url" cmd:"rxiv service URL, eg. https://api.biorxiv.org/pubs/biorxiv for biorxiv"`
+	StartDate  cmdyaml.FlexTime `yaml:"start_date" cmd:"start date for crawl, eg. 2020-01-01"`
+	EndDate    cmdyaml.FlexTime `yaml:"end_date" cmd:"end date for crawl, eg. 2020-12-01"`
 	// Note, that the Cursor value is generally obtained a from a checkpoint file.
 }
 

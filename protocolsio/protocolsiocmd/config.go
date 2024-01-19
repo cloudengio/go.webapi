@@ -25,17 +25,17 @@ import (
 // Auth represents the authentication information required to
 // access protocols.io.
 type Auth struct {
-	PublicToken  string `yaml:"public_token"`
-	ClientID     string `yaml:"public_clientid"`
-	ClientSecret string `yaml:"public_secret"`
+	PublicToken  string `yaml:"public_token" cmd:"token for protocols.io public data, available from https://www.protocols.io/developers"`
+	ClientID     string `yaml:"public_clientid" cmd:"client id for protocols.io public data, available from https://www.protocols.io/developers"`
+	ClientSecret string `yaml:"public_secret" cmd:"client secret for protocols.io public data, available from https://www.protocols.io/developers"`
 }
 
 // Service represents the protocols.io specific confiugaration options.
 type Service struct {
-	Filter         string `yaml:"filter"`
-	OrderField     string `yaml:"order_field"`
-	OrderDirection string `yaml:"order_direction"`
-	Incremental    bool   `yaml:"incremental"`
+	Filter         string `yaml:"filter" cmd:"filter to apply to protocols.io API calls, typically public"`
+	OrderField     string `yaml:"order_field" cmd:"field used to order API responses, typically id"`
+	OrderDirection string `yaml:"order_direction" cmd:"order direction to apply to protocols.io API calls, typically asc"`
+	Incremental    bool   `yaml:"incremental" cmd:"if true, only download new or updated protocols"`
 }
 
 // Config represents the configuration information required to
