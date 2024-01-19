@@ -18,7 +18,7 @@ import (
 type Crawl[T any] struct {
 	RateControl crawlcmd.RateControl      `yaml:",inline"`
 	Cache       crawlcmd.CrawlCacheConfig `yaml:",inline"`
-	Service     T                         `yaml:",inline"`
+	Service     T                         `yaml:",inline" cmd:"service specific configuration"`
 }
 
 // Crawls represents the configuration of multiple API crawls.

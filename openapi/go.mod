@@ -1,6 +1,8 @@
 module cloudeng.io/webapi/openapi
 
-go 1.19
+go 1.21
+
+toolchain go1.21.6
 
 require (
 	cloudeng.io/text v0.0.11
@@ -9,6 +11,8 @@ require (
 )
 
 require (
+	cloudeng.io/file v0.0.0-20240119231719-f985f7cde7e8 // indirect
+	cloudeng.io/path v0.0.8 // indirect
 	github.com/go-openapi/jsonpointer v0.20.2 // indirect
 	github.com/go-openapi/swag v0.22.7 // indirect
 	github.com/invopop/yaml v0.2.0 // indirect
@@ -17,4 +21,5 @@ require (
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
+	golang.org/x/sys v0.15.0 // indirect
 )

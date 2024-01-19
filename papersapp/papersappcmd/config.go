@@ -11,13 +11,13 @@ import (
 )
 
 type Auth struct {
-	APIKey string `yaml:"api_key"`
+	APIKey string `yaml:"api_key" cmd:"API key for papersapp"`
 }
 
 type Service struct {
-	ServiceURL        string `yaml:"service_url"`
-	RefreshTokenURL   string `yaml:"refresh_token_url"`
-	ListItemsPageSize int    `yaml:"list_items_page_size"`
+	ServiceURL        string `yaml:"service_url" cmd:"papersapp service URL, typically https://api.papers.ai"`
+	RefreshTokenURL   string `yaml:"refresh_token_url" cmd:"papersapp refresh token URL, typically https://api.papers.ai/oauth/token"`
+	ListItemsPageSize int    `yaml:"list_items_page_size" cmd:"number of items in each page of results, typically 50"`
 }
 
 type Config apicrawlcmd.Crawl[Service]
