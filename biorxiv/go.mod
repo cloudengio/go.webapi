@@ -3,11 +3,11 @@ module cloudeng.io/webapi/biorxiv
 go 1.21
 
 require (
-	cloudeng.io/cmdutil v0.0.0-20240116220817-9db36ddadd3c
+	cloudeng.io/cmdutil v0.0.0-20240204024514-c776d7b0bbfa
 	cloudeng.io/errors v0.0.9
-	cloudeng.io/file v0.0.0-20240119231719-f985f7cde7e8
-	cloudeng.io/path v0.0.8
-	cloudeng.io/webapi/operations v0.0.0-20230830005306-7a8f83fd22c4
+	cloudeng.io/file v0.0.0-20240204011218-453d510d0c93
+	cloudeng.io/path v0.0.9
+	cloudeng.io/webapi/operations v0.0.0-20240204010826-097209bedfcd
 )
 
 require (
@@ -17,7 +17,7 @@ require (
 )
 
 require (
-	cloudeng.io/net v0.0.0-20240117000235-f25d4d69956f
+	cloudeng.io/net v0.0.0-20240204011218-453d510d0c93
 	cloudeng.io/sync v0.0.8 // indirect
 	cloudeng.io/text v0.0.11 // indirect
 	golang.org/x/net v0.20.0 // indirect
