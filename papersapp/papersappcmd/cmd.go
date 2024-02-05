@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 
 	"cloudeng.io/cmdutil/cmdyaml"
+	"cloudeng.io/file"
 	"cloudeng.io/file/content"
 	"cloudeng.io/path"
 	"cloudeng.io/webapi/operations"
@@ -69,8 +70,8 @@ func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, name, authFilena
 	return c, nil
 }
 
-func (c *Command) Crawl(ctx context.Context, cacheRoot string, _ *CrawlFlags) error {
-	cachePath, _, err := c.Cache.Initialize(cacheRoot)
+func (c *Command) Crawl(ctx context.Context, fs file.ObjectFS, cacheRoot string, _ *CrawlFlags) error {
+	cachePath, _, err := c.Cache.InitStore(ctx, fs, cacheRoot)
 	if err != nil {
 		return err
 	}

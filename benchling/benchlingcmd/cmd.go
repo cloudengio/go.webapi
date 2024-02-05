@@ -13,6 +13,7 @@ import (
 
 	"cloudeng.io/cmdutil/cmdyaml"
 	"cloudeng.io/errors"
+	"cloudeng.io/file"
 	"cloudeng.io/file/content"
 	"cloudeng.io/path"
 	"cloudeng.io/sync/errgroup"
@@ -71,12 +72,12 @@ func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, name, authFilena
 	return c, nil
 }
 
-func (c *Command) Crawl(ctx context.Context, cacheRoot string, _ CrawlFlags, entities ...string) error {
+func (c *Command) Crawl(ctx context.Context, fs file.ObjectFS, cacheRoot string, _ CrawlFlags, entities ...string) error {
 	opts, err := c.OptionsForEndpoint(c.Auth)
 	if err != nil {
 		return err
 	}
-	cachePath, _, err := c.Cache.Initialize(cacheRoot)
+	cachePath, _, err := c.Cache.InitStore(ctx, fs, cacheRoot)
 	if err != nil {
 		return err
 	}

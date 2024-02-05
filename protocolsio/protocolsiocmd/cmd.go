@@ -16,6 +16,7 @@ import (
 
 	"cloudeng.io/cmdutil/cmdyaml"
 	"cloudeng.io/cmdutil/flags"
+	"cloudeng.io/file"
 	"cloudeng.io/file/checkpoint"
 	"cloudeng.io/file/content"
 	"cloudeng.io/path"
@@ -112,8 +113,8 @@ func handleCrawledObject(ctx context.Context,
 	return nil
 }
 
-func (c *Command) Crawl(ctx context.Context, cacheRoot string, fv *CrawlFlags) error {
-	cachePath, checkpointPath, err := c.Cache.Initialize(cacheRoot)
+func (c *Command) Crawl(ctx context.Context, fs file.ObjectFS, cacheRoot string, fv *CrawlFlags) error {
+	cachePath, checkpointPath, err := c.Cache.InitStore(ctx, fs, cacheRoot)
 	if err != nil {
 		return err
 	}
