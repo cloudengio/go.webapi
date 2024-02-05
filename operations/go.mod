@@ -5,9 +5,9 @@ go 1.21
 require cloudeng.io/webapi/webapitestutil v0.0.0-20230204003545-f310593967e5
 
 require (
-	cloudeng.io/cmdutil v0.0.0-20240202174018-08d12d8a1d06
+	cloudeng.io/cmdutil v0.0.0-20240204011218-453d510d0c93
 	cloudeng.io/errors v0.0.9
-	cloudeng.io/file v0.0.0-20240204011218-453d510d0c93
+	cloudeng.io/file v0.0.0-20240205204631-38ea0f1514f5
 	cloudeng.io/net v0.0.0-20240204011218-453d510d0c93
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1

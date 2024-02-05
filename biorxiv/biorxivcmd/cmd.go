@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"cloudeng.io/errors"
+	"cloudeng.io/file"
 	"cloudeng.io/file/content"
 	"cloudeng.io/path"
 	"cloudeng.io/webapi/biorxiv"
@@ -77,12 +78,12 @@ func NewCommand(_ context.Context, crawls apicrawlcmd.Crawls, name string) (*Com
 // incremental crawl picking up where the previous one left off assuming
 // that biorxiv doesn't add new preprints with dates that predate the
 // current one.
-func (c *Command) Crawl(ctx context.Context, cacheRoot string, flags CrawlFlags) error {
+func (c *Command) Crawl(ctx context.Context, fs file.ObjectFS, cacheRoot string, flags CrawlFlags) error {
 	opts, err := c.OptionsForEndpoint(c.Auth)
 	if err != nil {
 		return err
 	}
-	cachePath, checkpointPath, err := c.Cache.Initialize(cacheRoot)
+	cachePath, checkpointPath, err := c.Cache.InitStore(ctx, fs, cacheRoot)
 	if err != nil {
 		return err
 	}
