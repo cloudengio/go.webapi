@@ -16,7 +16,6 @@ import (
 
 	"cloudeng.io/cmdutil/cmdyaml"
 	"cloudeng.io/cmdutil/flags"
-	"cloudeng.io/file"
 	"cloudeng.io/file/checkpoint"
 	"cloudeng.io/file/content"
 	"cloudeng.io/path"
@@ -52,13 +51,15 @@ type ScanFlags struct {
 type Command struct {
 	Auth
 	Config
+	cfs   operations.FS
+	chkpt checkpoint.Operation
 }
 
 // NewCommand returns a new Command instance for the specified API crawl
 // with API authentication information read from the specified file or
 // from the context.
-func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, name, authFilename string) (*Command, error) {
-	c := &Command{}
+func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, fs operations.FS, chkpt checkpoint.Operation, name, authFilename string) (*Command, error) {
+	c := &Command{cfs: fs, chkpt: chkpt}
 	ok, err := apicrawlcmd.ParseCrawlConfig(crawls, name, (*apicrawlcmd.Crawl[Service])(&c.Config))
 	if !ok {
 		return nil, fmt.Errorf("no configuration found for %v", name)
@@ -78,10 +79,38 @@ func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, name, authFilena
 	return c, nil
 }
 
+func (c *Command) Crawl(ctx context.Context, fs content.FS, cacheRoot string, fv *CrawlFlags) error {
+	cacheRoot, downloadsPath, chkptPath := c.Cache.AbsolutePaths(c.cfs, cacheRoot)
+	if err := c.Cache.PrepareDownloads(ctx, c.cfs, downloadsPath); err != nil {
+		return err
+	}
+	if err := c.Cache.PrepareCheckpoint(ctx, c.chkpt, chkptPath); err != nil {
+		return err
+	}
+	if !fv.IgnoreCheckpoint {
+		c.chkpt.Clear(ctx)
+	}
+
+	store := content.NewStore(fs)
+	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
+
+	crawler, err := c.NewProtocolCrawler(ctx, c.chkpt, fv, c.Auth)
+	if err != nil {
+		return err
+	}
+
+	return operations.RunCrawl(ctx, crawler,
+		func(ctx context.Context, object content.Object[protocolsiosdk.ProtocolPayload, operations.Response]) error {
+			return handleCrawledObject(ctx, fv.Save, sharder, store, downloadsPath, c.chkpt, object)
+		})
+
+}
+
 func handleCrawledObject(ctx context.Context,
 	save bool,
 	sharder path.Sharder,
-	cachePath string,
+	store *content.Store,
+	root string,
 	chk checkpoint.Operation,
 	obj content.Object[protocolsiosdk.ProtocolPayload, operations.Response]) error {
 
@@ -98,10 +127,11 @@ func handleCrawledObject(ctx context.Context,
 	}
 	// Save the protocol object to disk.
 	prefix, suffix := sharder.Assign(fmt.Sprintf("%v", obj.Value.Protocol.ID))
-	path := filepath.Join(cachePath, prefix, suffix)
-	if err := WriteDownload(path, obj); err != nil {
+	prefix = store.FS().Join(root, prefix)
+	if err := obj.Store(ctx, store, prefix, suffix, content.GOBObjectEncoding, content.GOBObjectEncoding); err != nil {
 		return err
 	}
+
 	if state := obj.Response.Checkpoint; len(state) > 0 {
 		name, err := chk.Checkpoint(ctx, "", state)
 		if err != nil {
@@ -111,32 +141,6 @@ func handleCrawledObject(ctx context.Context,
 		}
 	}
 	return nil
-}
-
-func (c *Command) Crawl(ctx context.Context, fs file.ObjectFS, cacheRoot string, fv *CrawlFlags) error {
-	cachePath, checkpointPath, err := c.Cache.InitStore(ctx, fs, cacheRoot)
-	if err != nil {
-		return err
-	}
-
-	var op checkpoint.Operation
-	if !fv.IgnoreCheckpoint {
-		op, err = checkpoint.NewDirectoryOperation(checkpointPath)
-		if err != nil {
-			return err
-		}
-	}
-
-	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
-	crawler, err := c.NewProtocolCrawler(ctx, op, fv, c.Auth)
-	if err != nil {
-		return err
-	}
-	return operations.RunCrawl(ctx, crawler,
-		func(ctx context.Context, object content.Object[protocolsiosdk.ProtocolPayload, operations.Response]) error {
-			return handleCrawledObject(ctx, fv.Save, sharder, cachePath, op, object)
-		})
-
 }
 
 func (c *Command) Get(ctx context.Context, _ *GetFlags, args []string) error {

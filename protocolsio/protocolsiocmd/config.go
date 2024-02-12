@@ -98,7 +98,11 @@ func (c Config) NewProtocolCrawler(ctx context.Context, op checkpoint.Operation,
 	paginatorOpts.Parameters.Add("order_field", c.Service.OrderField)
 	paginatorOpts.Parameters.Add("order_dir", c.Service.OrderDirection)
 	paginatorOpts.Parameters.Add("page_size", strconv.FormatInt(int64(fv.PageSize), 10))
-	paginatorOpts.Parameters.Add("key", fv.Key)
+	key := fv.Key
+	if len(key) == 0 {
+		key = "a"
+	}
+	paginatorOpts.Parameters.Add("key", key)
 
 	// Fetcher options.
 	var fetcherOptions protocolsio.FetcherOptions
