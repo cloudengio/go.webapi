@@ -56,7 +56,7 @@ func TestEcho(t *testing.T) {
 func TestRequestRate(t *testing.T) {
 	ctx := context.Background()
 	timestamps := []time.Time{}
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		timestamps = append(timestamps, time.Now())
 		enc := json.NewEncoder(w)
 		if err := enc.Encode(len(timestamps)); err != nil {
@@ -143,7 +143,7 @@ func TestAuth(t *testing.T) {
 
 func TestRequestError(t *testing.T) {
 	ctx := context.Background()
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	})
 
@@ -161,7 +161,7 @@ func TestRequestError(t *testing.T) {
 
 func TestTimeout(t *testing.T) {
 	ctx := context.Background()
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
 	})
 

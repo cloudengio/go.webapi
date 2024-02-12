@@ -122,6 +122,7 @@ func (c *Command) Crawl(ctx context.Context, flags CrawlFlags) error {
 		err = nil
 	}
 	errs.Append(err)
+	errs.Append(crawlState.complete(ctx, c.ckpt))
 	return errs.Err()
 }
 

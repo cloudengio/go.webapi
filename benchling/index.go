@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"path/filepath"
 	"strings"
 
 	"cloudeng.io/file/content"
@@ -19,27 +18,27 @@ import (
 )
 
 type DocumentIndexer struct {
-	fs       operations.FS
-	store    *content.Store
-	root     string
-	sharder  path.Sharder
-	users    map[string]benchlingsdk.User
-	projects map[string]benchlingsdk.Project
-	folders  map[string]benchlingsdk.Folder
-	entries  map[string]benchlingsdk.Entry
+	fs        operations.FS
+	store     *content.Store
+	downloads string
+	sharder   path.Sharder
+	users     map[string]benchlingsdk.User
+	projects  map[string]benchlingsdk.Project
+	folders   map[string]benchlingsdk.Folder
+	entries   map[string]benchlingsdk.Entry
 }
 
-func NewDocumentIndexer(fs operations.FS, root string, sharder path.Sharder) *DocumentIndexer {
+func NewDocumentIndexer(fs operations.FS, downloads string, sharder path.Sharder) *DocumentIndexer {
 	store := content.NewStore(fs)
 	return &DocumentIndexer{
-		fs:       fs,
-		store:    store,
-		root:     root,
-		users:    make(map[string]benchlingsdk.User),
-		projects: make(map[string]benchlingsdk.Project),
-		folders:  make(map[string]benchlingsdk.Folder),
-		entries:  make(map[string]benchlingsdk.Entry),
-		sharder:  sharder,
+		fs:        fs,
+		store:     store,
+		downloads: downloads,
+		users:     make(map[string]benchlingsdk.User),
+		projects:  make(map[string]benchlingsdk.Project),
+		folders:   make(map[string]benchlingsdk.Folder),
+		entries:   make(map[string]benchlingsdk.Entry),
+		sharder:   sharder,
 	}
 }
 
@@ -147,11 +146,11 @@ func (di *DocumentIndexer) dayText(entry *benchlingsdk.Entry) string {
 }
 
 func (di *DocumentIndexer) index(ctx context.Context) error {
-	err := filewalk.ContentsOnly(ctx, di.fs, di.root, di.populate)
+	err := filewalk.ContentsOnly(ctx, di.fs, di.downloads, di.populate)
 	if err != nil {
 		return err
 	}
-
+	join := di.store.FS().Join
 	for _, entry := range di.entries {
 		doc := Document{
 			Entry:   entry,
@@ -167,7 +166,7 @@ func (di *DocumentIndexer) index(ctx context.Context) error {
 			v := di.users["user:"+*entry.Creator.Id]
 			doc.Users[*entry.Creator.Id] = v
 			if v.Name == nil {
-				fmt.Printf("failed to find user: %v\n", *entry.Creator.Id)
+				log.Printf("failed to find user: %v\n", *entry.Creator.Id)
 			}
 		}
 		obj := content.Object[Document, struct{}]{
@@ -177,9 +176,9 @@ func (di *DocumentIndexer) index(ctx context.Context) error {
 		}
 		id := ObjectID(doc)
 		prefix, suffix := di.sharder.Assign(fmt.Sprintf("%v", id))
-		path := filepath.Join(di.root, prefix, suffix)
-		if err := obj.WriteObjectFile(path, content.JSONObjectEncoding, content.GOBObjectEncoding); err != nil {
-			fmt.Printf("failed to write user: %v as %v: %v\n", id, path, err)
+		prefix = join(di.downloads, prefix)
+		if err := obj.Store(ctx, di.store, prefix, suffix, content.JSONObjectEncoding, content.GOBObjectEncoding); err != nil {
+			log.Printf("failed to write user: %v as %v %v: %v\n", id, prefix, suffix, err)
 		}
 	}
 	return nil

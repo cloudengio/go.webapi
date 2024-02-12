@@ -9,6 +9,7 @@ package protocolsiocmd
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"text/template"
 
@@ -79,7 +80,7 @@ func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, fs operations.FS
 }
 
 func (c *Command) Crawl(ctx context.Context, fs content.FS, cacheRoot string, fv *CrawlFlags) error {
-	cacheRoot, downloadsPath, chkptPath := c.Cache.AbsolutePaths(c.cfs, cacheRoot)
+	_, downloadsPath, chkptPath := c.Cache.AbsolutePaths(c.cfs, cacheRoot)
 	if err := c.Cache.PrepareDownloads(ctx, c.cfs, downloadsPath); err != nil {
 		return err
 	}
@@ -87,7 +88,9 @@ func (c *Command) Crawl(ctx context.Context, fs content.FS, cacheRoot string, fv
 		return err
 	}
 	if !fv.IgnoreCheckpoint {
-		c.chkpt.Clear(ctx)
+		if err := c.chkpt.Clear(ctx); err != nil {
+			return err
+		}
 	}
 
 	store := content.NewStore(fs)
@@ -167,6 +170,9 @@ func (c *Command) ScanDownloaded(ctx context.Context, root string, fv *ScanFlags
 	_, downloadsPath, _ := c.Cache.AbsolutePaths(c.cfs, root)
 	store := content.NewStore(c.cfs)
 	err = filewalk.ContentsOnly(ctx, c.cfs, downloadsPath, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
+		if err != nil {
+			log.Printf("error: %v: %v", prefix, err)
+		}
 		for _, c := range contents {
 			var obj content.Object[protocolsiosdk.ProtocolPayload, operations.Response]
 			if _, err := obj.Load(ctx, store, prefix, c.Name); err != nil {

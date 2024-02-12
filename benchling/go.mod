@@ -9,7 +9,7 @@ require (
 	cloudeng.io/net v0.0.0-20240212200506-2ec62caddad8
 	cloudeng.io/path v0.0.9
 	cloudeng.io/sync v0.0.8
-	cloudeng.io/webapi/operations v0.0.0-20240205224624-781bd404884e
+	cloudeng.io/webapi/operations v0.0.0-20240212225013-66363a8276e3
 	github.com/deepmap/oapi-codegen v1.16.2
 	github.com/getkin/kin-openapi v0.123.0
 	github.com/labstack/echo/v4 v4.11.4

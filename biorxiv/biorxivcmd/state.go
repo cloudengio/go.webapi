@@ -13,11 +13,10 @@ import (
 )
 
 type crawlState struct {
-	From     time.Time `json:"from"`
-	To       time.Time `json:"to"`
-	Cursor   int64     `json:"cursor"`
-	Total    int64     `json:"total"`
-	filename string
+	From   time.Time `json:"from"`
+	To     time.Time `json:"to"`
+	Cursor int64     `json:"cursor"`
+	Total  int64     `json:"total"`
 }
 
 func loadState(ctx context.Context, op checkpoint.Operation) (crawlState, error) {

@@ -10,6 +10,7 @@ package protocolsiocmd
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/url"
 	"strconv"
 
@@ -62,6 +63,9 @@ func createVersionMap(ctx context.Context, fs operations.FS, downloads string) (
 	vmap := map[int64]int{}
 	store := content.NewStore(fs)
 	err := filewalk.ContentsOnly(ctx, fs, downloads, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
+		if err != nil {
+			log.Printf("%v: %v", fs.Join(prefix), err)
+		}
 		for _, c := range contents {
 			var obj content.Object[protocolsiosdk.ProtocolPayload, operations.Response]
 			if _, err := obj.Load(ctx, store, prefix, c.Name); err != nil {

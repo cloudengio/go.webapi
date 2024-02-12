@@ -1,6 +1,16 @@
 cloudeng.io/errors v0.0.8/go.mod h1:xWamLL6tn3roKI6MRRFkw1jUkJL9s7CJzFYfaxuhHZk=
+cloudeng.io/errors v0.0.9 h1:gHv7vqtI8pvhjJFsu4d60bYwOaT9sM6tn0ykoaw11WA=
+cloudeng.io/errors v0.0.9/go.mod h1:xWamLL6tn3roKI6MRRFkw1jUkJL9s7CJzFYfaxuhHZk=
+cloudeng.io/file v0.0.0-20240212200506-2ec62caddad8 h1:V+RR/Z81/gwM4IzBILsThVV4VZra3PVlIxLvB+gmKd4=
+cloudeng.io/file v0.0.0-20240212200506-2ec62caddad8/go.mod h1:YXIkqlmkw3GwyT3q+MzulnH5V613GwSQcCCgmc0qQoQ=
+cloudeng.io/net v0.0.0-20240212200506-2ec62caddad8 h1:aw/V69DDOMEDeGVFVu+OqLknFFAeSJXUO49PAaE0jV8=
+cloudeng.io/net v0.0.0-20240212200506-2ec62caddad8/go.mod h1:XuBu77qKsoYfixO8wiFE7dsYTJPqJsTVOjNBNQlMU1U=
+cloudeng.io/sync v0.0.8 h1:N8o5Qo5sjxwDktWIW/7rfK14O74jGS3pprefjF3EFKA=
+cloudeng.io/sync v0.0.8/go.mod h1:76qdZzMQSN+iPeQxY9MSbnSELKQmcd9E6pnfRgWgN8s=
 cloudeng.io/text v0.0.11 h1:q3+p3gxwNdr/V+k4+77fj9QxVpUU8G7B4+v26m+sE8I=
 cloudeng.io/text v0.0.11/go.mod h1:99L3CQ55YhUy2+lHlFPowYyCoXO86fmkvNtcMT2X3GU=
+cloudeng.io/webapi/operations v0.0.0-20240212225013-66363a8276e3 h1:CHGUqb+MKKFmxAk6oqE7LzVzt70VT+778ya5GXbriOI=
+cloudeng.io/webapi/operations v0.0.0-20240212225013-66363a8276e3/go.mod h1:izEdofVRcCWvEoKHwtJU0YDcrJ+/76NUJv5zi59fP3Y=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/getkin/kin-openapi v0.123.0 h1:zIik0mRwFNLyvtXK274Q6ut+dPh6nlxBp0x7mNrPhs8=
