@@ -11,11 +11,11 @@ import (
 	"context"
 	"encoding/json"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strconv"
 
 	"cloudeng.io/file/checkpoint"
+	"cloudeng.io/file/content"
+	"cloudeng.io/file/filewalk"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
 	"cloudeng.io/webapi/protocolsio"
@@ -58,20 +58,17 @@ func latestCheckpoint(ctx context.Context, op checkpoint.Operation) (protocolsio
 	return cp, err
 }
 
-func createVersionMap(cachePath, checkpointPath string) (map[int64]int, error) {
+func createVersionMap(ctx context.Context, fs operations.FS, downloads string) (map[int64]int, error) {
 	vmap := map[int64]int{}
-	err := filepath.Walk(cachePath, func(path string, info os.FileInfo, _ error) error {
-		if path == checkpointPath {
-			return filepath.SkipDir
+	store := content.NewStore(fs)
+	err := filewalk.ContentsOnly(ctx, fs, downloads, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
+		for _, c := range contents {
+			var obj content.Object[protocolsiosdk.ProtocolPayload, operations.Response]
+			if _, err := obj.Load(ctx, store, prefix, c.Name); err != nil {
+				return err
+			}
+			vmap[obj.Value.Protocol.ID] = obj.Value.Protocol.VersionID
 		}
-		if !info.Mode().IsRegular() {
-			return nil
-		}
-		obj, err := ReadDownload(path)
-		if err != nil {
-			return err
-		}
-		vmap[obj.Value.Protocol.ID] = obj.Value.Protocol.VersionID
 		return nil
 	})
 	return vmap, err
@@ -79,7 +76,7 @@ func createVersionMap(cachePath, checkpointPath string) (map[int64]int, error) {
 
 // NewProtocolCrawler creates a new instance of operations.Crawler
 // that can be used to crawl/download protocols on protocols.io.
-func (c Config) NewProtocolCrawler(ctx context.Context, op checkpoint.Operation, fv *CrawlFlags, auth Auth) (*operations.Crawler[protocolsiosdk.ListProtocolsV3, protocolsiosdk.ProtocolPayload], error) {
+func (c Config) NewProtocolCrawler(ctx context.Context, fs operations.FS, downloadsPath string, op checkpoint.Operation, fv *CrawlFlags, auth Auth) (*operations.Crawler[protocolsiosdk.ListProtocolsV3, protocolsiosdk.ProtocolPayload], error) {
 
 	cp, err := latestCheckpoint(ctx, op)
 	if err != nil {
@@ -109,7 +106,7 @@ func (c Config) NewProtocolCrawler(ctx context.Context, op checkpoint.Operation,
 	fetcherOptions.EndpointURL = protocolsiosdk.GetProtocolV4Endpoint
 
 	if c.Service.Incremental {
-		vmap, err := createVersionMap(c.Cache.Prefix, c.Cache.Checkpoint)
+		vmap, err := createVersionMap(ctx, fs, downloadsPath)
 		if err != nil {
 			return nil, err
 		}
