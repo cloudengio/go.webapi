@@ -9,11 +9,9 @@ package benchlingcmd
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 
 	"cloudeng.io/cmdutil/cmdyaml"
 	"cloudeng.io/errors"
-	"cloudeng.io/file"
 	"cloudeng.io/file/content"
 	"cloudeng.io/path"
 	"cloudeng.io/sync/errgroup"
@@ -44,15 +42,15 @@ type IndexFlags struct {
 type Command struct {
 	Auth
 	Config
-	cachePath string
-	sharder   path.Sharder
+	cfs       operations.FS
+	cacheRoot string
 }
 
 // NewCommand returns a new Command instance for the specified API crawl
 // with API authentication information read from the specified file or
 // from the context.
-func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, name, authFilename string) (*Command, error) {
-	c := &Command{}
+func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, cfs operations.FS, cacheRoot, name, authFilename string) (*Command, error) {
+	c := &Command{cfs: cfs, cacheRoot: cacheRoot}
 	ok, err := apicrawlcmd.ParseCrawlConfig(crawls, name, (*apicrawlcmd.Crawl[Service])(&c.Config))
 	if !ok {
 		return nil, fmt.Errorf("no configuration found for %v", name)
@@ -72,24 +70,22 @@ func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, name, authFilena
 	return c, nil
 }
 
-func (c *Command) Crawl(ctx context.Context, fs file.ObjectFS, cacheRoot string, _ CrawlFlags, entities ...string) error {
+func (c *Command) Crawl(ctx context.Context, _ CrawlFlags, entities ...string) error {
 	opts, err := c.OptionsForEndpoint(c.Auth)
 	if err != nil {
 		return err
 	}
-	cachePath, _, err := c.Cache.InitStore(ctx, fs, cacheRoot)
-	if err != nil {
+	_, downloadsPath, _ := c.Cache.AbsolutePaths(c.cfs, c.cacheRoot)
+	if err := c.Cache.PrepareDownloads(ctx, c.cfs, downloadsPath); err != nil {
 		return err
 	}
-	c.cachePath = cachePath
-	c.sharder = path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
 
 	errCh := make(chan error)
 	ch := make(chan any, 100)
 
 	var errs errors.M
 	go func() {
-		errCh <- c.crawlSaver(ctx, ch)
+		errCh <- c.crawlSaver(ctx, downloadsPath, ch)
 	}()
 
 	var g errgroup.T
@@ -105,9 +101,9 @@ func (c *Command) Crawl(ctx context.Context, fs file.ObjectFS, cacheRoot string,
 	return errs.Err()
 }
 
-func (c *Command) crawlSaver(ctx context.Context, ch <-chan any) error {
+func (c *Command) crawlSaver(ctx context.Context, downloadsPath string, ch <-chan any) error {
 	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
-
+	store := content.NewStore(c.cfs)
 	for {
 		var entity any
 		var ok bool
@@ -123,16 +119,16 @@ func (c *Command) crawlSaver(ctx context.Context, ch <-chan any) error {
 		switch v := entity.(type) {
 		case benchling.Users:
 			fmt.Printf("users: %v: %v\n", v.NextToken, len(v.Users))
-			err = save(ctx, c.cachePath, sharder, v.Users)
+			err = save(ctx, store, downloadsPath, sharder, v.Users)
 		case benchling.Entries:
 			fmt.Printf("entries: %v: %v\n", v.NextToken, len(v.Entries))
-			err = save(ctx, c.cachePath, sharder, v.Entries)
+			err = save(ctx, store, downloadsPath, sharder, v.Entries)
 		case benchling.Folders:
 			fmt.Printf("folders: %v: %v\n", v.NextToken, len(v.Folders))
-			err = save(ctx, c.cachePath, sharder, v.Folders)
+			err = save(ctx, store, downloadsPath, sharder, v.Folders)
 		case benchling.Projects:
 			fmt.Printf("projects: %v: %v\n", v.NextToken, len(v.Projects))
-			err = save(ctx, c.cachePath, sharder, v.Projects)
+			err = save(ctx, store, downloadsPath, sharder, v.Projects)
 		}
 		if err != nil {
 			return err
@@ -189,29 +185,28 @@ func (c *crawler[ScannerT, ParamsT]) run(ctx context.Context, ch chan<- any, opt
 	return sc.Err()
 }
 
-func save[ObjectT benchling.Objects](_ context.Context, cachePath string, sharder path.Sharder, obj []ObjectT) error {
+func save[ObjectT benchling.Objects](ctx context.Context, store *content.Store, root string, sharder path.Sharder, obj []ObjectT) error {
 	for _, o := range obj {
 		id := benchling.ObjectID(o)
-		prefix, suffix := sharder.Assign(fmt.Sprintf("%v", id))
-		path := filepath.Join(cachePath, prefix, suffix)
 		obj := content.Object[ObjectT, *operations.Response]{
 			Type:     benchling.ContentType(o),
 			Value:    o,
 			Response: &operations.Response{},
 		}
-		if err := obj.WriteObjectFile(path, content.JSONObjectEncoding, content.GOBObjectEncoding); err != nil {
-			fmt.Printf("failed to write user: %v as %v: %v\n", id, path, err)
+		prefix, suffix := sharder.Assign(fmt.Sprintf("%v", id))
+		prefix = store.FS().Join(root, prefix)
+		if err := obj.Store(ctx, store, prefix, suffix, content.JSONObjectEncoding, content.GOBObjectEncoding); err != nil {
+			fmt.Printf("failed to write object id %v: %v %v: %v\n", id, prefix, suffix, err)
 		}
-		fmt.Printf("%v\n", path)
 	}
 	return nil
 }
 
 // CreateIndexableDocuments constructs the documents to be indexed from the
 // various objects crawled from the benchling.com API.
-func (c *Command) CreateIndexableDocuments(ctx context.Context, root string, _ IndexFlags) error {
-	cp := filepath.Join(root, c.Cache.Prefix)
+func (c *Command) CreateIndexableDocuments(ctx context.Context, _ IndexFlags) error {
+	_, downloads, _ := c.Cache.AbsolutePaths(c.cfs, c.cacheRoot)
 	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
-	nd := benchling.NewDocumentIndexer(cp, sharder)
+	nd := benchling.NewDocumentIndexer(c.cfs, downloads, sharder)
 	return nd.Index(ctx)
 }
