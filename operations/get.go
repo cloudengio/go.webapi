@@ -12,7 +12,10 @@ import (
 	"errors"
 	"io"
 	"log"
+	"net"
 	"net/http"
+	"strings"
+	"time"
 
 	"cloudeng.io/net/ratecontrol"
 )
@@ -78,12 +81,33 @@ func (ep *Endpoint[T]) isBackoffCode(code int) bool {
 	return false
 }
 
+func isErrorRetryable(req *http.Request, err error) bool {
+	if errors.Is(err, context.DeadlineExceeded) {
+		log.Printf("%v: context.DeadlineExceeded", req.URL)
+		return true
+	}
+	if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
+		log.Printf("%v: timeout: %v", req.URL, err)
+		return true
+	}
+	if strings.HasSuffix(err.Error(), ": connection reset by peer") {
+		log.Printf("%v: connection reset: %v", req.URL, err)
+		return true
+	}
+	if strings.Contains(err.Error(), "TLS handshake") {
+		log.Printf("%v: TLS handshake: %v", req.URL, err)
+		return true
+	}
+	return false
+}
+
 func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *http.Response, []byte, error) {
 	var result T
 	if err := ep.rateController.Wait(ctx); err != nil {
 		return result, nil, nil, err
 	}
 	backoff := ep.rateController.Backoff()
+	start := time.Now()
 	authSet := false
 	for {
 		select {
@@ -101,18 +125,20 @@ func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *
 		}
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
-			if !errors.Is(err, context.DeadlineExceeded) {
+			if !isErrorRetryable(req, err) {
+				log.Printf("%v: cannot retry error: %v", req.URL, err)
 				return result, nil, nil, handleError(err, "", 0, retries)
 			}
-			log.Printf("network back off getting type: %T, retries: %v: %v", result, retries, err)
-			if done, err := backoff.Wait(ctx, nil); done {
+			if done, _ := backoff.Wait(ctx, nil); done {
+				log.Printf("%v: network backoff giving up getting type: %T, %v retries took %v %v", req.URL, result, retries, time.Since(start), err)
 				return result, nil, nil, handleError(err, "", 0, retries)
 			}
+			log.Printf("%v network back off getting type: %T, retries: %v: %v", req, result, retries, err)
 			continue
 		}
 		if ep.isBackoffCode(resp.StatusCode) {
-			log.Printf("back off getting type: %T, retries: %v: %v", result, retries, resp.Status)
-			if done, err := backoff.Wait(ctx, resp); done {
+			if done, _ := backoff.Wait(ctx, resp); done {
+				log.Printf("%v: application backoff giving up getting type: %T, %v retries took %v %v", req.URL, result, retries, time.Since(start), err)
 				return result, nil, nil, handleError(err, resp.Status, resp.StatusCode, retries)
 			}
 			continue

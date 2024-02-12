@@ -5,9 +5,11 @@
 package biorxivcmd
 
 import (
+	"context"
 	"encoding/json"
-	"os"
 	"time"
+
+	"cloudeng.io/file/checkpoint"
 )
 
 type crawlState struct {
@@ -18,19 +20,14 @@ type crawlState struct {
 	filename string
 }
 
-func loadState(filename string) (*crawlState, error) {
-	cs := &crawlState{
-		filename: filename,
+func loadState(ctx context.Context, op checkpoint.Operation) (crawlState, error) {
+	buf, err := op.Latest(ctx)
+	if err != nil || buf == nil {
+		return crawlState{}, err
 	}
-	buf, err := os.ReadFile(filename)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return cs, nil
-		}
-		return nil, err
-	}
-	if err := json.Unmarshal(buf, cs); err != nil {
-		return nil, err
+	var cs crawlState
+	if err := json.Unmarshal(buf, &cs); err != nil {
+		return crawlState{}, err
 	}
 	return cs, nil
 }
@@ -63,15 +60,23 @@ func (cs *crawlState) update(counter, total int64) {
 	cs.Total = total
 }
 
-func (cs *crawlState) save() error {
+func (cs *crawlState) save(ctx context.Context, op checkpoint.Operation) error {
 	buf, err := json.MarshalIndent(cs, "", "  ")
 	if err != nil {
 		return err
 	}
-	tmp := cs.filename + ".tmp"
-	os.Remove(tmp)
-	if err := os.WriteFile(tmp, buf, 0644); err != nil {
+	_, err = op.Checkpoint(ctx, "", buf)
+	return err
+}
+
+func (cs *crawlState) complete(ctx context.Context, op checkpoint.Operation) error {
+	latest, err := op.Latest(ctx)
+	if err != nil {
 		return err
 	}
-	return os.Rename(tmp, cs.filename)
+	if err := op.Complete(ctx); err != nil {
+		return err
+	}
+	_, err = op.Checkpoint(ctx, "", latest)
+	return err
 }

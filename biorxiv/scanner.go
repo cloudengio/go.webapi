@@ -20,7 +20,7 @@ type paginator struct {
 	cursor     int64
 }
 
-func (pg *paginator) Next(_ context.Context, t Response, r *http.Response) (req *http.Request, done bool, err error) {
+func (pg *paginator) Next(ctx context.Context, t Response, r *http.Response) (req *http.Request, done bool, err error) {
 	if r == nil {
 		var u string
 		u, err = url.JoinPath(pg.serviceURL, pg.from.Format("2006-01-02"), pg.to.Format("2006-01-02"), strconv.FormatInt(pg.cursor, 10))

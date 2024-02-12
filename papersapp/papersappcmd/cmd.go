@@ -8,17 +8,15 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/url"
 	"os"
-	"path/filepath"
 
 	"cloudeng.io/cmdutil/cmdyaml"
-	"cloudeng.io/file"
 	"cloudeng.io/file/content"
+	"cloudeng.io/file/filewalk"
 	"cloudeng.io/path"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
@@ -44,13 +42,14 @@ type ScanFlags struct {
 type Command struct {
 	Auth
 	Config
+	cfs operations.FS
 }
 
 // NewCommand returns a new Command instance for the specified API crawl
 // with API authentication information read from the specified file or
 // from the context.
-func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, name, authFilename string) (*Command, error) {
-	c := &Command{}
+func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, cfs operations.FS, name, authFilename string) (*Command, error) {
+	c := &Command{cfs: cfs}
 	ok, err := apicrawlcmd.ParseCrawlConfig(crawls, name, (*apicrawlcmd.Crawl[Service])(&c.Config))
 	if !ok {
 		return nil, fmt.Errorf("no configuration found for %v", name)
@@ -70,17 +69,20 @@ func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, name, authFilena
 	return c, nil
 }
 
-func (c *Command) Crawl(ctx context.Context, fs file.ObjectFS, cacheRoot string, _ *CrawlFlags) error {
-	cachePath, _, err := c.Cache.InitStore(ctx, fs, cacheRoot)
-	if err != nil {
-		return err
-	}
-	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
-
+func (c *Command) Crawl(ctx context.Context, cacheRoot string, _ *CrawlFlags) error {
 	opts, err := c.OptionsForEndpoint(c.Auth)
 	if err != nil {
 		return err
 	}
+
+	_, downloadsPath, _ := c.Cache.AbsolutePaths(c.cfs, cacheRoot)
+	if err := c.Cache.PrepareDownloads(ctx, c.cfs, downloadsPath); err != nil {
+		return err
+	}
+
+	collectionsCache := content.NewStore(c.cfs)
+
+	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
 
 	collections, err := papersapp.ListCollections(ctx, c.Service.ServiceURL, opts...)
 	if err != nil {
@@ -88,17 +90,20 @@ func (c *Command) Crawl(ctx context.Context, fs file.ObjectFS, cacheRoot string,
 	}
 
 	for _, col := range collections {
-		prefix, suffix := sharder.Assign(fmt.Sprintf("%v", col.ID))
-		path := filepath.Join(cachePath, prefix, suffix)
 		obj := content.Object[*papersappsdk.Collection, operations.Response]{
 			Type:     papersapp.CollectionType,
 			Value:    col,
 			Response: operations.Response{},
 		}
-		if err := WriteDownload(path, obj); err != nil {
+		prefix, suffix := sharder.Assign(fmt.Sprintf("%v", col.ID))
+		prefix = collectionsCache.FS().Join(downloadsPath, prefix)
+		if err := obj.Store(ctx, collectionsCache, prefix, suffix, content.JSONObjectEncoding, content.GOBObjectEncoding); err != nil {
 			return err
 		}
 	}
+	fmt.Printf("crawled %v collections\n", len(collections))
+
+	itemCache := content.NewStore(c.cfs)
 
 	for _, col := range collections {
 		if !col.Shared {
@@ -106,7 +111,8 @@ func (c *Command) Crawl(ctx context.Context, fs file.ObjectFS, cacheRoot string,
 		}
 		crawler := &crawlCollection{
 			Config:     c.Config,
-			cachePath:  cachePath,
+			cache:      itemCache,
+			root:       downloadsPath,
 			sharder:    sharder,
 			collection: col,
 			opts:       opts,
@@ -120,13 +126,19 @@ func (c *Command) Crawl(ctx context.Context, fs file.ObjectFS, cacheRoot string,
 
 type crawlCollection struct {
 	Config
-	cachePath  string
+	cache      *content.Store
+	root       string
 	sharder    path.Sharder
 	opts       []operations.Option
 	collection *papersappsdk.Collection
 }
 
 func (cc *crawlCollection) run(ctx context.Context) error {
+	defer func() {
+		_, written := cc.cache.Stats()
+		log.Printf("total written: %v: %v\n", written, cc.collection.Name)
+	}()
+	join := cc.cache.FS().Join
 	var pgOpts papersapp.ItemPaginatorOptions
 	pgOpts.EndpointURL = cc.Service.ServiceURL + "/collections/" + cc.collection.ID + "/items"
 	if cc.Service.ListItemsPageSize == 0 {
@@ -141,7 +153,6 @@ func (cc *crawlCollection) run(ctx context.Context) error {
 		items := sc.Response()
 		var resp operations.Response
 		resp.FromHTTPResponse(sc.HTTPResponse())
-		log.Printf("%v: % 8v/% 8v (%v)\n", cc.collection.ID, len(items.Items), items.Total, cc.collection.Name)
 		dl += len(items.Items)
 		for _, item := range items.Items {
 			obj := content.Object[papersapp.Item, operations.Response]{
@@ -153,9 +164,12 @@ func (cc *crawlCollection) run(ctx context.Context) error {
 				Response: resp,
 			}
 			prefix, suffix := cc.sharder.Assign(fmt.Sprintf("%v", item.ID))
-			path := filepath.Join(cc.cachePath, prefix, suffix)
-			if err := WriteDownload(path, obj); err != nil {
+			prefix = join(cc.root, prefix)
+			if err := obj.Store(ctx, cc.cache, prefix, suffix, content.JSONObjectEncoding, content.GOBObjectEncoding); err != nil {
 				return err
+			}
+			if _, written := cc.cache.Stats(); written%100 == 0 {
+				log.Printf("written: %v\n", written)
 			}
 		}
 	}
@@ -163,32 +177,15 @@ func (cc *crawlCollection) run(ctx context.Context) error {
 	return sc.Err()
 }
 
-func (c *Command) ScanDownloaded(_ context.Context, root string, fv *ScanFlags) error {
-
-	var gzipWriter io.WriteCloser
-	if len(fv.GZIPArchive) > 0 {
-		f, err := os.Create(fv.GZIPArchive)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		gzipWriter = gzip.NewWriter(f)
-		defer gzipWriter.Close()
-	}
-
-	cp := filepath.Join(root, c.Cache.Prefix)
-	err := filepath.Walk(cp, func(path string, info os.FileInfo, err error) error {
-		if errors.Is(err, os.ErrNotExist) {
-			return err
-		}
-		if path == c.Cache.Checkpoint {
-			return filepath.SkipDir
-		}
-		if !info.Mode().IsRegular() {
+func scanDownloaded(ctx context.Context, store *content.Store, gzipWriter io.WriteCloser, prefix string, contents []filewalk.Entry, err error) error {
+	if err != nil {
+		if store.FS().IsNotExist(err) {
 			return nil
 		}
-
-		ctype, buf, err := content.ReadObjectFile(path)
+		return err
+	}
+	for _, file := range contents {
+		ctype, buf, err := store.Read(ctx, prefix, file.Name)
 		if err != nil {
 			return err
 		}
@@ -217,7 +214,27 @@ func (c *Command) ScanDownloaded(_ context.Context, root string, fv *ScanFlags) 
 				}
 			}
 		}
-		return nil
+	}
+	return nil
+}
+
+func (c *Command) ScanDownloaded(ctx context.Context, root string, fv *ScanFlags) error {
+	var gzipWriter io.WriteCloser
+	if len(fv.GZIPArchive) > 0 {
+		f, err := os.Create(fv.GZIPArchive)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		gzipWriter = gzip.NewWriter(f)
+		defer gzipWriter.Close()
+	}
+
+	_, downloadsPath, _ := c.Cache.AbsolutePaths(c.cfs, root)
+	store := content.NewStore(c.cfs)
+
+	err := filewalk.ContentsOnly(ctx, c.cfs, downloadsPath, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
+		return scanDownloaded(ctx, store, gzipWriter, prefix, contents, err)
 	})
 	return err
 }

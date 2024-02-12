@@ -6,20 +6,21 @@ package benchling
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
-	"os"
 	"path/filepath"
 	"strings"
 
 	"cloudeng.io/file/content"
+	"cloudeng.io/file/filewalk"
 	"cloudeng.io/path"
 	"cloudeng.io/webapi/benchling/benchlingsdk"
 	"cloudeng.io/webapi/operations"
 )
 
 type DocumentIndexer struct {
+	fs       operations.FS
+	store    *content.Store
 	root     string
 	sharder  path.Sharder
 	users    map[string]benchlingsdk.User
@@ -28,9 +29,12 @@ type DocumentIndexer struct {
 	entries  map[string]benchlingsdk.Entry
 }
 
-func NewDocumentIndexer(cacheRoot string, sharder path.Sharder) *DocumentIndexer {
+func NewDocumentIndexer(fs operations.FS, root string, sharder path.Sharder) *DocumentIndexer {
+	store := content.NewStore(fs)
 	return &DocumentIndexer{
-		root:     cacheRoot,
+		fs:       fs,
+		store:    store,
+		root:     root,
 		users:    make(map[string]benchlingsdk.User),
 		projects: make(map[string]benchlingsdk.Project),
 		folders:  make(map[string]benchlingsdk.Folder),
@@ -43,42 +47,45 @@ func (di *DocumentIndexer) Index(ctx context.Context) error {
 	return di.index(ctx)
 }
 
-func (di *DocumentIndexer) walk(path string, info os.FileInfo, err error) error {
-	if errors.Is(err, os.ErrNotExist) {
-		return err
-	}
-	if !info.Mode().IsRegular() {
-		return nil
-	}
-	ctype, buf, err := content.ReadObjectFile(path)
+func (di *DocumentIndexer) populate(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
+	fs := di.store.FS()
 	if err != nil {
+		if fs.IsNotExist(err) {
+			return nil
+		}
 		return err
 	}
-	switch ctype {
-	case EntryType:
-		var obj content.Object[benchlingsdk.Entry, operations.Response]
-		if err := obj.Decode(buf); err != nil {
+	for _, file := range contents {
+		ctype, buf, err := di.store.Read(ctx, prefix, file.Name)
+		if err != nil {
 			return err
 		}
-		di.entries[ObjectID(obj.Value)] = obj.Value
-	case ProjectType:
-		var obj content.Object[benchlingsdk.Project, operations.Response]
-		if err := obj.Decode(buf); err != nil {
-			return err
+		switch ctype {
+		case EntryType:
+			var obj content.Object[benchlingsdk.Entry, operations.Response]
+			if err := obj.Decode(buf); err != nil {
+				return err
+			}
+			di.entries[ObjectID(obj.Value)] = obj.Value
+		case ProjectType:
+			var obj content.Object[benchlingsdk.Project, operations.Response]
+			if err := obj.Decode(buf); err != nil {
+				return err
+			}
+			di.projects[ObjectID(obj.Value)] = obj.Value
+		case FolderType:
+			var obj content.Object[benchlingsdk.Folder, operations.Response]
+			if err := obj.Decode(buf); err != nil {
+				return err
+			}
+			di.folders[ObjectID(obj.Value)] = obj.Value
+		case UserType:
+			var obj content.Object[benchlingsdk.User, operations.Response]
+			if err := obj.Decode(buf); err != nil {
+				return err
+			}
+			di.users[ObjectID(obj.Value)] = obj.Value
 		}
-		di.projects[ObjectID(obj.Value)] = obj.Value
-	case FolderType:
-		var obj content.Object[benchlingsdk.Folder, operations.Response]
-		if err := obj.Decode(buf); err != nil {
-			return err
-		}
-		di.folders[ObjectID(obj.Value)] = obj.Value
-	case UserType:
-		var obj content.Object[benchlingsdk.User, operations.Response]
-		if err := obj.Decode(buf); err != nil {
-			return err
-		}
-		di.users[ObjectID(obj.Value)] = obj.Value
 	}
 	return nil
 }
@@ -139,10 +146,12 @@ func (di *DocumentIndexer) dayText(entry *benchlingsdk.Entry) string {
 	return notes.String()
 }
 
-func (di *DocumentIndexer) index(_ context.Context) error {
-	if err := filepath.Walk(di.root, di.walk); err != nil {
+func (di *DocumentIndexer) index(ctx context.Context) error {
+	err := filewalk.ContentsOnly(ctx, di.fs, di.root, di.populate)
+	if err != nil {
 		return err
 	}
+
 	for _, entry := range di.entries {
 		doc := Document{
 			Entry:   entry,

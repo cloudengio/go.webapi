@@ -28,6 +28,7 @@ func (pg *paginator) urlfor(page int64, first bool) string {
 	}
 	pg.Parameters.Set("page_id", strconv.FormatInt(page, 10))
 	u := fmt.Sprintf("%v?%v", pg.EndpointURL, pg.Parameters.Encode())
+	fmt.Printf("URL %v\n", u)
 	return u
 }
 
@@ -77,5 +78,6 @@ func NewPaginator(_ context.Context, cp Checkpoint, opts PaginatorOptions) (oper
 	if pg.completedPage == 0 && pg.currentPage == 0 {
 		pg.currentPage = 1
 	}
+
 	return pg, nil
 }
