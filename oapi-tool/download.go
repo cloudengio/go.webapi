@@ -40,7 +40,7 @@ func download(downloadURL string, out io.Writer) error {
 		return err
 	}
 	client := http.Client{
-		CheckRedirect: func(r *http.Request, via []*http.Request) error {
+		CheckRedirect: func(r *http.Request, _ []*http.Request) error {
 			r.URL.Opaque = r.URL.Path
 			return nil
 		},

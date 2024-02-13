@@ -29,7 +29,7 @@ func transformCmd(ctx context.Context, values any, args []string) error {
 	}
 
 	if fv.Describe {
-		return applyTransformations(ctx, cfg, func(ctx context.Context, t transforms.T, node yaml.Node) error {
+		return applyTransformations(ctx, cfg, func(_ context.Context, t transforms.T, node yaml.Node) error {
 			out := t.Describe(node)
 			fmt.Println(out)
 			return nil
@@ -53,7 +53,7 @@ func transformCmd(ctx context.Context, values any, args []string) error {
 	if err != nil {
 		return err
 	}
-	err = applyTransformations(ctx, cfg, func(ctx context.Context, t transforms.T, node yaml.Node) (err error) {
+	err = applyTransformations(ctx, cfg, func(_ context.Context, t transforms.T, _ yaml.Node) (err error) {
 		doc, err = t.Transform(doc)
 		return
 	})

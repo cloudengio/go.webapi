@@ -6,7 +6,7 @@ package papersappsdk
 // ExtIds ExtIds schema
 //
 // swagger:model ExtIds
-type ExtIds struct {
+type ExtIds struct { //nolint:revive
 
 	// arxiv
 	Arxiv string `json:"arxiv,omitempty"`
