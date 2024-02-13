@@ -10,17 +10,19 @@ import (
 	"context"
 	"fmt"
 	"html/template"
+	"log"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"cloudeng.io/errors"
-	"cloudeng.io/file"
+	"cloudeng.io/file/checkpoint"
 	"cloudeng.io/file/content"
+	"cloudeng.io/file/filewalk"
 	"cloudeng.io/path"
 	"cloudeng.io/webapi/biorxiv"
+	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
 )
 
@@ -54,13 +56,14 @@ type IndexFlags struct {
 type Command struct {
 	Auth
 	Config
-	cachePath string
-	sharder   path.Sharder
+	cfs       operations.FS
+	ckpt      checkpoint.Operation
+	cacheRoot string
 }
 
 // NewCommand returns a new Command instance for the specified API crawl.
-func NewCommand(_ context.Context, crawls apicrawlcmd.Crawls, name string) (*Command, error) {
-	c := &Command{}
+func NewCommand(_ context.Context, crawls apicrawlcmd.Crawls, cfs operations.FS, cacheRoot string, chkp checkpoint.Operation, name string) (*Command, error) {
+	c := &Command{cfs: cfs, ckpt: chkp, cacheRoot: cacheRoot}
 	ok, err := apicrawlcmd.ParseCrawlConfig(crawls, name, (*apicrawlcmd.Crawl[Service])(&c.Config))
 	if !ok {
 		return nil, fmt.Errorf("no crawl configuration found for %v", name)
@@ -78,31 +81,33 @@ func NewCommand(_ context.Context, crawls apicrawlcmd.Crawls, name string) (*Com
 // incremental crawl picking up where the previous one left off assuming
 // that biorxiv doesn't add new preprints with dates that predate the
 // current one.
-func (c *Command) Crawl(ctx context.Context, fs file.ObjectFS, cacheRoot string, flags CrawlFlags) error {
+func (c *Command) Crawl(ctx context.Context, flags CrawlFlags) error {
 	opts, err := c.OptionsForEndpoint(c.Auth)
 	if err != nil {
 		return err
 	}
-	cachePath, checkpointPath, err := c.Cache.InitStore(ctx, fs, cacheRoot)
-	if err != nil {
+	_, downloadsPath, chkptPath := c.Cache.AbsolutePaths(c.cfs, c.cacheRoot)
+	if err := c.Cache.PrepareDownloads(ctx, c.cfs, downloadsPath); err != nil {
 		return err
 	}
-	c.cachePath = cachePath
-	c.sharder = path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
+	if err := c.Cache.PrepareCheckpoint(ctx, c.ckpt, chkptPath); err != nil {
+		return err
+	}
 
-	crawlState, err := loadState(filepath.Join(checkpointPath, "crawlstate.json"))
+	crawlState, err := loadState(ctx, c.ckpt)
 	if err != nil {
 		return err
 	}
 	crawlState.sync(flags.Restart, time.Time(c.Config.Service.StartDate), time.Time(c.Config.Service.EndDate))
 
-	fmt.Printf("starting crawl from %v to %v, cursor: %v\n", crawlState.From, crawlState.To, crawlState.Cursor)
+	log.Printf("starting crawl from %v to %v, cursor: %v\n", crawlState.From, crawlState.To, crawlState.Cursor)
 
 	errCh := make(chan error)
 	ch := make(chan biorxiv.Response, 10)
 
+	store := content.NewStore(c.cfs)
 	go func() {
-		errCh <- c.crawlSaver(ctx, ch, crawlState)
+		errCh <- c.crawlSaver(ctx, ch, crawlState, store, downloadsPath)
 	}()
 
 	sc := biorxiv.NewScanner(c.Config.Service.ServiceURL, crawlState.From, crawlState.To, crawlState.Cursor, opts...)
@@ -112,13 +117,23 @@ func (c *Command) Crawl(ctx context.Context, fs file.ObjectFS, cacheRoot string,
 	close(ch)
 	var errs errors.M
 	errs.Append(sc.Err())
-	errs.Append(<-errCh)
+	err = <-errCh
+	if err != nil && strings.Contains(err.Error(), "no articles found for") {
+		err = nil
+	}
+	errs.Append(err)
+	errs.Append(crawlState.complete(ctx, c.ckpt))
 	return errs.Err()
 }
 
-func (c *Command) crawlSaver(ctx context.Context, ch <-chan biorxiv.Response, cs *crawlState) error {
+func (c *Command) crawlSaver(ctx context.Context, ch <-chan biorxiv.Response, cs crawlState, store *content.Store, root string) error {
 	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
 
+	join := store.FS().Join
+	defer func() {
+		_, written := store.Stats()
+		log.Printf("total written: %v\n", written)
+	}()
 	for {
 		var resp biorxiv.Response
 		var ok bool
@@ -146,10 +161,12 @@ func (c *Command) crawlSaver(ctx context.Context, ch <-chan biorxiv.Response, cs
 			preprint.PreprintDOI = strings.TrimSpace(preprint.PreprintDOI)
 			preprint.PublishedDOI = strings.TrimSpace(preprint.PublishedDOI)
 			prefix, suffix := sharder.Assign(fmt.Sprintf("%v", preprint.PreprintDOI))
-			fmt.Printf("writing: %v as %v\n", preprint.PreprintDOI, filepath.Join(prefix, suffix))
-			path := filepath.Join(c.cachePath, prefix, suffix)
-			if err := WriteDownload(path, obj); err != nil {
+			prefix = join(root, prefix)
+			if err := obj.Store(ctx, store, prefix, suffix, content.JSONObjectEncoding, content.GOBObjectEncoding); err != nil {
 				return err
+			}
+			if _, written := store.Stats(); written%100 == 0 {
+				log.Printf("written: %v\n", written)
 			}
 		}
 		var cursor int64
@@ -160,62 +177,65 @@ func (c *Command) crawlSaver(ctx context.Context, ch <-chan biorxiv.Response, cs
 			cursor = int64(v)
 		}
 		cs.update(cursor+msg.Count, msg.Total)
-		if err := cs.save(); err != nil {
+		if err := cs.save(ctx, c.ckpt); err != nil {
 			return err
 		}
 	}
 }
 
-// ScanDownloaded scans downloaded preprints printing out fields using
-// the specified template.
-func (c *Command) ScanDownloaded(ctx context.Context, root string, fv *ScanFlags) error {
-	tpl, err := template.New("biorxiv").Parse(fv.Template)
+func scanDownloaded(ctx context.Context, store *content.Store, tpl *template.Template, prefix string, contents []filewalk.Entry, err error) error {
 	if err != nil {
-		return fmt.Errorf("failed to parse template: %q: %v", fv.Template, err)
+		return err
 	}
-	cp := filepath.Join(root, c.Cache.Prefix)
-	err = filepath.Walk(cp, func(path string, info os.FileInfo, err error) error {
-		if errors.Is(err, os.ErrNotExist) {
-			return err
-		}
-		if path == c.Cache.Checkpoint {
-			return filepath.SkipDir
-		}
-		if !info.Mode().IsRegular() {
-			return nil
-		}
-		obj, err := ReadDownload(path)
+	for _, entry := range contents {
+		var obj content.Object[biorxiv.PreprintDetail, struct{}]
+		_, err := obj.Load(ctx, store, prefix, entry.Name)
 		if err != nil {
-			return err
+			return fmt.Errorf("%v %v: %v", prefix, entry.Name, err)
 		}
 		if err := tpl.Execute(os.Stdout, obj.Value); err != nil {
 			return err
 		}
 		fmt.Printf("\n")
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
-		return nil
-	})
-	return err
+	}
+	return nil
 }
 
-// LookupDownloaded looks up the specified preprints via their 'PreprintDOI'
-// printing out fields using the specified template.
-func (c *Command) LookupDownloaded(_ context.Context, root string, fv *LookupFlags, dois ...string) error {
+// ScanDownloaded scans downloaded preprints printing out fields using
+// the specified template.
+func (c *Command) ScanDownloaded(ctx context.Context, fv *ScanFlags) error {
 	tpl, err := template.New("biorxiv").Parse(fv.Template)
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %q: %v", fv.Template, err)
 	}
-	cp := filepath.Join(root, c.Cache.Prefix)
+	_, downloads, _ := c.Cache.AbsolutePaths(c.cfs, c.cacheRoot)
+	_, downloadsRel, _ := c.Cache.RelativePaths(c.cacheRoot)
+	_ = downloadsRel
+	store := content.NewStore(c.cfs)
+	return filewalk.ContentsOnly(ctx, c.cfs, downloads,
+		func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
+			return scanDownloaded(ctx, store, tpl, prefix, contents, err)
+		})
+}
+
+// LookupDownloaded looks up the specified preprints via their 'PreprintDOI'
+// printing out fields using the specified template.
+func (c *Command) LookupDownloaded(ctx context.Context, fv *LookupFlags, dois ...string) error {
+	tpl, err := template.New("biorxiv").Parse(fv.Template)
+	if err != nil {
+		return fmt.Errorf("failed to parse template: %q: %v", fv.Template, err)
+	}
+
+	_, downloads, _ := c.Cache.AbsolutePaths(c.cfs, c.cacheRoot)
+	store := content.NewStore(c.cfs)
+
 	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
 
 	for _, doi := range dois {
 		prefix, suffix := sharder.Assign(fmt.Sprintf("%v", doi))
-		path := filepath.Join(cp, prefix, suffix)
-		obj, err := ReadDownload(path)
+		prefix = store.FS().Join(downloads, prefix)
+		var obj content.Object[biorxiv.PreprintDetail, struct{}]
+		_, err := obj.Load(ctx, store, prefix, suffix)
 		if err != nil {
 			return err
 		}

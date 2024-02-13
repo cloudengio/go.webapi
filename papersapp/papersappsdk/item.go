@@ -18,7 +18,7 @@ type Item struct {
 	CustomType string `json:"custom_type,omitempty"`
 
 	// ext ids
-	ExtIds *ExtIds `json:"ext_ids,omitempty"`
+	ExtIds *ExtIds `json:"ext_ids,omitempty"` //nolint:revive
 
 	// files
 	Files []File `json:"files,omitempty"`

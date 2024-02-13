@@ -18,7 +18,7 @@ func NewEchoHandler(value any) http.Handler {
 	if err != nil {
 		panic(err)
 	}
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		n, err := w.Write(body)
 		if n != len(body) || err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

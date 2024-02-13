@@ -8,17 +8,16 @@ package protocolsiocmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"log"
 	"os"
-	"path/filepath"
 	"text/template"
 
 	"cloudeng.io/cmdutil/cmdyaml"
 	"cloudeng.io/cmdutil/flags"
-	"cloudeng.io/file"
 	"cloudeng.io/file/checkpoint"
 	"cloudeng.io/file/content"
+	"cloudeng.io/file/filewalk"
 	"cloudeng.io/path"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
@@ -52,13 +51,15 @@ type ScanFlags struct {
 type Command struct {
 	Auth
 	Config
+	cfs   operations.FS
+	chkpt checkpoint.Operation
 }
 
 // NewCommand returns a new Command instance for the specified API crawl
 // with API authentication information read from the specified file or
 // from the context.
-func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, name, authFilename string) (*Command, error) {
-	c := &Command{}
+func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, fs operations.FS, chkpt checkpoint.Operation, name, authFilename string) (*Command, error) {
+	c := &Command{cfs: fs, chkpt: chkpt}
 	ok, err := apicrawlcmd.ParseCrawlConfig(crawls, name, (*apicrawlcmd.Crawl[Service])(&c.Config))
 	if !ok {
 		return nil, fmt.Errorf("no configuration found for %v", name)
@@ -78,10 +79,40 @@ func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, name, authFilena
 	return c, nil
 }
 
+func (c *Command) Crawl(ctx context.Context, fs content.FS, cacheRoot string, fv *CrawlFlags) error {
+	_, downloadsPath, chkptPath := c.Cache.AbsolutePaths(c.cfs, cacheRoot)
+	if err := c.Cache.PrepareDownloads(ctx, c.cfs, downloadsPath); err != nil {
+		return err
+	}
+	if err := c.Cache.PrepareCheckpoint(ctx, c.chkpt, chkptPath); err != nil {
+		return err
+	}
+	if !fv.IgnoreCheckpoint {
+		if err := c.chkpt.Clear(ctx); err != nil {
+			return err
+		}
+	}
+
+	store := content.NewStore(fs)
+	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
+
+	crawler, err := c.NewProtocolCrawler(ctx, c.cfs, downloadsPath, c.chkpt, fv, c.Auth)
+	if err != nil {
+		return err
+	}
+
+	return operations.RunCrawl(ctx, crawler,
+		func(ctx context.Context, object content.Object[protocolsiosdk.ProtocolPayload, operations.Response]) error {
+			return handleCrawledObject(ctx, fv.Save, sharder, store, downloadsPath, c.chkpt, object)
+		})
+
+}
+
 func handleCrawledObject(ctx context.Context,
 	save bool,
 	sharder path.Sharder,
-	cachePath string,
+	store *content.Store,
+	root string,
 	chk checkpoint.Operation,
 	obj content.Object[protocolsiosdk.ProtocolPayload, operations.Response]) error {
 
@@ -98,10 +129,11 @@ func handleCrawledObject(ctx context.Context,
 	}
 	// Save the protocol object to disk.
 	prefix, suffix := sharder.Assign(fmt.Sprintf("%v", obj.Value.Protocol.ID))
-	path := filepath.Join(cachePath, prefix, suffix)
-	if err := WriteDownload(path, obj); err != nil {
+	prefix = store.FS().Join(root, prefix)
+	if err := obj.Store(ctx, store, prefix, suffix, content.GOBObjectEncoding, content.GOBObjectEncoding); err != nil {
 		return err
 	}
+
 	if state := obj.Response.Checkpoint; len(state) > 0 {
 		name, err := chk.Checkpoint(ctx, "", state)
 		if err != nil {
@@ -111,32 +143,6 @@ func handleCrawledObject(ctx context.Context,
 		}
 	}
 	return nil
-}
-
-func (c *Command) Crawl(ctx context.Context, fs file.ObjectFS, cacheRoot string, fv *CrawlFlags) error {
-	cachePath, checkpointPath, err := c.Cache.InitStore(ctx, fs, cacheRoot)
-	if err != nil {
-		return err
-	}
-
-	var op checkpoint.Operation
-	if !fv.IgnoreCheckpoint {
-		op, err = checkpoint.NewDirectoryOperation(checkpointPath)
-		if err != nil {
-			return err
-		}
-	}
-
-	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
-	crawler, err := c.NewProtocolCrawler(ctx, op, fv, c.Auth)
-	if err != nil {
-		return err
-	}
-	return operations.RunCrawl(ctx, crawler,
-		func(ctx context.Context, object content.Object[protocolsiosdk.ProtocolPayload, operations.Response]) error {
-			return handleCrawledObject(ctx, fv.Save, sharder, cachePath, op, object)
-		})
-
 }
 
 func (c *Command) Get(ctx context.Context, _ *GetFlags, args []string) error {
@@ -156,30 +162,28 @@ func (c *Command) Get(ctx context.Context, _ *GetFlags, args []string) error {
 	return nil
 }
 
-func (c *Command) ScanDownloaded(_ context.Context, root string, fv *ScanFlags) error {
+func (c *Command) ScanDownloaded(ctx context.Context, root string, fv *ScanFlags) error {
 	tpl, err := template.New("protocolsio").Parse(fv.Template)
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %q: %v", fv.Template, err)
 	}
-	cp := filepath.Join(root, c.Cache.Prefix)
-	err = filepath.Walk(cp, func(path string, info os.FileInfo, err error) error {
-		if errors.Is(err, os.ErrNotExist) {
-			return err
-		}
-		if path == c.Cache.Checkpoint {
-			return filepath.SkipDir
-		}
-		if !info.Mode().IsRegular() {
-			return nil
-		}
-		obj, err := ReadDownload(path)
+	_, downloadsPath, _ := c.Cache.AbsolutePaths(c.cfs, root)
+	store := content.NewStore(c.cfs)
+	err = filewalk.ContentsOnly(ctx, c.cfs, downloadsPath, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
 		if err != nil {
-			return err
+			log.Printf("error: %v: %v", prefix, err)
 		}
-		if err := tpl.Execute(os.Stdout, obj.Value.Protocol); err != nil {
-			return err
+		for _, c := range contents {
+			var obj content.Object[protocolsiosdk.ProtocolPayload, operations.Response]
+			if _, err := obj.Load(ctx, store, prefix, c.Name); err != nil {
+				return err
+			}
+
+			if err := tpl.Execute(os.Stdout, obj.Value.Protocol); err != nil {
+				return err
+			}
+			fmt.Printf("\n")
 		}
-		fmt.Printf("\n")
 		return nil
 	})
 	return err
