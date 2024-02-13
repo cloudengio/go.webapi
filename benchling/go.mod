@@ -5,7 +5,7 @@ go 1.21
 require (
 	cloudeng.io/cmdutil v0.0.0-20240212200506-2ec62caddad8
 	cloudeng.io/errors v0.0.9
-	cloudeng.io/file v0.0.0-20240212200506-2ec62caddad8
+	cloudeng.io/file v0.0.0-20240213043943-f6a8f92f083f
 	cloudeng.io/net v0.0.0-20240212200506-2ec62caddad8
 	cloudeng.io/path v0.0.9
 	cloudeng.io/sync v0.0.8

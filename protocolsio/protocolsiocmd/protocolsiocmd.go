@@ -87,7 +87,7 @@ func (c *Command) Crawl(ctx context.Context, fs content.FS, cacheRoot string, fv
 	if err := c.Cache.PrepareCheckpoint(ctx, c.chkpt, chkptPath); err != nil {
 		return err
 	}
-	if !fv.IgnoreCheckpoint {
+	if fv.IgnoreCheckpoint {
 		if err := c.chkpt.Clear(ctx); err != nil {
 			return err
 		}
@@ -117,13 +117,13 @@ func handleCrawledObject(ctx context.Context,
 	obj content.Object[protocolsiosdk.ProtocolPayload, operations.Response]) error {
 
 	if obj.Response.Current != 0 && obj.Response.Total != 0 {
-		fmt.Printf("progress: %v/%v\n", obj.Response.Current, obj.Response.Total)
+		log.Printf("progress: %v/%v\n", obj.Response.Current, obj.Response.Total)
 	}
 	if obj.Value.Protocol.ID == 0 {
 		// Protocol is up-to-date on disk.
 		return nil
 	}
-	fmt.Printf("protocol: %v\n", obj.Value.Protocol.ID)
+	log.Printf("protocol ID: %v\n", obj.Value.Protocol.ID)
 	if !save {
 		return nil
 	}
@@ -133,13 +133,16 @@ func handleCrawledObject(ctx context.Context,
 	if err := obj.Store(ctx, store, prefix, suffix, content.GOBObjectEncoding, content.GOBObjectEncoding); err != nil {
 		return err
 	}
+	if _, written := store.Stats(); written%100 == 0 {
+		log.Printf("written: %v\n", written)
+	}
 
 	if state := obj.Response.Checkpoint; len(state) > 0 {
 		name, err := chk.Checkpoint(ctx, "", state)
 		if err != nil {
-			fmt.Printf("failed to save checkpoint: %v: %v\n", name, err)
+			log.Printf("failed to save checkpoint: %v: %v\n", name, err)
 		} else {
-			fmt.Printf("checkpoint: %v\n", name)
+			log.Printf("checkpoint: %v\n", name)
 		}
 	}
 	return nil

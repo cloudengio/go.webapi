@@ -5,13 +5,13 @@ go 1.21
 require (
 	cloudeng.io/cmdutil v0.0.0-20240212200506-2ec62caddad8
 	cloudeng.io/errors v0.0.9
-	cloudeng.io/webapi/openapi v0.0.0-20240205224624-781bd404884e
+	cloudeng.io/webapi/openapi v0.0.0-20240213002043-2d34dbb97470
 	github.com/getkin/kin-openapi v0.123.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	cloudeng.io/file v0.0.0-20240212200506-2ec62caddad8 // indirect
+	cloudeng.io/file v0.0.0-20240213043943-f6a8f92f083f // indirect
 	cloudeng.io/text v0.0.11 // indirect
 	github.com/go-openapi/jsonpointer v0.20.2 // indirect
 	github.com/go-openapi/swag v0.22.9 // indirect

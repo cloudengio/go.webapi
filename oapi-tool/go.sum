@@ -3,12 +3,12 @@ cloudeng.io/cmdutil v0.0.0-20240212200506-2ec62caddad8/go.mod h1:hHSXpM4lTHeyQKx
 cloudeng.io/errors v0.0.8/go.mod h1:xWamLL6tn3roKI6MRRFkw1jUkJL9s7CJzFYfaxuhHZk=
 cloudeng.io/errors v0.0.9 h1:gHv7vqtI8pvhjJFsu4d60bYwOaT9sM6tn0ykoaw11WA=
 cloudeng.io/errors v0.0.9/go.mod h1:xWamLL6tn3roKI6MRRFkw1jUkJL9s7CJzFYfaxuhHZk=
-cloudeng.io/file v0.0.0-20240212200506-2ec62caddad8 h1:V+RR/Z81/gwM4IzBILsThVV4VZra3PVlIxLvB+gmKd4=
-cloudeng.io/file v0.0.0-20240212200506-2ec62caddad8/go.mod h1:YXIkqlmkw3GwyT3q+MzulnH5V613GwSQcCCgmc0qQoQ=
+cloudeng.io/file v0.0.0-20240213043943-f6a8f92f083f h1:z18Y3GuDJPgfG2P6O7WBpE4ypDDdk3uM++nzzIHOXiY=
+cloudeng.io/file v0.0.0-20240213043943-f6a8f92f083f/go.mod h1:YXIkqlmkw3GwyT3q+MzulnH5V613GwSQcCCgmc0qQoQ=
 cloudeng.io/text v0.0.11 h1:q3+p3gxwNdr/V+k4+77fj9QxVpUU8G7B4+v26m+sE8I=
 cloudeng.io/text v0.0.11/go.mod h1:99L3CQ55YhUy2+lHlFPowYyCoXO86fmkvNtcMT2X3GU=
-cloudeng.io/webapi/openapi v0.0.0-20240205224624-781bd404884e h1:swhKSS0bYPaQ2EpfFK5lnHS++t/4DeFA4e8QSY6d/tM=
-cloudeng.io/webapi/openapi v0.0.0-20240205224624-781bd404884e/go.mod h1:pKear7nrPzNudE6eb5Ym5tT/oWhkU+aspNd6ysZrA0s=
+cloudeng.io/webapi/openapi v0.0.0-20240213002043-2d34dbb97470 h1:7aNs3B2Olr7D7K29pWrX4xnR8GNPqFEu2tHKJENhufE=
+cloudeng.io/webapi/openapi v0.0.0-20240213002043-2d34dbb97470/go.mod h1:8VF2fQvGzae26jjXpsRNgclsEWPgSr3ERR32hxWpIig=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/getkin/kin-openapi v0.123.0 h1:zIik0mRwFNLyvtXK274Q6ut+dPh6nlxBp0x7mNrPhs8=

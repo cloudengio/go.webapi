@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	cloudeng.io/cmdutil v0.0.0-20240212200506-2ec62caddad8
-	cloudeng.io/file v0.0.0-20240212200506-2ec62caddad8
+	cloudeng.io/file v0.0.0-20240213043943-f6a8f92f083f
 	cloudeng.io/path v0.0.9
 	cloudeng.io/webapi/operations v0.0.0-20240213002043-2d34dbb97470
 	github.com/go-openapi/errors v0.21.0
