@@ -11,7 +11,7 @@ require (
 )
 
 require (
-	cloudeng.io/os v0.0.0-20240212200506-2ec62caddad8 // indirect
+	cloudeng.io/os v0.0.0-20240213043943-f6a8f92f083f // indirect
 	github.com/kr/text v0.2.0 // indirect
 )
 

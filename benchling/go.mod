@@ -16,7 +16,7 @@ require (
 )
 
 require (
-	cloudeng.io/os v0.0.0-20240212200506-2ec62caddad8 // indirect
+	cloudeng.io/os v0.0.0-20240213043943-f6a8f92f083f // indirect
 	cloudeng.io/text v0.0.11 // indirect
 	github.com/BurntSushi/toml v1.3.2 // indirect
 	github.com/CloudyKit/fastprinter v0.0.0-20200109182630-33d98a066a53 // indirect

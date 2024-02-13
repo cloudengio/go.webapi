@@ -12,7 +12,7 @@ require (
 require (
 	cloudeng.io/errors v0.0.9 // indirect
 	cloudeng.io/net v0.0.0-20240212200506-2ec62caddad8 // indirect
-	cloudeng.io/os v0.0.0-20240212200506-2ec62caddad8 // indirect
+	cloudeng.io/os v0.0.0-20240213043943-f6a8f92f083f // indirect
 	cloudeng.io/sync v0.0.8 // indirect
 	cloudeng.io/text v0.0.11 // indirect
 	github.com/kr/text v0.2.0 // indirect
