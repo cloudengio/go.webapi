@@ -52,7 +52,7 @@ func TokensFromContext(ctx context.Context, name string) ([]byte, bool) {
 
 // ParseTokensYAML parses the tokens stored in the context for the specified
 // name as JSON. It will return false if there are no tockens stored, true
-// otherwise and an error if the unmsrshal fails.
+// otherwise and an error if the unmarshal fails.
 func ParseTokensYAML(ctx context.Context, name string, cfg any) (bool, error) {
 	tokens, ok := TokensFromContext(ctx, name)
 	if !ok {
