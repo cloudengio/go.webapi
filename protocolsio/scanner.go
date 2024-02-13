@@ -27,8 +27,7 @@ func (pg *paginator) urlfor(page int64, first bool) string {
 		page = int64(pg.From)
 	}
 	pg.Parameters.Set("page_id", strconv.FormatInt(page, 10))
-	u := fmt.Sprintf("%v?%v", pg.EndpointURL, pg.Parameters.Encode())
-	return u
+	return fmt.Sprintf("%v?%v", pg.EndpointURL, pg.Parameters.Encode())
 }
 
 func (pg *paginator) Next(_ context.Context, t protocolsiosdk.ListProtocolsV3, r *http.Response) (req *http.Request, done bool, err error) {
@@ -77,5 +76,6 @@ func NewPaginator(_ context.Context, cp Checkpoint, opts PaginatorOptions) (oper
 	if pg.completedPage == 0 && pg.currentPage == 0 {
 		pg.currentPage = 1
 	}
+
 	return pg, nil
 }

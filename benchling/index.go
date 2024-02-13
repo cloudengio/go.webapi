@@ -54,6 +54,11 @@ func (di *DocumentIndexer) populate(ctx context.Context, prefix string, contents
 		}
 		return err
 	}
+	var nUsers, nEntries, nFolders, nProjects int
+	defer func() {
+		read, _ := di.store.Stats()
+		log.Printf("total read: %v (users: %v, entries %v, folders %v, projects %v)", read, nUsers, nEntries, nFolders, nProjects)
+	}()
 	for _, file := range contents {
 		ctype, buf, err := di.store.Read(ctx, prefix, file.Name)
 		if err != nil {
@@ -61,29 +66,36 @@ func (di *DocumentIndexer) populate(ctx context.Context, prefix string, contents
 		}
 		switch ctype {
 		case EntryType:
+			nEntries++
 			var obj content.Object[benchlingsdk.Entry, operations.Response]
 			if err := obj.Decode(buf); err != nil {
 				return err
 			}
 			di.entries[ObjectID(obj.Value)] = obj.Value
 		case ProjectType:
+			nProjects++
 			var obj content.Object[benchlingsdk.Project, operations.Response]
 			if err := obj.Decode(buf); err != nil {
 				return err
 			}
 			di.projects[ObjectID(obj.Value)] = obj.Value
 		case FolderType:
+			nFolders++
 			var obj content.Object[benchlingsdk.Folder, operations.Response]
 			if err := obj.Decode(buf); err != nil {
 				return err
 			}
 			di.folders[ObjectID(obj.Value)] = obj.Value
 		case UserType:
+			nUsers++
 			var obj content.Object[benchlingsdk.User, operations.Response]
 			if err := obj.Decode(buf); err != nil {
 				return err
 			}
 			di.users[ObjectID(obj.Value)] = obj.Value
+		}
+		if read, _ := di.store.Stats(); read%100 == 0 {
+			log.Printf("total read: %v (users: %v, entries %v, folders %v, projects %v)", read, nUsers, nEntries, nFolders, nProjects)
 		}
 	}
 	return nil

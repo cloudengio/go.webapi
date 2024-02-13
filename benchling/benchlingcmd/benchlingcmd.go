@@ -9,6 +9,7 @@ package benchlingcmd
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"cloudeng.io/cmdutil/cmdyaml"
 	"cloudeng.io/errors"
@@ -104,6 +105,11 @@ func (c *Command) Crawl(ctx context.Context, _ CrawlFlags, entities ...string) e
 func (c *Command) crawlSaver(ctx context.Context, downloadsPath string, ch <-chan any) error {
 	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
 	store := content.NewStore(c.cfs)
+	var nUsers, nEntries, nFolders, nProjects int
+	defer func() {
+		_, written := store.Stats()
+		log.Printf("total written: %v (users: %v, entries %v, folders %v, projects %v)", written, nUsers, nEntries, nFolders, nProjects)
+	}()
 	for {
 		var entity any
 		var ok bool
@@ -118,18 +124,20 @@ func (c *Command) crawlSaver(ctx context.Context, downloadsPath string, ch <-cha
 		var err error
 		switch v := entity.(type) {
 		case benchling.Users:
-			fmt.Printf("users: %v: %v\n", v.NextToken, len(v.Users))
+			nUsers += len(v.Users)
 			err = save(ctx, store, downloadsPath, sharder, v.Users)
 		case benchling.Entries:
-			fmt.Printf("entries: %v: %v\n", v.NextToken, len(v.Entries))
+			nEntries += len(v.Entries)
 			err = save(ctx, store, downloadsPath, sharder, v.Entries)
 		case benchling.Folders:
-			fmt.Printf("folders: %v: %v\n", v.NextToken, len(v.Folders))
+			nFolders += len(v.Folders)
 			err = save(ctx, store, downloadsPath, sharder, v.Folders)
 		case benchling.Projects:
-			fmt.Printf("projects: %v: %v\n", v.NextToken, len(v.Projects))
+			nProjects += len(v.Projects)
 			err = save(ctx, store, downloadsPath, sharder, v.Projects)
 		}
+		_, written := store.Stats()
+		log.Printf("written: %v (users: %v, entries %v, folders %v, projects %v)", written, nUsers, nEntries, nFolders, nProjects)
 		if err != nil {
 			return err
 		}

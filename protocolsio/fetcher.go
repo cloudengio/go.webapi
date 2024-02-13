@@ -90,7 +90,7 @@ type PublicBearerToken struct {
 }
 
 func (pbt PublicBearerToken) WithAuthorization(_ context.Context, req *http.Request) error {
-	req.Header.Add("Bearer", pbt.Token)
+	req.Header.Add("Authorization", "Bearer "+pbt.Token)
 	return nil
 }
 
