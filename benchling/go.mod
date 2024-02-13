@@ -5,18 +5,18 @@ go 1.21
 require (
 	cloudeng.io/cmdutil v0.0.0-20240212200506-2ec62caddad8
 	cloudeng.io/errors v0.0.9
-	cloudeng.io/file v0.0.0-20240212200506-2ec62caddad8
+	cloudeng.io/file v0.0.0-20240213043943-f6a8f92f083f
 	cloudeng.io/net v0.0.0-20240212200506-2ec62caddad8
 	cloudeng.io/path v0.0.9
 	cloudeng.io/sync v0.0.8
-	cloudeng.io/webapi/operations v0.0.0-20240212225013-66363a8276e3
+	cloudeng.io/webapi/operations v0.0.0-20240213002043-2d34dbb97470
 	github.com/deepmap/oapi-codegen v1.16.2
 	github.com/getkin/kin-openapi v0.123.0
 	github.com/labstack/echo/v4 v4.11.4
 )
 
 require (
-	cloudeng.io/os v0.0.0-20240212200506-2ec62caddad8 // indirect
+	cloudeng.io/os v0.0.0-20240213043943-f6a8f92f083f // indirect
 	cloudeng.io/text v0.0.11 // indirect
 	github.com/BurntSushi/toml v1.3.2 // indirect
 	github.com/CloudyKit/fastprinter v0.0.0-20200109182630-33d98a066a53 // indirect

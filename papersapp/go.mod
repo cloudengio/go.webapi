@@ -4,9 +4,9 @@ go 1.21
 
 require (
 	cloudeng.io/cmdutil v0.0.0-20240212200506-2ec62caddad8
-	cloudeng.io/file v0.0.0-20240212200506-2ec62caddad8
+	cloudeng.io/file v0.0.0-20240213043943-f6a8f92f083f
 	cloudeng.io/path v0.0.9
-	cloudeng.io/webapi/operations v0.0.0-20240212225013-66363a8276e3
+	cloudeng.io/webapi/operations v0.0.0-20240213002043-2d34dbb97470
 	github.com/go-openapi/errors v0.21.0
 	github.com/go-openapi/strfmt v0.22.0
 	github.com/go-openapi/swag v0.22.9
@@ -15,7 +15,7 @@ require (
 require (
 	cloudeng.io/errors v0.0.9 // indirect
 	cloudeng.io/net v0.0.0-20240212200506-2ec62caddad8 // indirect
-	cloudeng.io/os v0.0.0-20240212200506-2ec62caddad8 // indirect
+	cloudeng.io/os v0.0.0-20240213043943-f6a8f92f083f // indirect
 	cloudeng.io/sync v0.0.8 // indirect
 	cloudeng.io/text v0.0.11 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
