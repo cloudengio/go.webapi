@@ -108,7 +108,7 @@ func (c *Command) crawlSaver(ctx context.Context, downloadsPath string, ch <-cha
 	var nUsers, nEntries, nFolders, nProjects int
 	defer func() {
 		_, written := store.Stats()
-		log.Printf("total written: %v (users: %v, entries %v, folders %v, projects %v\n", written, nUsers, nEntries, nFolders, nProjects)
+		log.Printf("total written: %v (users: %v, entries %v, folders %v, projects %v)", written, nUsers, nEntries, nFolders, nProjects)
 	}()
 	for {
 		var entity any
@@ -136,9 +136,8 @@ func (c *Command) crawlSaver(ctx context.Context, downloadsPath string, ch <-cha
 			nProjects += len(v.Projects)
 			err = save(ctx, store, downloadsPath, sharder, v.Projects)
 		}
-		if _, written := store.Stats(); written%100 == 0 {
-			log.Printf("written: %v (users: %v, entries %v, folders %v, projects %v\n", written, nUsers, nEntries, nFolders, nProjects)
-		}
+		_, written := store.Stats()
+		log.Printf("written: %v (users: %v, entries %v, folders %v, projects %v)", written, nUsers, nEntries, nFolders, nProjects)
 		if err != nil {
 			return err
 		}

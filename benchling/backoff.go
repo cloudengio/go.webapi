@@ -41,14 +41,23 @@ func (bb *Backoff) Wait(ctx context.Context, resp *http.Response) (bool, error) 
 	if bb.retries >= bb.steps {
 		return true, nil
 	}
-	remaining := resp.Header.Get("x-rate-limit-reset")
-	secs, _ := strconv.ParseInt(remaining, 10, 64)
 	delay := bb.nextDelay
-	if secs > 0 {
-		delay = time.Second * time.Duration(secs)
-		// Add some jitter.
-		delay += time.Second * time.Duration(bb.rnd.Intn(bb.retries+1))
-		log.Printf("waiting %v for the current rate limit period to end", delay)
+	secs := int64(0)
+	if resp == nil {
+		log.Printf("benchling.Backoff.Wait: response is nil")
+	}
+	if resp != nil && resp.Header == nil {
+		log.Printf("benchling.Backoff.Wait: response header is nil: %v", resp)
+	}
+	if resp != nil && resp.Header != nil {
+		remaining := resp.Header.Get("x-rate-limit-reset")
+		secs, _ = strconv.ParseInt(remaining, 10, 64)
+		if secs > 0 {
+			delay = time.Second * time.Duration(secs)
+			// Add some jitter.
+			delay += time.Second * time.Duration(bb.rnd.Intn(bb.retries+1))
+			log.Printf("waiting %v for the current rate limit period to end", delay)
+		}
 	}
 	select {
 	case <-ctx.Done():
