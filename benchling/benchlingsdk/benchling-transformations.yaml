@@ -11,7 +11,7 @@ configs:
         replace: format
       - path:
           [components, schemas, AppConfigItemDatetimeUpdate, properties, type]
-        rewrite: "/^date$/string"
+        rewrite: "/^datet$/string"
         replace: format
       # Fix up date examples, these seem to be introduced by the
       # openapi3 json marshalling code and were not in the original
