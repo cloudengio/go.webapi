@@ -16,6 +16,7 @@ import (
 
 	"cloudeng.io/cmdutil/cmdyaml"
 	"cloudeng.io/file/content"
+	"cloudeng.io/file/content/stores"
 	"cloudeng.io/file/filewalk"
 	"cloudeng.io/path"
 	"cloudeng.io/webapi/operations"
@@ -80,8 +81,6 @@ func (c *Command) Crawl(ctx context.Context, cacheRoot string, _ *CrawlFlags) er
 		return err
 	}
 
-	collectionsCache := content.NewStore(c.cfs)
-
 	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
 
 	collections, err := papersapp.ListCollections(ctx, c.Service.ServiceURL, opts...)
@@ -89,6 +88,7 @@ func (c *Command) Crawl(ctx context.Context, cacheRoot string, _ *CrawlFlags) er
 		return err
 	}
 
+	collectionsCache := stores.New(c.cfs)
 	for _, col := range collections {
 		obj := content.Object[*papersappsdk.Collection, operations.Response]{
 			Type:     papersapp.CollectionType,
@@ -103,15 +103,13 @@ func (c *Command) Crawl(ctx context.Context, cacheRoot string, _ *CrawlFlags) er
 	}
 	fmt.Printf("crawled %v collections\n", len(collections))
 
-	itemCache := content.NewStore(c.cfs)
-
 	for _, col := range collections {
 		if !col.Shared {
 			continue
 		}
 		crawler := &crawlCollection{
 			Config:     c.Config,
-			cache:      itemCache,
+			fs:         c.cfs,
 			root:       downloadsPath,
 			sharder:    sharder,
 			collection: col,
@@ -126,7 +124,7 @@ func (c *Command) Crawl(ctx context.Context, cacheRoot string, _ *CrawlFlags) er
 
 type crawlCollection struct {
 	Config
-	cache      *content.Store
+	fs         content.FS
 	root       string
 	sharder    path.Sharder
 	opts       []operations.Option
@@ -134,11 +132,12 @@ type crawlCollection struct {
 }
 
 func (cc *crawlCollection) run(ctx context.Context) error {
+	store := stores.New(cc.fs)
 	defer func() {
-		_, written := cc.cache.Stats()
+		_, written := store.Stats()
 		log.Printf("total written: %v: %v\n", written, cc.collection.Name)
 	}()
-	join := cc.cache.FS().Join
+	join := cc.fs.Join
 	var pgOpts papersapp.ItemPaginatorOptions
 	pgOpts.EndpointURL = cc.Service.ServiceURL + "/collections/" + cc.collection.ID + "/items"
 	if cc.Service.ListItemsPageSize == 0 {
@@ -165,10 +164,10 @@ func (cc *crawlCollection) run(ctx context.Context) error {
 			}
 			prefix, suffix := cc.sharder.Assign(fmt.Sprintf("%v", item.ID))
 			prefix = join(cc.root, prefix)
-			if err := obj.Store(ctx, cc.cache, prefix, suffix, content.JSONObjectEncoding, content.GOBObjectEncoding); err != nil {
+			if err := obj.Store(ctx, store, prefix, suffix, content.JSONObjectEncoding, content.GOBObjectEncoding); err != nil {
 				return err
 			}
-			if _, written := cc.cache.Stats(); written%100 == 0 {
+			if _, written := store.Stats(); written%100 == 0 {
 				log.Printf("written: %v\n", written)
 			}
 		}
@@ -177,13 +176,14 @@ func (cc *crawlCollection) run(ctx context.Context) error {
 	return sc.Err()
 }
 
-func scanDownloaded(ctx context.Context, store *content.Store, gzipWriter io.WriteCloser, prefix string, contents []filewalk.Entry, err error) error {
+func scanDownloaded(ctx context.Context, fs content.FS, gzipWriter io.WriteCloser, prefix string, contents []filewalk.Entry, err error) error {
 	if err != nil {
-		if store.FS().IsNotExist(err) {
+		if fs.IsNotExist(err) {
 			return nil
 		}
 		return err
 	}
+	store := stores.New(fs)
 	for _, file := range contents {
 		ctype, buf, err := store.Read(ctx, prefix, file.Name)
 		if err != nil {
@@ -231,10 +231,9 @@ func (c *Command) ScanDownloaded(ctx context.Context, root string, fv *ScanFlags
 	}
 
 	_, downloadsPath, _ := c.Cache.AbsolutePaths(c.cfs, root)
-	store := content.NewStore(c.cfs)
 
 	err := filewalk.ContentsOnly(ctx, c.cfs, downloadsPath, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
-		return scanDownloaded(ctx, store, gzipWriter, prefix, contents, err)
+		return scanDownloaded(ctx, c.cfs, gzipWriter, prefix, contents, err)
 	})
 	return err
 }

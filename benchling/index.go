@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"cloudeng.io/file/content"
+	"cloudeng.io/file/content/stores"
 	"cloudeng.io/file/filewalk"
 	"cloudeng.io/path"
 	"cloudeng.io/webapi/benchling/benchlingsdk"
@@ -19,7 +20,6 @@ import (
 
 type DocumentIndexer struct {
 	fs        operations.FS
-	store     *content.Store
 	downloads string
 	sharder   path.Sharder
 	users     map[string]benchlingsdk.User
@@ -29,10 +29,8 @@ type DocumentIndexer struct {
 }
 
 func NewDocumentIndexer(fs operations.FS, downloads string, sharder path.Sharder) *DocumentIndexer {
-	store := content.NewStore(fs)
 	return &DocumentIndexer{
 		fs:        fs,
-		store:     store,
 		downloads: downloads,
 		users:     make(map[string]benchlingsdk.User),
 		projects:  make(map[string]benchlingsdk.Project),
@@ -47,20 +45,20 @@ func (di *DocumentIndexer) Index(ctx context.Context) error {
 }
 
 func (di *DocumentIndexer) populate(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
-	fs := di.store.FS()
+	store := stores.New(di.fs)
 	if err != nil {
-		if fs.IsNotExist(err) {
+		if di.fs.IsNotExist(err) {
 			return nil
 		}
 		return err
 	}
 	var nUsers, nEntries, nFolders, nProjects int
 	defer func() {
-		read, _ := di.store.Stats()
+		read, _ := store.Stats()
 		log.Printf("total read: %v (users: %v, entries %v, folders %v, projects %v)", read, nUsers, nEntries, nFolders, nProjects)
 	}()
 	for _, file := range contents {
-		ctype, buf, err := di.store.Read(ctx, prefix, file.Name)
+		ctype, buf, err := store.Read(ctx, prefix, file.Name)
 		if err != nil {
 			return err
 		}
@@ -94,7 +92,7 @@ func (di *DocumentIndexer) populate(ctx context.Context, prefix string, contents
 			}
 			di.users[ObjectID(obj.Value)] = obj.Value
 		}
-		if read, _ := di.store.Stats(); read%100 == 0 {
+		if read, _ := store.Stats(); read%100 == 0 {
 			log.Printf("total read: %v (users: %v, entries %v, folders %v, projects %v)", read, nUsers, nEntries, nFolders, nProjects)
 		}
 	}
@@ -162,7 +160,8 @@ func (di *DocumentIndexer) index(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	join := di.store.FS().Join
+	join := di.fs.Join
+	store := stores.New(di.fs)
 	for _, entry := range di.entries {
 		doc := Document{
 			Entry:   entry,
@@ -189,7 +188,7 @@ func (di *DocumentIndexer) index(ctx context.Context) error {
 		id := ObjectID(doc)
 		prefix, suffix := di.sharder.Assign(fmt.Sprintf("%v", id))
 		prefix = join(di.downloads, prefix)
-		if err := obj.Store(ctx, di.store, prefix, suffix, content.JSONObjectEncoding, content.GOBObjectEncoding); err != nil {
+		if err := obj.Store(ctx, store, prefix, suffix, content.JSONObjectEncoding, content.GOBObjectEncoding); err != nil {
 			log.Printf("failed to write user: %v as %v %v: %v\n", id, prefix, suffix, err)
 		}
 	}

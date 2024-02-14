@@ -20,43 +20,51 @@ type Auth struct {
 }
 
 type Service struct {
-	ServiceURL       string                              `yaml:"service_url" cmd:"benchling service URL, typically https://altoslabs.benchling.com/api/v2/"`
-	UsersSort        benchlingsdk.ListUsersParamsSort    `yaml:"users_sort" cmd:"sort order for users, typically name:asc"`
-	UsersPageSize    int                                 `yaml:"users_page_size" cmd:"number of users in each page of results, typically 50"`
-	EntriesSort      benchlingsdk.ListEntriesParamsSort  `yaml:"entries_sort" cmd:"sort order for entries, typically name:asc"`
-	EntriesPageSize  int                                 `yaml:"entries_page_size" cmd:"number of entries in each page of results, typically 50"`
-	FoldersSort      benchlingsdk.ListFoldersParamsSort  `yaml:"folders_sort" cmd:"sort order for folders, typically name:asc"`
-	FoldersPageSize  int                                 `yaml:"folders_page_size" cmd:"number of folders in each page of results, typically 50"`
-	ProjectsSort     benchlingsdk.ListProjectsParamsSort `yaml:"projects_sort" cmd:"sort order for projects, typically modifiedAt"`
-	ProjectsPageSize int                                 `yaml:"projects_page_size" cmd:"number of projects in each page of results, typically 50"`
+	ServiceURL string `yaml:"service_url" cmd:"benchling service URL, typically https://altoslabs.benchling.com/api/v2/"`
+	//UsersSort        benchlingsdk.ListUsersParamsSort    `yaml:"users_sort" cmd:"sort order for users, typically name:asc"`
+	UsersPageSize int `yaml:"users_page_size" cmd:"number of users in each page of results, typically 50"`
+	//EntriesSort      benchlingsdk.ListEntriesParamsSort  `yaml:"entries_sort" cmd:"sort order for entries, typically name:asc"`
+	EntriesPageSize int `yaml:"entries_page_size" cmd:"number of entries in each page of results, typically 50"`
+	//FoldersSort      benchlingsdk.ListFoldersParamsSort  `yaml:"folders_sort" cmd:"sort order for folders, typically name:asc"`
+	FoldersPageSize int `yaml:"folders_page_size" cmd:"number of folders in each page of results, typically 50"`
+	//ProjectsSort     benchlingsdk.ListProjectsParamsSort `yaml:"projects_sort" cmd:"sort order for projects, typically modifiedAt"`
+	ProjectsPageSize int `yaml:"projects_page_size" cmd:"number of projects in each page of results, typically 50"`
 }
 
 type Config apicrawlcmd.Crawl[Service]
 
+var (
+	// The sort order is used to enable checkpointing.
+	userSortOrder    benchlingsdk.ListUsersParamsSort    = "modifiedAt:asc"
+	entrySortOrder   benchlingsdk.ListEntriesParamsSort  = "modifiedAt:asc"
+	folderSortOrder  benchlingsdk.ListFoldersParamsSort  = "modifiedAt:asc"
+	projectSortOrder benchlingsdk.ListProjectsParamsSort = "modifiedAt:asc"
+)
+
 func (c Config) ListUsersConfig(_ context.Context) *benchlingsdk.ListUsersParams {
 	return &benchlingsdk.ListUsersParams{
-		Sort:     &c.Service.UsersSort,
+		Sort:     &userSortOrder,
 		PageSize: &c.Service.UsersPageSize,
 	}
 }
 
 func (c Config) ListEntriesConfig(_ context.Context) *benchlingsdk.ListEntriesParams {
 	return &benchlingsdk.ListEntriesParams{
-		Sort:     &c.Service.EntriesSort,
+		Sort:     &entrySortOrder,
 		PageSize: &c.Service.EntriesPageSize,
 	}
 }
 
 func (c Config) ListFoldersConfig(_ context.Context) *benchlingsdk.ListFoldersParams {
 	return &benchlingsdk.ListFoldersParams{
-		Sort:     &c.Service.FoldersSort,
+		Sort:     &folderSortOrder,
 		PageSize: &c.Service.FoldersPageSize,
 	}
 }
 
 func (c Config) ListProjectsConfig(_ context.Context) *benchlingsdk.ListProjectsParams {
 	return &benchlingsdk.ListProjectsParams{
-		Sort:     &c.Service.ProjectsSort,
+		Sort:     &projectSortOrder,
 		PageSize: &c.Service.ProjectsPageSize,
 	}
 }

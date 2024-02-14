@@ -19,6 +19,7 @@ import (
 	"cloudeng.io/errors"
 	"cloudeng.io/file/checkpoint"
 	"cloudeng.io/file/content"
+	"cloudeng.io/file/content/stores"
 	"cloudeng.io/file/filewalk"
 	"cloudeng.io/path"
 	"cloudeng.io/webapi/biorxiv"
@@ -57,13 +58,13 @@ type Command struct {
 	Auth
 	Config
 	cfs       operations.FS
-	ckpt      checkpoint.Operation
+	chkpt     checkpoint.Operation
 	cacheRoot string
 }
 
 // NewCommand returns a new Command instance for the specified API crawl.
 func NewCommand(_ context.Context, crawls apicrawlcmd.Crawls, cfs operations.FS, cacheRoot string, chkp checkpoint.Operation, name string) (*Command, error) {
-	c := &Command{cfs: cfs, ckpt: chkp, cacheRoot: cacheRoot}
+	c := &Command{cfs: cfs, chkpt: chkp, cacheRoot: cacheRoot}
 	ok, err := apicrawlcmd.ParseCrawlConfig(crawls, name, (*apicrawlcmd.Crawl[Service])(&c.Config))
 	if !ok {
 		return nil, fmt.Errorf("no crawl configuration found for %v", name)
@@ -90,11 +91,11 @@ func (c *Command) Crawl(ctx context.Context, flags CrawlFlags) error {
 	if err := c.Cache.PrepareDownloads(ctx, c.cfs, downloadsPath); err != nil {
 		return err
 	}
-	if err := c.Cache.PrepareCheckpoint(ctx, c.ckpt, chkptPath); err != nil {
+	if err := c.Cache.PrepareCheckpoint(ctx, c.chkpt, chkptPath); err != nil {
 		return err
 	}
 
-	crawlState, err := loadState(ctx, c.ckpt)
+	crawlState, err := loadState(ctx, c.chkpt)
 	if err != nil {
 		return err
 	}
@@ -105,9 +106,8 @@ func (c *Command) Crawl(ctx context.Context, flags CrawlFlags) error {
 	errCh := make(chan error)
 	ch := make(chan biorxiv.Response, 10)
 
-	store := content.NewStore(c.cfs)
 	go func() {
-		errCh <- c.crawlSaver(ctx, ch, crawlState, store, downloadsPath)
+		errCh <- c.crawlSaver(ctx, ch, crawlState, c.cfs, downloadsPath)
 	}()
 
 	sc := biorxiv.NewScanner(c.Config.Service.ServiceURL, crawlState.From, crawlState.To, crawlState.Cursor, opts...)
@@ -122,14 +122,15 @@ func (c *Command) Crawl(ctx context.Context, flags CrawlFlags) error {
 		err = nil
 	}
 	errs.Append(err)
-	errs.Append(crawlState.complete(ctx, c.ckpt))
+	errs.Append(c.chkpt.Compact(ctx, ""))
 	return errs.Err()
 }
 
-func (c *Command) crawlSaver(ctx context.Context, ch <-chan biorxiv.Response, cs crawlState, store *content.Store, root string) error {
+func (c *Command) crawlSaver(ctx context.Context, ch <-chan biorxiv.Response, cs crawlState, fs content.FS, root string) error {
 	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
 
-	join := store.FS().Join
+	store := stores.New(fs)
+	join := fs.Join
 	defer func() {
 		_, written := store.Stats()
 		log.Printf("total written: %v\n", written)
@@ -177,16 +178,17 @@ func (c *Command) crawlSaver(ctx context.Context, ch <-chan biorxiv.Response, cs
 			cursor = int64(v)
 		}
 		cs.update(cursor+msg.Count, msg.Total)
-		if err := cs.save(ctx, c.ckpt); err != nil {
+		if err := cs.save(ctx, c.chkpt); err != nil {
 			return err
 		}
 	}
 }
 
-func scanDownloaded(ctx context.Context, store *content.Store, tpl *template.Template, prefix string, contents []filewalk.Entry, err error) error {
+func scanDownloaded(ctx context.Context, fs content.FS, tpl *template.Template, prefix string, contents []filewalk.Entry, err error) error {
 	if err != nil {
 		return err
 	}
+	store := stores.New(fs)
 	for _, entry := range contents {
 		var obj content.Object[biorxiv.PreprintDetail, struct{}]
 		_, err := obj.Load(ctx, store, prefix, entry.Name)
@@ -211,10 +213,9 @@ func (c *Command) ScanDownloaded(ctx context.Context, fv *ScanFlags) error {
 	_, downloads, _ := c.Cache.AbsolutePaths(c.cfs, c.cacheRoot)
 	_, downloadsRel, _ := c.Cache.RelativePaths(c.cacheRoot)
 	_ = downloadsRel
-	store := content.NewStore(c.cfs)
 	return filewalk.ContentsOnly(ctx, c.cfs, downloads,
 		func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
-			return scanDownloaded(ctx, store, tpl, prefix, contents, err)
+			return scanDownloaded(ctx, c.cfs, tpl, prefix, contents, err)
 		})
 }
 
@@ -227,7 +228,7 @@ func (c *Command) LookupDownloaded(ctx context.Context, fv *LookupFlags, dois ..
 	}
 
 	_, downloads, _ := c.Cache.AbsolutePaths(c.cfs, c.cacheRoot)
-	store := content.NewStore(c.cfs)
+	store := stores.New(c.cfs)
 
 	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
 

@@ -16,6 +16,7 @@ import (
 
 	"cloudeng.io/file/checkpoint"
 	"cloudeng.io/file/content"
+	"cloudeng.io/file/content/stores"
 	"cloudeng.io/file/filewalk"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
@@ -61,7 +62,7 @@ func latestCheckpoint(ctx context.Context, op checkpoint.Operation) (protocolsio
 
 func createVersionMap(ctx context.Context, fs operations.FS, downloads string) (map[int64]int, error) {
 	vmap := map[int64]int{}
-	store := content.NewStore(fs)
+	store := stores.New(fs)
 	err := filewalk.ContentsOnly(ctx, fs, downloads, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
 		if err != nil {
 			log.Printf("%v: %v", fs.Join(prefix), err)

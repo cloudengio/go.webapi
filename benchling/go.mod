@@ -3,20 +3,20 @@ module cloudeng.io/webapi/benchling
 go 1.21
 
 require (
-	cloudeng.io/cmdutil v0.0.0-20240212200506-2ec62caddad8
-	cloudeng.io/errors v0.0.9
-	cloudeng.io/file v0.0.0-20240213043943-f6a8f92f083f
-	cloudeng.io/net v0.0.0-20240212200506-2ec62caddad8
+	cloudeng.io/cmdutil v0.0.0-20240214195658-712ff2c608d2
+	cloudeng.io/errors v0.0.10
+	cloudeng.io/file v0.0.0-20240214220902-086a84a74b61
+	cloudeng.io/net v0.0.0-20240214195658-712ff2c608d2
 	cloudeng.io/path v0.0.9
 	cloudeng.io/sync v0.0.8
-	cloudeng.io/webapi/operations v0.0.0-20240213002043-2d34dbb97470
+	cloudeng.io/webapi/operations v0.0.0-20240213222535-fda27acb6247
 	github.com/deepmap/oapi-codegen v1.16.2
 	github.com/getkin/kin-openapi v0.123.0
 	github.com/labstack/echo/v4 v4.11.4
 )
 
 require (
-	cloudeng.io/os v0.0.0-20240213043943-f6a8f92f083f // indirect
+	cloudeng.io/os v0.0.0-20240214195658-712ff2c608d2 // indirect
 	cloudeng.io/text v0.0.11 // indirect
 	github.com/BurntSushi/toml v1.3.2 // indirect
 	github.com/CloudyKit/fastprinter v0.0.0-20200109182630-33d98a066a53 // indirect
@@ -82,7 +82,7 @@ require (
 	github.com/yosssi/ace v0.0.5 // indirect
 	golang.org/x/arch v0.7.0 // indirect
 	golang.org/x/crypto v0.19.0 // indirect
-	golang.org/x/exp v0.0.0-20240205201215-2c58cdc269a3 // indirect
+	golang.org/x/exp v0.0.0-20240213143201-ec583247a57a // indirect
 	golang.org/x/net v0.21.0 // indirect
 	golang.org/x/sys v0.17.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
