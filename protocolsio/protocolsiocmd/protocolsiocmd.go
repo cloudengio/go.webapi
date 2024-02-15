@@ -17,6 +17,7 @@ import (
 	"cloudeng.io/cmdutil/flags"
 	"cloudeng.io/file/checkpoint"
 	"cloudeng.io/file/content"
+	"cloudeng.io/file/content/stores"
 	"cloudeng.io/file/filewalk"
 	"cloudeng.io/path"
 	"cloudeng.io/webapi/operations"
@@ -93,7 +94,6 @@ func (c *Command) Crawl(ctx context.Context, fs content.FS, cacheRoot string, fv
 		}
 	}
 
-	store := content.NewStore(fs)
 	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
 
 	crawler, err := c.NewProtocolCrawler(ctx, c.cfs, downloadsPath, c.chkpt, fv, c.Auth)
@@ -103,7 +103,7 @@ func (c *Command) Crawl(ctx context.Context, fs content.FS, cacheRoot string, fv
 
 	return operations.RunCrawl(ctx, crawler,
 		func(ctx context.Context, object content.Object[protocolsiosdk.ProtocolPayload, operations.Response]) error {
-			return handleCrawledObject(ctx, fv.Save, sharder, store, downloadsPath, c.chkpt, object)
+			return handleCrawledObject(ctx, fv.Save, sharder, fs, downloadsPath, c.chkpt, object)
 		})
 
 }
@@ -111,11 +111,12 @@ func (c *Command) Crawl(ctx context.Context, fs content.FS, cacheRoot string, fv
 func handleCrawledObject(ctx context.Context,
 	save bool,
 	sharder path.Sharder,
-	store *content.Store,
+	fs content.FS,
 	root string,
 	chk checkpoint.Operation,
 	obj content.Object[protocolsiosdk.ProtocolPayload, operations.Response]) error {
 
+	store := stores.New(fs)
 	if obj.Response.Current != 0 && obj.Response.Total != 0 {
 		log.Printf("progress: %v/%v\n", obj.Response.Current, obj.Response.Total)
 	}
@@ -171,7 +172,7 @@ func (c *Command) ScanDownloaded(ctx context.Context, root string, fv *ScanFlags
 		return fmt.Errorf("failed to parse template: %q: %v", fv.Template, err)
 	}
 	_, downloadsPath, _ := c.Cache.AbsolutePaths(c.cfs, root)
-	store := content.NewStore(c.cfs)
+	store := stores.New(c.cfs)
 	err = filewalk.ContentsOnly(ctx, c.cfs, downloadsPath, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
 		if err != nil {
 			log.Printf("error: %v: %v", prefix, err)

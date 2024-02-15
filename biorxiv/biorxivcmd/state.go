@@ -67,15 +67,3 @@ func (cs *crawlState) save(ctx context.Context, op checkpoint.Operation) error {
 	_, err = op.Checkpoint(ctx, "", buf)
 	return err
 }
-
-func (cs *crawlState) complete(ctx context.Context, op checkpoint.Operation) error {
-	latest, err := op.Latest(ctx)
-	if err != nil {
-		return err
-	}
-	if err := op.Complete(ctx); err != nil {
-		return err
-	}
-	_, err = op.Checkpoint(ctx, "", latest)
-	return err
-}
