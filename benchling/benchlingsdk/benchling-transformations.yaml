@@ -3,16 +3,6 @@
 # with code generators such as oapi-codegen
 configs:
   - rewrites:
-      # The spec uses enums with a value of 'date' or 'datetime'
-      # and also a format of 'date' and 'datetime' which can lead to
-      # validate errors.
-      - path: [components, schemas, AppConfigItemDateUpdate, properties, type]
-        rewrite: "/^date$/string"
-        replace: format
-      - path:
-          [components, schemas, AppConfigItemDatetimeUpdate, properties, type]
-        rewrite: "/^datet$/string"
-        replace: format
       # Fix up date examples, these seem to be introduced by the
       # openapi3 json marshalling code and were not in the original
       # spec.
@@ -30,6 +20,14 @@ configs:
       - path: [components, schemas, Request, allOf, 1, properties, scheduledOn]
         rewrite: "/^2019-09-12T00:00:00Z$/2019-09-12/"
         replace: example
+      - path: [components, schemas, AssayResult, properties, fields]
+        rewrite: "/x/y/"
+        replace: example
+
+  - deletions:
+      - path: [components, schemas, AssayResult, properties, fields]
+        field: example
+
   - discriminator:
       # The benchling spec does not include the discrimator as a required
       # property in all cases.
@@ -48,6 +46,7 @@ configs:
           [components, securitySchemes, oAuth, flows, clientCredentials, scopes]
         replacement:
           scopes: '{ "cannot-be-empty": "cannot-be-empty" }'
+
   - allOf:
       - path: [components, schemas, Request, allOf, 1, properties, creator]
         promoteNonType: [description, readOnly]

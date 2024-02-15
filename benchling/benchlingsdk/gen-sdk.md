@@ -12,7 +12,7 @@ datestamp=$(date +'%m-%d-%Y')
 spec="benchling-${datestamp}.yaml"
 formatted="benchling-formatted-${datestamp}.yaml"
 transformed="benchling-transformed-${datestamp}.yaml"
-oapi-tool download --output="${spec}" 'https://benchling.com/api/v2/openapi.yaml' > ${formatted}
+oapi-tool download --output="${spec}" 'https://benchling.com/api/v2/openapi.yaml'
 oapi-tool format --output="${formatted}" -validate=false "${spec}"
 oapi-tool transform --output="${transformed}" --config=benchling-transformations.yaml "${formatted}"
 oapi-tool validate "${transformed}"
