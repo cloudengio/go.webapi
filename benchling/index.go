@@ -48,6 +48,48 @@ func (di *DocumentIndexer) Index(ctx context.Context) error {
 	return di.index(ctx)
 }
 
+func (di *DocumentIndexer) readFile(ctx context.Context, prefix, name string, ctype content.Type, buf []byte, err error) error {
+	if err != nil {
+		log.Printf("read %v: error: %v\n", di.fs.Join(prefix, name), err)
+		return err
+	}
+	switch ctype {
+	case EntryType:
+		var obj content.Object[benchlingsdk.Entry, operations.Response]
+		if err := obj.Decode(buf); err != nil {
+			return err
+		}
+		di.mu.Lock()
+		di.entries[ObjectID(obj.Value)] = obj.Value
+		di.mu.Unlock()
+	case ProjectType:
+		var obj content.Object[benchlingsdk.Project, operations.Response]
+		if err := obj.Decode(buf); err != nil {
+			return err
+		}
+		di.mu.Lock()
+		di.projects[ObjectID(obj.Value)] = obj.Value
+		di.mu.Unlock()
+	case FolderType:
+		var obj content.Object[benchlingsdk.Folder, operations.Response]
+		if err := obj.Decode(buf); err != nil {
+			return err
+		}
+		di.mu.Lock()
+		di.folders[ObjectID(obj.Value)] = obj.Value
+		di.mu.Unlock()
+	case UserType:
+		var obj content.Object[benchlingsdk.User, operations.Response]
+		if err := obj.Decode(buf); err != nil {
+			return err
+		}
+		di.mu.Lock()
+		di.users[ObjectID(obj.Value)] = obj.Value
+		di.mu.Unlock()
+	}
+	return nil
+}
+
 func (di *DocumentIndexer) populate(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
 	if err != nil {
 		if di.fs.IsNotExist(err) {
@@ -57,62 +99,25 @@ func (di *DocumentIndexer) populate(ctx context.Context, prefix string, contents
 	}
 	start := time.Now()
 	store := stores.NewAsync(di.fs, runtime.NumCPU()*2)
-	log.Printf("populate: %v, contents #%v\n", prefix, len(contents))
-	var nUsers, nEntries, nFolders, nProjects int
 	defer func() {
 		read, _ := store.Stats()
-		log.Printf("total read: %v (users: %v, entries %v, folders %v, projects %v): read %v", read, nUsers, nEntries, nFolders, nProjects, time.Since(start))
+		nUsers := len(di.users)
+		nEntries := len(di.entries)
+		nFolders := len(di.folders)
+		nProjects := len(di.projects)
+		log.Printf("%v total read: %v (users: %v, entries %v, folders %v, projects %v): read %v", prefix, read, nUsers, nEntries, nFolders, nProjects, time.Since(start))
 	}()
-	for _, file := range contents {
-		readStart := time.Now()
-		fmt.Printf("reading: %v - %v\n", prefix, file.Name)
-		ctype, buf, err := store.Read(ctx, prefix, file.Name)
-		if err != nil {
-			fmt.Printf("read %v - %v: in %v: error: %v\n", prefix, file.Name, time.Since(readStart), err)
 
-			return err
-		}
-		fmt.Printf("read %v - %v: in %v\n", prefix, file.Name, time.Since(readStart))
-		switch ctype {
-		case EntryType:
-			nEntries++
-			var obj content.Object[benchlingsdk.Entry, operations.Response]
-			if err := obj.Decode(buf); err != nil {
-				return err
-			}
-			di.mu.Lock()
-			di.entries[ObjectID(obj.Value)] = obj.Value
-			di.mu.Unlock()
-		case ProjectType:
-			nProjects++
-			var obj content.Object[benchlingsdk.Project, operations.Response]
-			if err := obj.Decode(buf); err != nil {
-				return err
-			}
-			di.mu.Lock()
-			di.projects[ObjectID(obj.Value)] = obj.Value
-			di.mu.Unlock()
-		case FolderType:
-			nFolders++
-			var obj content.Object[benchlingsdk.Folder, operations.Response]
-			if err := obj.Decode(buf); err != nil {
-				return err
-			}
-			di.mu.Lock()
-			di.folders[ObjectID(obj.Value)] = obj.Value
-			di.mu.Unlock()
-		case UserType:
-			nUsers++
-			var obj content.Object[benchlingsdk.User, operations.Response]
-			if err := obj.Decode(buf); err != nil {
-				return err
-			}
-			di.mu.Lock()
-			di.users[ObjectID(obj.Value)] = obj.Value
-			di.mu.Unlock()
-		}
+	names := make([]string, len(contents))
+	for i, c := range contents {
+		names[i] = c.Name
 	}
-	return nil
+
+	err = store.ReadAsync(ctx, prefix, names, di.readFile)
+	if err != nil {
+		return err
+	}
+	return err
 }
 
 func handleSimpleNotePart(note benchlingsdk.EntryNotePart) (string, bool, error) {
@@ -177,8 +182,10 @@ func (di *DocumentIndexer) index(ctx context.Context) error {
 		return err
 	}
 	join := di.fs.Join
-	store := stores.New(di.fs)
+	store := stores.NewAsync(di.fs, runtime.NumCPU()*2)
 	log.Printf("indexing: %v entries\n", len(di.entries))
+	n := 0
+	last := time.Now()
 	for _, entry := range di.entries {
 		doc := Document{
 			Entry:   entry,
@@ -205,12 +212,20 @@ func (di *DocumentIndexer) index(ctx context.Context) error {
 		id := ObjectID(doc)
 		prefix, suffix := di.sharder.Assign(fmt.Sprintf("%v", id))
 		prefix = join(di.downloads, prefix)
-		log.Printf("storing: %v %v %v\n", id, prefix, suffix)
 		if err := obj.Store(ctx, store, prefix, suffix, content.JSONObjectEncoding, content.GOBObjectEncoding); err != nil {
 			log.Printf("failed to write user: %v as %v %v: %v\n", id, prefix, suffix, err)
 		}
+		n++
+		if n%100 == 0 {
+			_, written := store.Stats()
+			log.Printf("written %v/%v: %v\n", written, len(di.entries), time.Since(last))
+			last = time.Now()
+		}
 	}
-	return nil
+	err = store.Finish()
+	_, written := store.Stats()
+	log.Printf("written %v/%v: %v\n", written, len(di.entries), time.Since(last))
+	return err
 }
 
 func (di *DocumentIndexer) parents(id string, p []string) []string {

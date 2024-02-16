@@ -18,6 +18,7 @@ oapi-tool transform --output="${transformed}" --config=benchling-transformations
 oapi-tool validate "${transformed}"
 
 # this is the earliest usable version, v1.12.5 onward should be fine.
-go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@f4cf8f9
+# go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@f4cf8f9
+go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
 oapi-codegen --package=benchlingsdk "${transformed}" > benchlingsdk.go
 ```
