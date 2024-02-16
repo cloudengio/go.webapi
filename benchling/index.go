@@ -8,7 +8,10 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"runtime"
 	"strings"
+	"sync"
+	"time"
 
 	"cloudeng.io/file/content"
 	"cloudeng.io/file/content/stores"
@@ -22,6 +25,7 @@ type DocumentIndexer struct {
 	fs        operations.FS
 	downloads string
 	sharder   path.Sharder
+	mu        sync.Mutex // Locks users, projects, folders, entries
 	users     map[string]benchlingsdk.User
 	projects  map[string]benchlingsdk.Project
 	folders   map[string]benchlingsdk.Folder
@@ -45,23 +49,30 @@ func (di *DocumentIndexer) Index(ctx context.Context) error {
 }
 
 func (di *DocumentIndexer) populate(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
-	store := stores.New(di.fs)
 	if err != nil {
 		if di.fs.IsNotExist(err) {
 			return nil
 		}
 		return err
 	}
+	start := time.Now()
+	store := stores.NewAsync(di.fs, runtime.NumCPU()*2)
+	log.Printf("populate: %v, contents #%v\n", prefix, len(contents))
 	var nUsers, nEntries, nFolders, nProjects int
 	defer func() {
 		read, _ := store.Stats()
-		log.Printf("total read: %v (users: %v, entries %v, folders %v, projects %v)", read, nUsers, nEntries, nFolders, nProjects)
+		log.Printf("total read: %v (users: %v, entries %v, folders %v, projects %v): read %v", read, nUsers, nEntries, nFolders, nProjects, time.Since(start))
 	}()
 	for _, file := range contents {
+		readStart := time.Now()
+		fmt.Printf("reading: %v - %v\n", prefix, file.Name)
 		ctype, buf, err := store.Read(ctx, prefix, file.Name)
 		if err != nil {
+			fmt.Printf("read %v - %v: in %v: error: %v\n", prefix, file.Name, time.Since(readStart), err)
+
 			return err
 		}
+		fmt.Printf("read %v - %v: in %v\n", prefix, file.Name, time.Since(readStart))
 		switch ctype {
 		case EntryType:
 			nEntries++
@@ -69,37 +80,42 @@ func (di *DocumentIndexer) populate(ctx context.Context, prefix string, contents
 			if err := obj.Decode(buf); err != nil {
 				return err
 			}
+			di.mu.Lock()
 			di.entries[ObjectID(obj.Value)] = obj.Value
+			di.mu.Unlock()
 		case ProjectType:
 			nProjects++
 			var obj content.Object[benchlingsdk.Project, operations.Response]
 			if err := obj.Decode(buf); err != nil {
 				return err
 			}
+			di.mu.Lock()
 			di.projects[ObjectID(obj.Value)] = obj.Value
+			di.mu.Unlock()
 		case FolderType:
 			nFolders++
 			var obj content.Object[benchlingsdk.Folder, operations.Response]
 			if err := obj.Decode(buf); err != nil {
 				return err
 			}
+			di.mu.Lock()
 			di.folders[ObjectID(obj.Value)] = obj.Value
+			di.mu.Unlock()
 		case UserType:
 			nUsers++
 			var obj content.Object[benchlingsdk.User, operations.Response]
 			if err := obj.Decode(buf); err != nil {
 				return err
 			}
+			di.mu.Lock()
 			di.users[ObjectID(obj.Value)] = obj.Value
-		}
-		if read, _ := store.Stats(); read%100 == 0 {
-			log.Printf("total read: %v (users: %v, entries %v, folders %v, projects %v)", read, nUsers, nEntries, nFolders, nProjects)
+			di.mu.Unlock()
 		}
 	}
 	return nil
 }
 
-func handleSimpleNotePart(note benchlingsdk.EntryDay_Notes_Item) (string, bool, error) {
+func handleSimpleNotePart(note benchlingsdk.EntryNotePart) (string, bool, error) {
 	switch benchlingsdk.SimpleNotePartType(note.Type) {
 	case benchlingsdk.SimpleNotePartTypeCode,
 		benchlingsdk.SimpleNotePartTypeListBullet,
@@ -162,6 +178,7 @@ func (di *DocumentIndexer) index(ctx context.Context) error {
 	}
 	join := di.fs.Join
 	store := stores.New(di.fs)
+	log.Printf("indexing: %v entries\n", len(di.entries))
 	for _, entry := range di.entries {
 		doc := Document{
 			Entry:   entry,
@@ -188,6 +205,7 @@ func (di *DocumentIndexer) index(ctx context.Context) error {
 		id := ObjectID(doc)
 		prefix, suffix := di.sharder.Assign(fmt.Sprintf("%v", id))
 		prefix = join(di.downloads, prefix)
+		log.Printf("storing: %v %v %v\n", id, prefix, suffix)
 		if err := obj.Store(ctx, store, prefix, suffix, content.JSONObjectEncoding, content.GOBObjectEncoding); err != nil {
 			log.Printf("failed to write user: %v as %v %v: %v\n", id, prefix, suffix, err)
 		}
