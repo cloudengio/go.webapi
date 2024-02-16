@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/url"
 	"strconv"
+	"sync"
 
 	"cloudeng.io/file/checkpoint"
 	"cloudeng.io/file/content"
@@ -62,6 +63,7 @@ func latestCheckpoint(ctx context.Context, op checkpoint.Operation) (protocolsio
 
 func createVersionMap(ctx context.Context, fs operations.FS, downloads string) (map[int64]int, error) {
 	vmap := map[int64]int{}
+	var mu sync.Mutex
 	store := stores.New(fs)
 	err := filewalk.ContentsOnly(ctx, fs, downloads, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
 		if err != nil {
@@ -72,7 +74,9 @@ func createVersionMap(ctx context.Context, fs operations.FS, downloads string) (
 			if _, err := obj.Load(ctx, store, prefix, c.Name); err != nil {
 				return err
 			}
+			mu.Lock()
 			vmap[obj.Value.Protocol.ID] = obj.Value.Protocol.VersionID
+			mu.Unlock()
 		}
 		return nil
 	})

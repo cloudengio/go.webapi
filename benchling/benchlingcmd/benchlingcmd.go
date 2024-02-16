@@ -227,7 +227,7 @@ func (c *crawler[ScannerT, ParamsT]) run(ctx context.Context, ch chan<- any, opt
 }
 
 func save[ObjectT benchling.Objects](ctx context.Context, fs content.FS, root string, sharder path.Sharder, obj []ObjectT) (int64, error) {
-	store := stores.NewAsync(ctx, fs, 10)
+	store := stores.NewAsync(fs, 10)
 	for _, o := range obj {
 		id := benchling.ObjectID(o)
 		obj := content.Object[ObjectT, *operations.Response]{
