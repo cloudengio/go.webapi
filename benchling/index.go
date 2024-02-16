@@ -48,7 +48,7 @@ func (di *DocumentIndexer) Index(ctx context.Context) error {
 	return di.index(ctx)
 }
 
-func (di *DocumentIndexer) readFile(ctx context.Context, prefix, name string, ctype content.Type, buf []byte, err error) error {
+func (di *DocumentIndexer) readFile(_ context.Context, prefix, name string, ctype content.Type, buf []byte, err error) error {
 	if err != nil {
 		log.Printf("read %v: error: %v\n", di.fs.Join(prefix, name), err)
 		return err
