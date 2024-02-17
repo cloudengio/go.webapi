@@ -12,7 +12,10 @@ require (
 
 require (
 	cloudeng.io/file v0.0.0-20240217004632-275fb7d27f06 // indirect
+	cloudeng.io/net v0.0.0-20240217004632-275fb7d27f06 // indirect
+	cloudeng.io/sync v0.0.8 // indirect
 	cloudeng.io/text v0.0.11 // indirect
+	cloudeng.io/webapi/operations v0.0.0-20240217020729-71c1a485b8ff // indirect
 	github.com/go-openapi/jsonpointer v0.20.2 // indirect
 	github.com/go-openapi/swag v0.22.9 // indirect
 	github.com/invopop/yaml v0.2.0 // indirect

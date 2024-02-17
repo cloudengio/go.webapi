@@ -182,7 +182,7 @@ func (c *Command) ScanDownloaded(ctx context.Context, root string, fv *ScanFlags
 		for i, c := range contents {
 			names[i] = c.Name
 		}
-		return store.ReadV(ctx, prefix, names, func(_ context.Context, _, name string, _ content.Type, buf []byte, err error) error {
+		return store.ReadV(ctx, prefix, names, func(_ context.Context, _, _ string, _ content.Type, buf []byte, err error) error {
 			if err != nil {
 				return err
 			}

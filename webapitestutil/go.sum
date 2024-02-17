@@ -1,0 +1,10 @@
+cloudeng.io/errors v0.0.10 h1:M/UgEEjD1v9MiGAw4QFkSREPdmScPt1YVuKESbRy8zU=
+cloudeng.io/errors v0.0.10/go.mod h1:GO+C05d4kZnEqUC5Po9vajcyG8ibIzYCcOuomXHEznQ=
+cloudeng.io/file v0.0.0-20240217004632-275fb7d27f06 h1:z4JHUkL7SyaO4/5NtNw/BnkSx8kJMo8FCYWXhNVlevk=
+cloudeng.io/file v0.0.0-20240217004632-275fb7d27f06/go.mod h1:cmNGFILlDaNku6KiLsXeAGjY/227h2Pdb3pY763KG9s=
+cloudeng.io/net v0.0.0-20240217004632-275fb7d27f06 h1:sZ4iuUR8oce0AMHEIFJIgrVxf7siMaL1vJy6wFFXf4Y=
+cloudeng.io/net v0.0.0-20240217004632-275fb7d27f06/go.mod h1:1MmRGFc96u3Ml+XNlnsq/Pjmu5XwDxXi9zvkKpkTPlk=
+cloudeng.io/sync v0.0.8 h1:N8o5Qo5sjxwDktWIW/7rfK14O74jGS3pprefjF3EFKA=
+cloudeng.io/sync v0.0.8/go.mod h1:76qdZzMQSN+iPeQxY9MSbnSELKQmcd9E6pnfRgWgN8s=
+cloudeng.io/webapi/operations v0.0.0-20240217020729-71c1a485b8ff h1:zbju2YOHsmufysU/D1QGDRdtmrP3uKlyQw8hl57KT5E=
+cloudeng.io/webapi/operations v0.0.0-20240217020729-71c1a485b8ff/go.mod h1:mRYi1OlX/cNYkoNMICHuSiw4SjxAdWME+/GoIbogcsQ=

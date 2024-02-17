@@ -7,7 +7,7 @@ require (
 	cloudeng.io/errors v0.0.10
 	cloudeng.io/file v0.0.0-20240217004632-275fb7d27f06
 	cloudeng.io/path v0.0.9
-	cloudeng.io/webapi/operations v0.0.0-20240217011530-8f1841ba1ad4
+	cloudeng.io/webapi/operations v0.0.0-20240217020729-71c1a485b8ff
 )
 
 require (

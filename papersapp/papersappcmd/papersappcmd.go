@@ -139,7 +139,7 @@ func (cc *crawlCollection) run(ctx context.Context) error {
 	written := 0
 	store := stores.New(cc.fs, cc.Cache.Concurrency)
 	defer func() {
-		store.Finish(ctx)
+		store.Finish(ctx) //nolint:errcheck
 		log.Printf("total written: %v: %v\n", written, cc.collection.Name)
 	}()
 
@@ -200,7 +200,7 @@ func scanDownloaded(ctx context.Context, fs content.FS, concurrency int, gzipWri
 	}
 	var mu sync.Mutex
 
-	return store.ReadV(ctx, prefix, files, func(ctx context.Context, prefix, name string, ctype content.Type, buf []byte, err error) error {
+	return store.ReadV(ctx, prefix, files, func(_ context.Context, _, _ string, ctype content.Type, buf []byte, err error) error {
 		if err != nil {
 			return err
 		}
@@ -212,14 +212,14 @@ func scanDownloaded(ctx context.Context, fs content.FS, concurrency int, gzipWri
 			if err := obj.Decode(buf); err != nil {
 				return err
 			}
-			fmt.Printf("collection: %v: %v\n", obj.Value.ID, obj.Value.Name)
+			log.Printf("collection: %v: %v\n", obj.Value.ID, obj.Value.Name)
 		case papersapp.ItemType:
 			var obj content.Object[papersapp.Item, operations.Response]
 			if err := obj.Decode(buf); err != nil {
 				return err
 			}
 			item := obj.Value
-			fmt.Printf("item: %v: %v: %v\n", item.Item.ItemType, item.Item.ID, item.Collection.Name)
+			log.Printf("item: %v: %v: %v\n", item.Item.ItemType, item.Item.ID, item.Collection.Name)
 			if gzipWriter != nil {
 				buf, err := json.Marshal(item)
 				if err != nil {
