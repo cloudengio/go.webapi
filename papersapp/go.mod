@@ -3,10 +3,10 @@ module cloudeng.io/webapi/papersapp
 go 1.21
 
 require (
-	cloudeng.io/cmdutil v0.0.0-20240216210625-17d79d550ac8
-	cloudeng.io/file v0.0.0-20240216210625-17d79d550ac8
+	cloudeng.io/cmdutil v0.0.0-20240217004632-275fb7d27f06
+	cloudeng.io/file v0.0.0-20240217004632-275fb7d27f06
 	cloudeng.io/path v0.0.9
-	cloudeng.io/webapi/operations v0.0.0-20240215001911-053638c3da61
+	cloudeng.io/webapi/operations v0.0.0-20240217011530-8f1841ba1ad4
 	github.com/go-openapi/errors v0.21.0
 	github.com/go-openapi/strfmt v0.22.0
 	github.com/go-openapi/swag v0.22.9
@@ -14,8 +14,8 @@ require (
 
 require (
 	cloudeng.io/errors v0.0.10 // indirect
-	cloudeng.io/net v0.0.0-20240216210625-17d79d550ac8 // indirect
-	cloudeng.io/os v0.0.0-20240216210625-17d79d550ac8 // indirect
+	cloudeng.io/net v0.0.0-20240217004632-275fb7d27f06 // indirect
+	cloudeng.io/os v0.0.0-20240217004632-275fb7d27f06 // indirect
 	cloudeng.io/sync v0.0.8 // indirect
 	cloudeng.io/text v0.0.11 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
