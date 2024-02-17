@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"sync"
 
 	"cloudeng.io/cmdutil/cmdyaml"
 	"cloudeng.io/file/content"
@@ -88,7 +89,7 @@ func (c *Command) Crawl(ctx context.Context, cacheRoot string, _ *CrawlFlags) er
 		return err
 	}
 
-	collectionsCache := stores.New(c.cfs)
+	collectionsCache := stores.New(c.cfs, c.Cache.Concurrency)
 	for _, col := range collections {
 		obj := content.Object[*papersappsdk.Collection, operations.Response]{
 			Type:     papersapp.CollectionType,
@@ -100,6 +101,9 @@ func (c *Command) Crawl(ctx context.Context, cacheRoot string, _ *CrawlFlags) er
 		if err := obj.Store(ctx, collectionsCache, prefix, suffix, content.JSONObjectEncoding, content.GOBObjectEncoding); err != nil {
 			return err
 		}
+	}
+	if err := collectionsCache.Finish(ctx); err != nil {
+		return err
 	}
 	fmt.Printf("crawled %v collections\n", len(collections))
 
@@ -132,11 +136,13 @@ type crawlCollection struct {
 }
 
 func (cc *crawlCollection) run(ctx context.Context) error {
-	store := stores.New(cc.fs)
+	written := 0
+	store := stores.New(cc.fs, cc.Cache.Concurrency)
 	defer func() {
-		_, written := store.Stats()
+		store.Finish(ctx)
 		log.Printf("total written: %v: %v\n", written, cc.collection.Name)
 	}()
+
 	join := cc.fs.Join
 	var pgOpts papersapp.ItemPaginatorOptions
 	pgOpts.EndpointURL = cc.Service.ServiceURL + "/collections/" + cc.collection.ID + "/items"
@@ -167,28 +173,39 @@ func (cc *crawlCollection) run(ctx context.Context) error {
 			if err := obj.Store(ctx, store, prefix, suffix, content.JSONObjectEncoding, content.GOBObjectEncoding); err != nil {
 				return err
 			}
-			if _, written := store.Stats(); written%100 == 0 {
+			written++
+			if written%100 == 0 {
 				log.Printf("written: %v\n", written)
 			}
 		}
 	}
 	log.Printf("%v: % 8v (%v): done\n", cc.collection.ID, dl, cc.collection.Name)
-	return sc.Err()
+	if err := sc.Err(); err != nil {
+		return err
+	}
+	return store.Finish(ctx)
 }
 
-func scanDownloaded(ctx context.Context, fs content.FS, gzipWriter io.WriteCloser, prefix string, contents []filewalk.Entry, err error) error {
+func scanDownloaded(ctx context.Context, fs content.FS, concurrency int, gzipWriter io.WriteCloser, prefix string, contents []filewalk.Entry, err error) error {
 	if err != nil {
 		if fs.IsNotExist(err) {
 			return nil
 		}
 		return err
 	}
-	store := stores.New(fs)
-	for _, file := range contents {
-		ctype, buf, err := store.Read(ctx, prefix, file.Name)
+	store := stores.New(fs, concurrency)
+	files := make([]string, len(contents))
+	for i, file := range contents {
+		files[i] = file.Name
+	}
+	var mu sync.Mutex
+
+	return store.ReadV(ctx, prefix, files, func(ctx context.Context, prefix, name string, ctype content.Type, buf []byte, err error) error {
 		if err != nil {
 			return err
 		}
+		mu.Lock()
+		defer mu.Unlock()
 		switch ctype {
 		case papersapp.CollectionType:
 			var obj content.Object[papersappsdk.Collection, operations.Response]
@@ -203,7 +220,6 @@ func scanDownloaded(ctx context.Context, fs content.FS, gzipWriter io.WriteClose
 			}
 			item := obj.Value
 			fmt.Printf("item: %v: %v: %v\n", item.Item.ItemType, item.Item.ID, item.Collection.Name)
-
 			if gzipWriter != nil {
 				buf, err := json.Marshal(item)
 				if err != nil {
@@ -214,8 +230,8 @@ func scanDownloaded(ctx context.Context, fs content.FS, gzipWriter io.WriteClose
 				}
 			}
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 func (c *Command) ScanDownloaded(ctx context.Context, root string, fv *ScanFlags) error {
@@ -233,7 +249,7 @@ func (c *Command) ScanDownloaded(ctx context.Context, root string, fv *ScanFlags
 	_, downloadsPath, _ := c.Cache.AbsolutePaths(c.cfs, root)
 
 	err := filewalk.ContentsOnly(ctx, c.cfs, downloadsPath, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
-		return scanDownloaded(ctx, c.cfs, gzipWriter, prefix, contents, err)
+		return scanDownloaded(ctx, c.cfs, c.Cache.Concurrency, gzipWriter, prefix, contents, err)
 	})
 	return err
 }

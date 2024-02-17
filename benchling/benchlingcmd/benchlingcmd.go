@@ -140,14 +140,13 @@ func (c *Command) crawlSaver(ctx context.Context, state Checkpoint, downloadsPat
 		}
 		saveStart := time.Now()
 		var err error
-		var w int64
 		switch v := entity.(type) {
 		case benchling.Users:
 			nUsers += len(v.Users)
-			w, err = save(ctx, c.cfs, downloadsPath, sharder, v.Users)
+			err = save(ctx, c.cfs, downloadsPath, c.Cache.Concurrency, sharder, v.Users)
 		case benchling.Entries:
 			nEntries += len(v.Entries)
-			w, err = save(ctx, c.cfs, downloadsPath, sharder, v.Entries)
+			err = save(ctx, c.cfs, downloadsPath, c.Cache.Concurrency, sharder, v.Entries)
 			state.EntriesDate = *(v.Entries[len(v.Entries)-1].ModifiedAt)
 			state.UsersDate = time.Now().Format(time.RFC3339)
 			if err := saveCheckpoint(ctx, c.chkpt, state); err != nil {
@@ -156,13 +155,13 @@ func (c *Command) crawlSaver(ctx context.Context, state Checkpoint, downloadsPat
 			}
 		case benchling.Folders:
 			nFolders += len(v.Folders)
-			w, err = save(ctx, c.cfs, downloadsPath, sharder, v.Folders)
+			err = save(ctx, c.cfs, downloadsPath, c.Cache.Concurrency, sharder, v.Folders)
 		case benchling.Projects:
 			nProjects += len(v.Projects)
-			w, err = save(ctx, c.cfs, downloadsPath, sharder, v.Projects)
+			err = save(ctx, c.cfs, downloadsPath, c.Cache.Concurrency, sharder, v.Projects)
 		}
-		written += w
-		log.Printf("written: %v (users: %v, entries %v, folders %v, projects %v) crawl: %v, save: %v", written, nUsers, nEntries, nFolders, nProjects, saveStart.Sub(start), time.Since(saveStart))
+		total := nUsers + nEntries + nFolders + nProjects
+		log.Printf("written: %v (users: %v, entries %v, folders %v, projects %v) crawl: %v, save: %v", total, nUsers, nEntries, nFolders, nProjects, saveStart.Sub(start), time.Since(saveStart))
 		if err != nil {
 			return err
 		}
@@ -226,8 +225,8 @@ func (c *crawler[ScannerT, ParamsT]) run(ctx context.Context, ch chan<- any, opt
 	return sc.Err()
 }
 
-func save[ObjectT benchling.Objects](ctx context.Context, fs content.FS, root string, sharder path.Sharder, obj []ObjectT) (int64, error) {
-	store := stores.NewAsync(fs, 10)
+func save[ObjectT benchling.Objects](ctx context.Context, fs content.FS, root string, concurrency int, sharder path.Sharder, obj []ObjectT) error {
+	store := stores.New(fs, concurrency)
 	for _, o := range obj {
 		id := benchling.ObjectID(o)
 		obj := content.Object[ObjectT, *operations.Response]{
@@ -241,8 +240,7 @@ func save[ObjectT benchling.Objects](ctx context.Context, fs content.FS, root st
 			fmt.Printf("failed to write object id %v: %v %v: %v\n", id, prefix, suffix, err)
 		}
 	}
-	_, written := store.Stats()
-	return written, store.Finish()
+	return store.Finish(ctx)
 }
 
 // CreateIndexableDocuments constructs the documents to be indexed from the
