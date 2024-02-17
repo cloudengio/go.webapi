@@ -22,14 +22,15 @@ import (
 )
 
 type DocumentIndexer struct {
-	fs        operations.FS
-	downloads string
-	sharder   path.Sharder
-	mu        sync.Mutex // Locks users, projects, folders, entries
-	users     map[string]benchlingsdk.User
-	projects  map[string]benchlingsdk.Project
-	folders   map[string]benchlingsdk.Folder
-	entries   map[string]benchlingsdk.Entry
+	fs          operations.FS
+	downloads   string
+	concurrency int
+	sharder     path.Sharder
+	mu          sync.Mutex // Locks users, projects, folders, entries
+	users       map[string]benchlingsdk.User
+	projects    map[string]benchlingsdk.Project
+	folders     map[string]benchlingsdk.Folder
+	entries     map[string]benchlingsdk.Entry
 }
 
 func NewDocumentIndexer(fs operations.FS, downloads string, sharder path.Sharder) *DocumentIndexer {
@@ -100,12 +101,12 @@ func (di *DocumentIndexer) populate(ctx context.Context, prefix string, contents
 	start := time.Now()
 	store := stores.NewAsync(di.fs, runtime.NumCPU()*2)
 	defer func() {
-		read, _ := store.Stats()
 		nUsers := len(di.users)
 		nEntries := len(di.entries)
 		nFolders := len(di.folders)
 		nProjects := len(di.projects)
-		log.Printf("%v total read: %v (users: %v, entries %v, folders %v, projects %v): read %v", prefix, read, nUsers, nEntries, nFolders, nProjects, time.Since(start))
+		total := nUsers + nEntries + nFolders + nProjects
+		log.Printf("%v total read: %v (users: %v, entries %v, folders %v, projects %v): read %v", prefix, total, nUsers, nEntries, nFolders, nProjects, time.Since(start))
 	}()
 
 	names := make([]string, len(contents))
@@ -113,11 +114,7 @@ func (di *DocumentIndexer) populate(ctx context.Context, prefix string, contents
 		names[i] = c.Name
 	}
 
-	err = store.ReadAsync(ctx, prefix, names, di.readFile)
-	if err != nil {
-		return err
-	}
-	return err
+	return store.ReadV(ctx, prefix, names, di.readFile)
 }
 
 func handleSimpleNotePart(note benchlingsdk.EntryNotePart) (string, bool, error) {
@@ -182,7 +179,8 @@ func (di *DocumentIndexer) index(ctx context.Context) error {
 		return err
 	}
 	join := di.fs.Join
-	store := stores.NewAsync(di.fs, runtime.NumCPU()*2)
+	store := stores.New(di.fs, di.concurrency)
+	defer store.Finish(ctx)
 	log.Printf("indexing: %v entries\n", len(di.entries))
 	n := 0
 	last := time.Now()
@@ -217,15 +215,12 @@ func (di *DocumentIndexer) index(ctx context.Context) error {
 		}
 		n++
 		if n%100 == 0 {
-			_, written := store.Stats()
-			log.Printf("written %v/%v: %v\n", written, len(di.entries), time.Since(last))
+			log.Printf("written %v/%v: %v\n", n, len(di.entries), time.Since(last))
 			last = time.Now()
 		}
 	}
-	err = store.Finish()
-	_, written := store.Stats()
-	log.Printf("written %v/%v: %v\n", written, len(di.entries), time.Since(last))
-	return err
+	log.Printf("written %v/%v: %v\n", n, len(di.entries), time.Since(last))
+	return store.Finish(ctx)
 }
 
 func (di *DocumentIndexer) parents(id string, p []string) []string {

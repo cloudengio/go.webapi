@@ -14,6 +14,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"cloudeng.io/errors"
@@ -129,10 +130,12 @@ func (c *Command) Crawl(ctx context.Context, flags CrawlFlags) error {
 func (c *Command) crawlSaver(ctx context.Context, ch <-chan biorxiv.Response, cs crawlState, fs content.FS, root string) error {
 	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
 
-	store := stores.New(fs)
+	store := stores.New(fs, c.Cache.Concurrency)
+	defer store.Finish(ctx)
+
+	written := 0
 	join := fs.Join
 	defer func() {
-		_, written := store.Stats()
 		log.Printf("total written: %v\n", written)
 	}()
 	for {
@@ -143,7 +146,7 @@ func (c *Command) crawlSaver(ctx context.Context, ch <-chan biorxiv.Response, cs
 			return ctx.Err()
 		case resp, ok = <-ch:
 			if !ok {
-				return nil
+				return store.Finish(ctx)
 			}
 		}
 		if len(resp.Messages) == 0 {
@@ -166,7 +169,8 @@ func (c *Command) crawlSaver(ctx context.Context, ch <-chan biorxiv.Response, cs
 			if err := obj.Store(ctx, store, prefix, suffix, content.JSONObjectEncoding, content.GOBObjectEncoding); err != nil {
 				return err
 			}
-			if _, written := store.Stats(); written%100 == 0 {
+			written++
+			if written%100 == 0 {
 				log.Printf("written: %v\n", written)
 			}
 		}
@@ -184,23 +188,34 @@ func (c *Command) crawlSaver(ctx context.Context, ch <-chan biorxiv.Response, cs
 	}
 }
 
-func scanDownloaded(ctx context.Context, fs content.FS, tpl *template.Template, prefix string, contents []filewalk.Entry, err error) error {
+func (c *Command) scanDownloaded(ctx context.Context, tpl *template.Template, prefix string, contents []filewalk.Entry, err error) error {
 	if err != nil {
 		return err
 	}
-	store := stores.New(fs)
-	for _, entry := range contents {
-		var obj content.Object[biorxiv.PreprintDetail, struct{}]
-		_, err := obj.Load(ctx, store, prefix, entry.Name)
+	store := stores.New(c.cfs, c.Cache.Concurrency)
+	names := make([]string, len(contents))
+	for i, entry := range contents {
+		names[i] = entry.Name
+	}
+	var mu sync.Mutex
+
+	return store.ReadV(ctx, prefix, names, func(ctx context.Context, prefix, name string, _ content.Type, data []byte, err error) error {
 		if err != nil {
-			return fmt.Errorf("%v %v: %v", prefix, entry.Name, err)
+			return err
+		}
+		mu.Lock()
+		defer mu.Unlock()
+
+		var obj content.Object[biorxiv.PreprintDetail, struct{}]
+		if err := obj.Decode(data); err != nil {
+			fmt.Errorf("%v %v: %v", prefix, name, err)
 		}
 		if err := tpl.Execute(os.Stdout, obj.Value); err != nil {
 			return err
 		}
 		fmt.Printf("\n")
-	}
-	return nil
+		return nil
+	})
 }
 
 // ScanDownloaded scans downloaded preprints printing out fields using
@@ -215,7 +230,7 @@ func (c *Command) ScanDownloaded(ctx context.Context, fv *ScanFlags) error {
 	_ = downloadsRel
 	return filewalk.ContentsOnly(ctx, c.cfs, downloads,
 		func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
-			return scanDownloaded(ctx, c.cfs, tpl, prefix, contents, err)
+			return c.scanDownloaded(ctx, tpl, prefix, contents, err)
 		})
 }
 
@@ -228,7 +243,7 @@ func (c *Command) LookupDownloaded(ctx context.Context, fv *LookupFlags, dois ..
 	}
 
 	_, downloads, _ := c.Cache.AbsolutePaths(c.cfs, c.cacheRoot)
-	store := stores.New(c.cfs)
+	store := stores.New(c.cfs, 0)
 
 	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
 

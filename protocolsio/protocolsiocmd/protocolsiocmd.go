@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 	"text/template"
 
 	"cloudeng.io/cmdutil/cmdyaml"
@@ -116,7 +117,7 @@ func handleCrawledObject(ctx context.Context,
 	chk checkpoint.Operation,
 	obj content.Object[protocolsiosdk.ProtocolPayload, operations.Response]) error {
 
-	store := stores.New(fs)
+	store := stores.New(fs, 0)
 	if obj.Response.Current != 0 && obj.Response.Total != 0 {
 		log.Printf("progress: %v/%v\n", obj.Response.Current, obj.Response.Total)
 	}
@@ -133,9 +134,6 @@ func handleCrawledObject(ctx context.Context,
 	prefix = store.FS().Join(root, prefix)
 	if err := obj.Store(ctx, store, prefix, suffix, content.GOBObjectEncoding, content.GOBObjectEncoding); err != nil {
 		return err
-	}
-	if _, written := store.Stats(); written%100 == 0 {
-		log.Printf("written: %v\n", written)
 	}
 
 	if state := obj.Response.Checkpoint; len(state) > 0 {
@@ -172,23 +170,32 @@ func (c *Command) ScanDownloaded(ctx context.Context, root string, fv *ScanFlags
 		return fmt.Errorf("failed to parse template: %q: %v", fv.Template, err)
 	}
 	_, downloadsPath, _ := c.Cache.AbsolutePaths(c.cfs, root)
-	store := stores.New(c.cfs)
+	store := stores.New(c.cfs, c.Cache.Concurrency)
+	var mu sync.Mutex
 	err = filewalk.ContentsOnly(ctx, c.cfs, downloadsPath, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
 		if err != nil {
 			log.Printf("error: %v: %v", prefix, err)
 		}
-		for _, c := range contents {
-			var obj content.Object[protocolsiosdk.ProtocolPayload, operations.Response]
-			if _, err := obj.Load(ctx, store, prefix, c.Name); err != nil {
+		names := make([]string, len(contents))
+		for i, c := range contents {
+			names[i] = c.Name
+		}
+		return store.ReadV(ctx, prefix, names, func(_ context.Context, _, name string, _ content.Type, buf []byte, err error) error {
+			if err != nil {
 				return err
 			}
-
+			mu.Lock()
+			defer mu.Unlock()
+			var obj content.Object[protocolsiosdk.ProtocolPayload, operations.Response]
+			if err := obj.Decode(buf); err != nil {
+				return err
+			}
 			if err := tpl.Execute(os.Stdout, obj.Value.Protocol); err != nil {
 				return err
 			}
 			fmt.Printf("\n")
-		}
-		return nil
+			return nil
+		})
 	})
 	return err
 }

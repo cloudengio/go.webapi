@@ -61,23 +61,31 @@ func latestCheckpoint(ctx context.Context, op checkpoint.Operation) (protocolsio
 	return cp, err
 }
 
-func createVersionMap(ctx context.Context, fs operations.FS, downloads string) (map[int64]int, error) {
+func createVersionMap(ctx context.Context, fs operations.FS, concurrency int, downloads string) (map[int64]int, error) {
 	vmap := map[int64]int{}
 	var mu sync.Mutex
-	store := stores.New(fs)
+	store := stores.New(fs, concurrency)
 	err := filewalk.ContentsOnly(ctx, fs, downloads, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
 		if err != nil {
 			log.Printf("%v: %v", fs.Join(prefix), err)
 		}
-		for _, c := range contents {
+		names := make([]string, len(contents))
+		for i, c := range contents {
+			names[i] = c.Name
+		}
+		return store.ReadV(ctx, prefix, names, func(ctx context.Context, prefix, name string, ctype content.Type, buf []byte, err error) error {
+			if err != nil {
+				return err
+			}
 			var obj content.Object[protocolsiosdk.ProtocolPayload, operations.Response]
-			if _, err := obj.Load(ctx, store, prefix, c.Name); err != nil {
+			if err := obj.Decode(buf); err != nil {
 				return err
 			}
 			mu.Lock()
 			vmap[obj.Value.Protocol.ID] = obj.Value.Protocol.VersionID
 			mu.Unlock()
-		}
+			return nil
+		})
 		return nil
 	})
 	return vmap, err
@@ -115,7 +123,7 @@ func (c Config) NewProtocolCrawler(ctx context.Context, fs operations.FS, downlo
 	fetcherOptions.EndpointURL = protocolsiosdk.GetProtocolV4Endpoint
 
 	if c.Service.Incremental {
-		vmap, err := createVersionMap(ctx, fs, downloadsPath)
+		vmap, err := createVersionMap(ctx, fs, c.Cache.Concurrency, downloadsPath)
 		if err != nil {
 			return nil, err
 		}
