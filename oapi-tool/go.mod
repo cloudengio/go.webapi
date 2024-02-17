@@ -3,16 +3,19 @@ module cloudeng.io/webapi/oapi-tool
 go 1.21
 
 require (
-	cloudeng.io/cmdutil v0.0.0-20240216210625-17d79d550ac8
+	cloudeng.io/cmdutil v0.0.0-20240217004632-275fb7d27f06
 	cloudeng.io/errors v0.0.10
-	cloudeng.io/webapi/openapi v0.0.0-20240215001911-053638c3da61
+	cloudeng.io/webapi/openapi v0.0.0-20240217011530-8f1841ba1ad4
 	github.com/getkin/kin-openapi v0.123.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	cloudeng.io/file v0.0.0-20240216210625-17d79d550ac8 // indirect
+	cloudeng.io/file v0.0.0-20240217004632-275fb7d27f06 // indirect
+	cloudeng.io/net v0.0.0-20240217004632-275fb7d27f06 // indirect
+	cloudeng.io/sync v0.0.8 // indirect
 	cloudeng.io/text v0.0.11 // indirect
+	cloudeng.io/webapi/operations v0.0.0-20240217020729-71c1a485b8ff // indirect
 	github.com/go-openapi/jsonpointer v0.20.2 // indirect
 	github.com/go-openapi/swag v0.22.9 // indirect
 	github.com/invopop/yaml v0.2.0 // indirect

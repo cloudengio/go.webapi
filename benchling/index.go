@@ -180,7 +180,7 @@ func (di *DocumentIndexer) index(ctx context.Context) error {
 	}
 	join := di.fs.Join
 	store := stores.New(di.fs, di.concurrency)
-	defer store.Finish(ctx)
+	defer store.Finish(ctx) //nolint:errcheck
 	log.Printf("indexing: %v entries\n", len(di.entries))
 	n := 0
 	last := time.Now()

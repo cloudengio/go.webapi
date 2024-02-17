@@ -73,7 +73,7 @@ func createVersionMap(ctx context.Context, fs operations.FS, concurrency int, do
 		for i, c := range contents {
 			names[i] = c.Name
 		}
-		return store.ReadV(ctx, prefix, names, func(ctx context.Context, prefix, name string, ctype content.Type, buf []byte, err error) error {
+		return store.ReadV(ctx, prefix, names, func(_ context.Context, _, _ string, _ content.Type, buf []byte, err error) error {
 			if err != nil {
 				return err
 			}
@@ -86,7 +86,6 @@ func createVersionMap(ctx context.Context, fs operations.FS, concurrency int, do
 			mu.Unlock()
 			return nil
 		})
-		return nil
 	})
 	return vmap, err
 }

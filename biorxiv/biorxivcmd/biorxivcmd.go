@@ -131,7 +131,7 @@ func (c *Command) crawlSaver(ctx context.Context, ch <-chan biorxiv.Response, cs
 	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
 
 	store := stores.New(fs, c.Cache.Concurrency)
-	defer store.Finish(ctx)
+	defer store.Finish(ctx) //nolint:errcheck
 
 	written := 0
 	join := fs.Join
@@ -199,7 +199,7 @@ func (c *Command) scanDownloaded(ctx context.Context, tpl *template.Template, pr
 	}
 	var mu sync.Mutex
 
-	return store.ReadV(ctx, prefix, names, func(ctx context.Context, prefix, name string, _ content.Type, data []byte, err error) error {
+	return store.ReadV(ctx, prefix, names, func(_ context.Context, prefix, name string, _ content.Type, data []byte, err error) error {
 		if err != nil {
 			return err
 		}
@@ -208,7 +208,7 @@ func (c *Command) scanDownloaded(ctx context.Context, tpl *template.Template, pr
 
 		var obj content.Object[biorxiv.PreprintDetail, struct{}]
 		if err := obj.Decode(data); err != nil {
-			fmt.Errorf("%v %v: %v", prefix, name, err)
+			return fmt.Errorf("%v %v: %v", prefix, name, err)
 		}
 		if err := tpl.Execute(os.Stdout, obj.Value); err != nil {
 			return err
