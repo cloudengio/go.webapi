@@ -103,8 +103,8 @@ func (c *Command) Crawl(ctx context.Context, fs content.FS, cacheRoot string, fv
 	}
 
 	return operations.RunCrawl(ctx, crawler,
-		func(ctx context.Context, object content.Object[protocolsiosdk.ProtocolPayload, operations.Response]) error {
-			return handleCrawledObject(ctx, fv.Save, sharder, fs, downloadsPath, c.chkpt, object)
+		func(ctx context.Context, objects []content.Object[protocolsiosdk.ProtocolPayload, operations.Response]) error {
+			return handleCrawledObject(ctx, fv.Save, sharder, fs, downloadsPath, c.chkpt, objects)
 		})
 
 }
@@ -115,36 +115,38 @@ func handleCrawledObject(ctx context.Context,
 	fs content.FS,
 	root string,
 	chk checkpoint.Operation,
-	obj content.Object[protocolsiosdk.ProtocolPayload, operations.Response]) error {
+	objs []content.Object[protocolsiosdk.ProtocolPayload, operations.Response]) error {
 
 	store := stores.New(fs, 0)
-	if obj.Response.Current != 0 && obj.Response.Total != 0 {
-		log.Printf("progress: %v/%v\n", obj.Response.Current, obj.Response.Total)
-	}
-	if obj.Value.Protocol.ID == 0 {
-		// Protocol is up-to-date on disk.
-		return nil
-	}
-	log.Printf("protocol ID: %v\n", obj.Value.Protocol.ID)
-	if !save {
-		return nil
-	}
-	// Save the protocol object to disk.
-	prefix, suffix := sharder.Assign(fmt.Sprintf("%v", obj.Value.Protocol.ID))
-	prefix = store.FS().Join(root, prefix)
-	if err := obj.Store(ctx, store, prefix, suffix, content.GOBObjectEncoding, content.GOBObjectEncoding); err != nil {
-		return err
-	}
+	for _, obj := range objs {
+		if obj.Response.Current != 0 && obj.Response.Total != 0 {
+			log.Printf("progress: %v/%v\n", obj.Response.Current, obj.Response.Total)
+		}
+		if obj.Value.Protocol.ID == 0 {
+			// Protocol is up-to-date on disk.
+			return nil
+		}
+		log.Printf("protocol ID: %v\n", obj.Value.Protocol.ID)
+		if !save {
+			return nil
+		}
+		// Save the protocol object to disk.
+		prefix, suffix := sharder.Assign(fmt.Sprintf("%v", obj.Value.Protocol.ID))
+		prefix = store.FS().Join(root, prefix)
+		if err := obj.Store(ctx, store, prefix, suffix, content.GOBObjectEncoding, content.GOBObjectEncoding); err != nil {
+			return err
+		}
 
-	if state := obj.Response.Checkpoint; len(state) > 0 {
-		name, err := chk.Checkpoint(ctx, "", state)
-		if err != nil {
-			log.Printf("failed to save checkpoint: %v: %v\n", name, err)
-		} else {
-			log.Printf("checkpoint: %v\n", name)
+		if state := obj.Response.Checkpoint; len(state) > 0 {
+			name, err := chk.Checkpoint(ctx, "", state)
+			if err != nil {
+				log.Printf("failed to save checkpoint: %v: %v\n", name, err)
+			} else {
+				log.Printf("checkpoint: %v\n", name)
+			}
 		}
 	}
-	return nil
+	return store.Finish(ctx)
 }
 
 func (c *Command) Get(ctx context.Context, _ *GetFlags, args []string) error {

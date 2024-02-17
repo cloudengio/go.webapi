@@ -95,7 +95,7 @@ func (c *Crawler[ScanT, EndpointT]) Run(ctx context.Context, ch chan<- []content
 	return c.scanner.Err()
 }
 
-type CrawlHandler[EndpointT any] func(context.Context, content.Object[EndpointT, Response]) error
+type CrawlHandler[EndpointT any] func(context.Context, []content.Object[EndpointT, Response]) error
 
 // RunCrawl is a convenience function that runs a crawler and calls the supplied
 // handler for each Object crawled.
@@ -117,10 +117,8 @@ func RunCrawl[ScanT, EndpointT any](ctx context.Context, crawler *Crawler[ScanT,
 			if !ok {
 				return <-errCh
 			}
-			for _, obj := range objs {
-				if err := handler(ctx, obj); err != nil {
-					return err
-				}
+			if err := handler(ctx, objs); err != nil {
+				return err
 			}
 		}
 	}
