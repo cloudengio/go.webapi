@@ -84,7 +84,6 @@ func (c *Command) Crawl(ctx context.Context, _ CrawlFlags, entities ...string) e
 	if err := c.Cache.PrepareDownloads(ctx, c.cfs, downloadsPath); err != nil {
 		return err
 	}
-
 	if err := c.Cache.PrepareCheckpoint(ctx, c.chkpt, checkpointPath); err != nil {
 		return err
 	}

@@ -113,7 +113,9 @@ func (c *Command) Crawl(ctx context.Context, flags CrawlFlags) error {
 
 	sc := biorxiv.NewScanner(c.Config.Service.ServiceURL, crawlState.From, crawlState.To, crawlState.Cursor, opts...)
 	for sc.Scan(ctx) {
-		ch <- sc.Response()
+		resp := sc.Response()
+		log.Printf("crawled %v preprints\n", len(resp.Collection))
+		ch <- resp
 	}
 	close(ch)
 	var errs errors.M
