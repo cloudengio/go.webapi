@@ -16,6 +16,7 @@ import (
 
 	"cloudeng.io/cmdutil/cmdyaml"
 	"cloudeng.io/cmdutil/flags"
+	"cloudeng.io/errors"
 	"cloudeng.io/file/checkpoint"
 	"cloudeng.io/file/content"
 	"cloudeng.io/file/content/stores"
@@ -102,11 +103,14 @@ func (c *Command) Crawl(ctx context.Context, fs content.FS, cacheRoot string, fv
 		return err
 	}
 
-	return operations.RunCrawl(ctx, crawler,
+	var errs errors.M
+	err = operations.RunCrawl(ctx, crawler,
 		func(ctx context.Context, objects []content.Object[protocolsiosdk.ProtocolPayload, operations.Response]) error {
 			return handleCrawledObject(ctx, fv.Save, sharder, fs, downloadsPath, c.chkpt, objects)
 		})
-
+	errs.Append(err)
+	errs.Append(c.chkpt.Compact(ctx, ""))
+	return errs.Err()
 }
 
 func handleCrawledObject(ctx context.Context,
