@@ -6,6 +6,7 @@ package apitokens
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 
 	"gopkg.in/yaml.v2"
@@ -51,7 +52,7 @@ func TokensFromContext(ctx context.Context, name string) ([]byte, bool) {
 }
 
 // ParseTokensYAML parses the tokens stored in the context for the specified
-// name as JSON. It will return false if there are no tockens stored, true
+// name as YAML. It will return false if there are no tokens stored, true
 // otherwise and an error if the unmarshal fails.
 func ParseTokensYAML(ctx context.Context, name string, cfg any) (bool, error) {
 	tokens, ok := TokensFromContext(ctx, name)
@@ -59,4 +60,15 @@ func ParseTokensYAML(ctx context.Context, name string, cfg any) (bool, error) {
 		return false, nil
 	}
 	return true, yaml.Unmarshal(tokens, cfg)
+}
+
+// ParseTokensJSON parses the tokens stored in the context for the specified
+// name as JSON. It will return false if there are no tokens stored, true
+// otherwise and an error if the unmarshal fails.
+func ParseTokensJSON(ctx context.Context, name string, cfg any) (bool, error) {
+	tokens, ok := TokensFromContext(ctx, name)
+	if !ok {
+		return false, nil
+	}
+	return true, json.Unmarshal(tokens, cfg)
 }
