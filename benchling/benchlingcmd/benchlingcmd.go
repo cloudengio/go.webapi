@@ -27,7 +27,7 @@ import (
 )
 
 type CommonFlags struct {
-	BenchlingConfig string `subcmd:"benchling-config,$HOME/.benchling.yaml,'benchling.io auth config file'"`
+	BenchlingConfig string `subcmd:"benchling-config,$HOME/.benchling.yaml,'benchling.com config file'"`
 }
 
 type GetFlags struct {
@@ -54,7 +54,7 @@ type Command struct {
 // NewCommand returns a new Command instance for the specified API crawl
 // with API authentication information read from the specified file or
 // from the context.
-func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, cfs operations.FS, chkpt checkpoint.Operation, cacheRoot, name, authFilename string) (*Command, error) {
+func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, cfs operations.FS, chkpt checkpoint.Operation, cacheRoot, name, configFile string) (*Command, error) {
 	c := &Command{cfs: cfs, cacheRoot: cacheRoot, chkpt: chkpt}
 	ok, err := apicrawlcmd.ParseCrawlConfig(crawls, name, (*apicrawlcmd.Crawl[Service])(&c.Config))
 	if !ok {
@@ -63,8 +63,8 @@ func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, cfs operations.F
 	if err != nil {
 		return nil, err
 	}
-	if len(authFilename) > 0 {
-		if err := cmdyaml.ParseConfigFile(ctx, authFilename, &c.Auth); err != nil {
+	if len(configFile) > 0 {
+		if err := cmdyaml.ParseConfigFile(ctx, configFile, &c.Auth); err != nil {
 			return nil, err
 		}
 	} else {

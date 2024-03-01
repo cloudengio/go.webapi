@@ -6,17 +6,30 @@ package benchlingcmd
 
 import (
 	"context"
+	"os"
+	"strings"
 
 	"cloudeng.io/net/ratecontrol"
 	"cloudeng.io/webapi/benchling"
 	"cloudeng.io/webapi/benchling/benchlingsdk"
 	"cloudeng.io/webapi/operations"
+	"gopkg.in/yaml.v3"
 
 	"cloudeng.io/webapi/operations/apicrawlcmd"
 )
 
 type Auth struct {
 	APIKey string `yaml:"api_key" cmd:"API key for benchling"`
+}
+
+func (a *Auth) UnmarshalYAML(value *yaml.Node) error {
+	if err := value.Decode(a); err != nil {
+		return err
+	}
+	if strings.HasPrefix(a.APIKey, "envvar:") {
+		a.APIKey = os.ExpandEnv(strings.TrimSpace(strings.TrimPrefix(a.APIKey, "envvar:")))
+	}
+	return nil
 }
 
 type Service struct {
