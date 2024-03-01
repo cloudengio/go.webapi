@@ -41,3 +41,42 @@ func TestAPITokens(t *testing.T) {
 	has("n2", []byte("v2"))
 	notHas("n3")
 }
+
+func TestTokenContext(t *testing.T) {
+	ctx := context.Background()
+	has := func(n, v string) {
+		token, ok := apitokens.TokenFromContext(ctx, n)
+		if got, want := ok, true; got != want {
+			t.Errorf("got %v, want %v", got, want)
+		}
+		if got, want := token.Scheme, "literal"; got != want {
+			t.Errorf("got %v, want %v", got, want)
+		}
+		if got, want := token.Token(), v; got != want {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	}
+	notHas := func(n string) {
+		token, ok := apitokens.TokenFromContext(ctx, n)
+		if got, want := ok, false; got != want {
+			t.Errorf("got %v, want %v", got, want)
+		}
+		if got, want := token.Scheme, ""; got != want {
+			t.Errorf("got %v, want %v", got, want)
+		}
+		if got, want := token.Token(), ""; got != want {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	}
+
+	t1 := apitokens.Parse("literal://v1")
+	t2 := apitokens.Parse("literal://v2")
+
+	ctx = apitokens.ContextWithToken(ctx, "n1", t1)
+	has("n1", "v1")
+	notHas("n2")
+	ctx = apitokens.ContextWithToken(ctx, "n2", t2)
+	has("n1", "v1")
+	has("n2", "v2")
+	notHas("n3")
+}
