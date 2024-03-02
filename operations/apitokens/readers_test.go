@@ -5,6 +5,7 @@
 package apitokens_test
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"testing"
@@ -19,21 +20,21 @@ func TestTokenReaders(t *testing.T) {
 		text   string
 		scheme string
 		name   string
-		value  string
+		value  []byte
 	}{
-		{"file://testdata/example.tok", "file", "testdata/example.tok", "example-token\n"},
-		{"env://something-unlikely", "env", "something-unlikely", "env-secret"},
-		{"literal://right-here", "literal", "right-here", "right-here"},
+		{"file://testdata/example.tok", "file", "testdata/example.tok", []byte("example-token\n")},
+		{"env://something-unlikely", "env", "something-unlikely", []byte("env-secret")},
+		{"literal://right-here", "literal", "right-here", []byte("right-here")},
 	} {
-		tok := apitokens.Parse(test.text)
+		tok := apitokens.New(test.text)
 		if got, want := tok.Scheme, test.scheme; got != want {
 			t.Errorf("got %v, want %v", got, want)
 		}
-		if got, want := tok.Token(), test.name; got != want {
+		if got, want := tok.Path, test.name; got != want {
 			t.Errorf("got %v, want %v", got, want)
 		}
 
-		tok, err := apitokens.GetToken(ctx, apitokens.DefaultReaders, test.text)
+		err := tok.Read(ctx, apitokens.DefaultReaders)
 		if err != nil {
 			t.Errorf("failed to get token: %v", err)
 		}
@@ -41,7 +42,7 @@ func TestTokenReaders(t *testing.T) {
 		if got, want := tok.Scheme, test.scheme; got != want {
 			t.Errorf("got %v, want %v", got, want)
 		}
-		if got, want := tok.Token(), test.value; got != want {
+		if got, want := tok.Token(), test.value; !bytes.Equal(got, want) {
 			t.Errorf("got %v, want %v", got, want)
 		}
 	}

@@ -44,7 +44,8 @@ func TestAPITokens(t *testing.T) {
 
 func TestTokenContext(t *testing.T) {
 	ctx := context.Background()
-	has := func(n, v string) {
+	has := func(n string, v []byte) {
+		t.Helper()
 		token, ok := apitokens.TokenFromContext(ctx, n)
 		if got, want := ok, true; got != want {
 			t.Errorf("got %v, want %v", got, want)
@@ -52,11 +53,12 @@ func TestTokenContext(t *testing.T) {
 		if got, want := token.Scheme, "literal"; got != want {
 			t.Errorf("got %v, want %v", got, want)
 		}
-		if got, want := token.Token(), v; got != want {
+		if got, want := token.Token(), v; !bytes.Equal(got, want) {
 			t.Errorf("got %v, want %v", got, want)
 		}
 	}
 	notHas := func(n string) {
+		t.Helper()
 		token, ok := apitokens.TokenFromContext(ctx, n)
 		if got, want := ok, false; got != want {
 			t.Errorf("got %v, want %v", got, want)
@@ -64,19 +66,29 @@ func TestTokenContext(t *testing.T) {
 		if got, want := token.Scheme, ""; got != want {
 			t.Errorf("got %v, want %v", got, want)
 		}
-		if got, want := token.Token(), ""; got != want {
-			t.Errorf("got %v, want %v", got, want)
+		if got := token.Token(); got != nil {
+			t.Errorf("expected nil token, not: %v", got)
 		}
 	}
 
-	t1 := apitokens.Parse("literal://v1")
-	t2 := apitokens.Parse("literal://v2")
+	t1 := apitokens.New("literal://v1")
+	t2 := apitokens.New("literal://v2")
+	if err := t1.Read(ctx, apitokens.DefaultReaders); err != nil {
+		t.Fatalf("failed to read token: %v", err)
+	}
+	if err := t2.Read(ctx, apitokens.DefaultReaders); err != nil {
+		t.Fatalf("failed to read token: %v", err)
+	}
 
 	ctx = apitokens.ContextWithToken(ctx, "n1", t1)
-	has("n1", "v1")
+	has("n1", []byte("v1"))
 	notHas("n2")
 	ctx = apitokens.ContextWithToken(ctx, "n2", t2)
-	has("n1", "v1")
-	has("n2", "v2")
+	has("n1", []byte("v1"))
+	has("n2", []byte("v2"))
 	notHas("n3")
+
+	apitokens.CorruptToken(t1)
+	has("n1", []byte("v1"))
+	has("n2", []byte("v2"))
 }
