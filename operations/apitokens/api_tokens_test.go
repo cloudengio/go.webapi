@@ -45,6 +45,7 @@ func TestAPITokens(t *testing.T) {
 func TestTokenContext(t *testing.T) {
 	ctx := context.Background()
 	has := func(n string, v []byte) {
+		t.Helper()
 		token, ok := apitokens.TokenFromContext(ctx, n)
 		if got, want := ok, true; got != want {
 			t.Errorf("got %v, want %v", got, want)
@@ -57,6 +58,7 @@ func TestTokenContext(t *testing.T) {
 		}
 	}
 	notHas := func(n string) {
+		t.Helper()
 		token, ok := apitokens.TokenFromContext(ctx, n)
 		if got, want := ok, false; got != want {
 			t.Errorf("got %v, want %v", got, want)
@@ -85,4 +87,8 @@ func TestTokenContext(t *testing.T) {
 	has("n1", []byte("v1"))
 	has("n2", []byte("v2"))
 	notHas("n3")
+
+	apitokens.CorruptToken(t1)
+	has("n1", []byte("v1"))
+	has("n2", []byte("v2"))
 }
