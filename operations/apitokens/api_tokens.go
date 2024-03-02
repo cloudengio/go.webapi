@@ -7,7 +7,10 @@ package apitokens
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"maps"
+	"slices"
+	"strings"
 	"sync"
 
 	"gopkg.in/yaml.v2"
@@ -82,6 +85,61 @@ func ParseTokensJSON(ctx context.Context, name string, cfg any) (bool, error) {
 	return true, json.Unmarshal(tokens, cfg)
 }
 
+// T represents a token that can be used to authenticate with an API.
+// Tokens are typically of the form scheme://value where scheme is used
+// to identify the reader that should be used to read the value.
+type T struct {
+	Scheme string
+	Path   string
+	value  []byte
+}
+
+// String returns a string representation of the token with the value
+// redacted.
+func (t T) String() string {
+	return fmt.Sprintf("%v://****", t.Scheme)
+}
+
+// Token returns the value of the token.
+func (t *T) Token() []byte {
+	return t.value
+}
+
+// Read read's the token value using the supplied registry of Readers.
+func (t *T) Read(ctx context.Context, registry *Readers) error {
+	reader, ok := registry.Lookup(t.Scheme)
+	if !ok {
+		return fmt.Errorf("no reader for scheme: %v, expected one of: %v", t.Scheme, registry.Schemes())
+	}
+	val, err := reader.ReadFileCtx(ctx, t.Path)
+	if err != nil {
+		return err
+	}
+	t.value = val
+	return nil
+}
+
+// Clone creates a copy of a Token that does not share any state with the original.
+func (t *T) Clone() T {
+	return T{
+		Scheme: t.Scheme,
+		Path:   t.Path,
+		value:  slices.Clone(t.value),
+	}
+}
+
+// New creates a token from the supplied text. If the text does not
+// contain a scheme, the entire text is used as the value of the token
+// and the scheme is the empty string. It is left to the caller to
+// determine the appropriate interpretation of the value.
+func New(text string) *T {
+	idx := strings.Index(text, "://")
+	if idx < 0 {
+		return &T{Path: text, value: []byte(text)}
+	}
+	return &T{Scheme: text[:idx], Path: text[idx+3:]}
+}
+
 type tokenCtxKey int
 
 var tokenCtxKeyVal tokenCtxKey
@@ -93,7 +151,7 @@ type tokenCtxStore struct {
 
 // ContextWithToken returns a new context that contains the provided
 // named token in addition to any existing tokens.
-func ContextWithToken(ctx context.Context, name string, token T) context.Context {
+func ContextWithToken(ctx context.Context, name string, token *T) context.Context {
 	store := &tokenCtxStore{}
 	if ostore, ok := ctx.Value(tokenCtxKeyVal).(*tokenCtxStore); ok {
 		ostore.Lock()
@@ -103,7 +161,7 @@ func ContextWithToken(ctx context.Context, name string, token T) context.Context
 	if store.tokens == nil {
 		store.tokens = make(map[string]T)
 	}
-	store.tokens[name] = token
+	store.tokens[name] = token.Clone()
 	return context.WithValue(ctx, tokenCtxKeyVal, store)
 }
 
