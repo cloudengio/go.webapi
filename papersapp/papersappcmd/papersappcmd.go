@@ -39,7 +39,7 @@ type Command struct {
 // NewCommand returns a new Command instance for the specified API crawl
 // with API authentication information read from the specified file or
 // from the context.
-func NewCommand(ctx context.Context, crawl apicrawlcmd.Crawl[yaml.Node], cfs operations.FS, token *apitokens.T) (*Command, error) {
+func NewCommand(crawl apicrawlcmd.Crawl[yaml.Node], cfs operations.FS, token *apitokens.T) (*Command, error) {
 	c := &Command{cfs: cfs, token: token}
 	err := apicrawlcmd.ParseCrawlConfig(crawl, &c.config)
 	if err != nil {
@@ -211,7 +211,7 @@ func scanDownloaded(ctx context.Context, fs content.FS, concurrency int, gzipWri
 	})
 }
 
-func (c *Command) ScanDownloaded(ctx context.Context, root string, fv *ScanFlags) error {
+func (c *Command) ScanDownloaded(ctx context.Context, root string, _ *ScanFlags) error {
 	_, downloadsPath, _ := c.config.Cache.AbsolutePaths(c.cfs, root)
 	err := filewalk.ContentsOnly(ctx, c.cfs, downloadsPath, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
 		return scanDownloaded(ctx, c.cfs, c.config.Cache.Concurrency, nil, prefix, contents, err)

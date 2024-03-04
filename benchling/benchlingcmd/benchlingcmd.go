@@ -44,7 +44,7 @@ type Command struct {
 // NewCommand returns a new Command instance for the specified API crawl
 // with API authentication information read from the specified file or
 // from the context.
-func NewCommand(ctx context.Context, crawl apicrawlcmd.Crawl[yaml.Node], cfs operations.FS, chkpt checkpoint.Operation, cacheRoot string, token *apitokens.T) (*Command, error) {
+func NewCommand(crawl apicrawlcmd.Crawl[yaml.Node], cfs operations.FS, chkpt checkpoint.Operation, cacheRoot string, token *apitokens.T) (*Command, error) {
 	c := &Command{cfs: cfs, cacheRoot: cacheRoot, chkpt: chkpt, token: token}
 	err := apicrawlcmd.ParseCrawlConfig(crawl, &c.config)
 	if err != nil {

@@ -28,16 +28,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type CommonFlags struct {
-	ProtocolsConfig string `subcmd:"protocolsio-config,$HOME/.protocolsio.yaml,'protocols.io auth config file'"`
-}
-
-type GetFlags struct {
-	CommonFlags
-}
+type GetFlags struct{}
 
 type CrawlFlags struct {
-	CommonFlags
 	Save             bool               `subcmd:"save,true,'save downloaded protocols to disk'"`
 	IgnoreCheckpoint bool               `subcmd:"ignore-checkpoint,false,'ignore the checkpoint files'"`
 	Pages            flags.IntRangeSpec `subcmd:"pages,,page range to return"`
@@ -46,7 +39,6 @@ type CrawlFlags struct {
 }
 
 type ScanFlags struct {
-	CommonFlags
 	Template string `subcmd:"template,'{{.ID}}',template to use for printing fields in the downloaded Protocol objects"`
 }
 
@@ -61,7 +53,7 @@ type Command struct {
 // NewCommand returns a new Command instance for the specified API crawl
 // with API authentication information read from the specified file or
 // from the context.
-func NewCommand(ctx context.Context, crawl apicrawlcmd.Crawl[yaml.Node], fs operations.FS, chkpt checkpoint.Operation, token *apitokens.T) (*Command, error) {
+func NewCommand(crawl apicrawlcmd.Crawl[yaml.Node], fs operations.FS, chkpt checkpoint.Operation, token *apitokens.T) (*Command, error) {
 	c := &Command{cfs: fs, chkpt: chkpt, token: token}
 	err := apicrawlcmd.ParseCrawlConfig(crawl, &c.config)
 	if err != nil {
