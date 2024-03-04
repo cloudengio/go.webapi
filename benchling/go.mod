@@ -3,13 +3,12 @@ module cloudeng.io/webapi/benchling
 go 1.21
 
 require (
-	cloudeng.io/cmdutil v0.0.0-20240301160019-e47d52cd5d84
 	cloudeng.io/errors v0.0.10
 	cloudeng.io/file v0.0.0-20240301160019-e47d52cd5d84
 	cloudeng.io/net v0.0.0-20240301160019-e47d52cd5d84
 	cloudeng.io/path v0.0.9
 	cloudeng.io/sync v0.0.8
-	cloudeng.io/webapi/operations v0.0.0-20240227010112-3534f4777beb
+	cloudeng.io/webapi/operations v0.0.0-20240304011944-36237c0d1dcb
 	github.com/getkin/kin-openapi v0.123.0
 	github.com/labstack/echo/v4 v4.11.4
 	github.com/oapi-codegen/runtime v1.1.1
@@ -17,6 +16,7 @@ require (
 )
 
 require (
+	cloudeng.io/cmdutil v0.0.0-20240301160019-e47d52cd5d84 // indirect
 	cloudeng.io/os v0.0.0-20240301160019-e47d52cd5d84 // indirect
 	cloudeng.io/text v0.0.11 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
