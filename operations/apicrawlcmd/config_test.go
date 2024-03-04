@@ -44,8 +44,8 @@ func TestAPICrawlConfig(t *testing.T) {
 	}
 
 	var a1 apicrawlcmd.Crawl[api1]
-	if present, err := apicrawlcmd.ParseCrawlConfig(crawls, "api1", &a1); !present || err != nil {
-		t.Fatalf("not present: %v, or err: %v", present, err)
+	if err := apicrawlcmd.ParseCrawlConfig(crawls["api1"], &a1); err != nil {
+		t.Fatalf("err: %v", err)
 	}
 	if got, want := a1.Service.Something, 1; got != want {
 		t.Errorf("got %v, want %v", got, want)
@@ -56,8 +56,8 @@ func TestAPICrawlConfig(t *testing.T) {
 	}
 
 	var a2 apicrawlcmd.Crawl[api2]
-	if present, err := apicrawlcmd.ParseCrawlConfig(crawls, "api2", &a2); !present || err != nil {
-		t.Fatalf("not present: %v, or err: %v", present, err)
+	if err := apicrawlcmd.ParseCrawlConfig(crawls["api2"], &a2); err != nil {
+		t.Fatalf("err: %v", err)
 	}
 
 	if got, want := a2.RateControl.ExponentialBackoff.InitialDelay, time.Second*60; got != want {

@@ -11,10 +11,6 @@ import (
 	"cloudeng.io/webapi/operations/apicrawlcmd"
 )
 
-type Auth struct {
-	// Currently api.biorxiv.org does not require an api key.
-}
-
 // Service represents biorxiv specific configuration parameters.
 type Service struct {
 	ServiceURL string           `yaml:"service_url" cmd:"rxiv service URL, eg. https://api.biorxiv.org/pubs/biorxiv for biorxiv"`
@@ -23,13 +19,11 @@ type Service struct {
 	// Note, that the Cursor value is generally obtained a from a checkpoint file.
 }
 
-type Config apicrawlcmd.Crawl[Service]
-
 // OptionsForEndpoint returns the operations.Option's derived from the
 // apicrawlcmd configuration.
-func (c Config) OptionsForEndpoint(_ Auth) ([]operations.Option, error) {
+func OptionsForEndpoint(cfg apicrawlcmd.Crawl[Service]) ([]operations.Option, error) {
 	opts := []operations.Option{}
-	rateCfg := c.RateControl
+	rateCfg := cfg.RateControl
 	rcopts := []ratecontrol.Option{}
 	if rateCfg.Rate.BytesPerTick > 0 {
 		rcopts = append(rcopts, ratecontrol.WithBytesPerTick(rateCfg.Rate.Tick, rateCfg.Rate.BytesPerTick))
@@ -42,6 +36,6 @@ func (c Config) OptionsForEndpoint(_ Auth) ([]operations.Option, error) {
 			ratecontrol.WithExponentialBackoff(rateCfg.ExponentialBackoff.InitialDelay, rateCfg.ExponentialBackoff.Steps))
 	}
 	rc := ratecontrol.New(rcopts...)
-	opts = append(opts, operations.WithRateController(rc, c.RateControl.ExponentialBackoff.StatusCodes...))
+	opts = append(opts, operations.WithRateController(rc, cfg.RateControl.ExponentialBackoff.StatusCodes...))
 	return opts, nil
 }

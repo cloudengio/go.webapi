@@ -21,17 +21,10 @@ import (
 	"cloudeng.io/file/filewalk"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
+	"cloudeng.io/webapi/operations/apitokens"
 	"cloudeng.io/webapi/protocolsio"
 	"cloudeng.io/webapi/protocolsio/protocolsiosdk"
 )
-
-// Auth represents the authentication information required to
-// access protocols.io.
-type Auth struct {
-	PublicToken  string `yaml:"public_token" cmd:"token for protocols.io public data, available from https://www.protocols.io/developers"`
-	ClientID     string `yaml:"public_clientid" cmd:"client id for protocols.io public data, available from https://www.protocols.io/developers"`
-	ClientSecret string `yaml:"public_secret" cmd:"client secret for protocols.io public data, available from https://www.protocols.io/developers"`
-}
 
 // Service represents the protocols.io specific confiugaration options.
 type Service struct {
@@ -40,10 +33,6 @@ type Service struct {
 	OrderDirection string `yaml:"order_direction" cmd:"order direction to apply to protocols.io API calls, typically asc"`
 	Incremental    bool   `yaml:"incremental" cmd:"if true, only download new or updated protocols"`
 }
-
-// Config represents the configuration information required to
-// access and crawl the protocols.io API.
-type Config apicrawlcmd.Crawl[Service]
 
 func latestCheckpoint(ctx context.Context, op checkpoint.Operation) (protocolsio.Checkpoint, error) {
 	if op == nil {
@@ -92,7 +81,7 @@ func createVersionMap(ctx context.Context, fs operations.FS, concurrency int, do
 
 // NewProtocolCrawler creates a new instance of operations.Crawler
 // that can be used to crawl/download protocols on protocols.io.
-func (c Config) NewProtocolCrawler(ctx context.Context, fs operations.FS, downloadsPath string, op checkpoint.Operation, fv *CrawlFlags, auth Auth) (*operations.Crawler[protocolsiosdk.ListProtocolsV3, protocolsiosdk.ProtocolPayload], error) {
+func NewProtocolCrawler(ctx context.Context, cfg apicrawlcmd.Crawl[Service], fs operations.FS, downloadsPath string, op checkpoint.Operation, fv *CrawlFlags, token *apitokens.T) (*operations.Crawler[protocolsiosdk.ListProtocolsV3, protocolsiosdk.ProtocolPayload], error) {
 
 	cp, err := latestCheckpoint(ctx, op)
 	if err != nil {
@@ -107,9 +96,9 @@ func (c Config) NewProtocolCrawler(ctx context.Context, fs operations.FS, downlo
 	}
 	paginatorOpts.EndpointURL = protocolsiosdk.ListProtocolsV3Endpoint
 	paginatorOpts.Parameters = url.Values{}
-	paginatorOpts.Parameters.Add("filter", c.Service.Filter)
-	paginatorOpts.Parameters.Add("order_field", c.Service.OrderField)
-	paginatorOpts.Parameters.Add("order_dir", c.Service.OrderDirection)
+	paginatorOpts.Parameters.Add("filter", cfg.Service.Filter)
+	paginatorOpts.Parameters.Add("order_field", cfg.Service.OrderField)
+	paginatorOpts.Parameters.Add("order_dir", cfg.Service.OrderDirection)
 	paginatorOpts.Parameters.Add("page_size", strconv.FormatInt(int64(fv.PageSize), 10))
 	key := fv.Key
 	if len(key) == 0 {
@@ -121,8 +110,8 @@ func (c Config) NewProtocolCrawler(ctx context.Context, fs operations.FS, downlo
 	var fetcherOptions protocolsio.FetcherOptions
 	fetcherOptions.EndpointURL = protocolsiosdk.GetProtocolV4Endpoint
 
-	if c.Service.Incremental {
-		vmap, err := createVersionMap(ctx, fs, c.Cache.Concurrency, downloadsPath)
+	if cfg.Service.Incremental {
+		vmap, err := createVersionMap(ctx, fs, cfg.Cache.Concurrency, downloadsPath)
 		if err != nil {
 			return nil, err
 		}
@@ -130,7 +119,7 @@ func (c Config) NewProtocolCrawler(ctx context.Context, fs operations.FS, downlo
 	}
 
 	// General endpoint options.
-	opts, err := c.OptionsForEndpoint(auth)
+	opts, err := OptionsForEndpoint(cfg, token)
 	if err != nil {
 		return nil, err
 	}
@@ -141,16 +130,15 @@ func (c Config) NewProtocolCrawler(ctx context.Context, fs operations.FS, downlo
 
 }
 
-func (c Config) OptionsForEndpoint(auth Auth) ([]operations.Option, error) {
+func OptionsForEndpoint(cfg apicrawlcmd.Crawl[Service], token *apitokens.T) ([]operations.Option, error) {
 	opts := []operations.Option{}
-	if len(auth.PublicToken) > 0 {
-		opts = append(opts,
-			operations.WithAuth(protocolsio.PublicBearerToken{Token: auth.PublicToken}))
+	if tv := token.Token(); len(tv) > 0 {
+		opts = append(opts, operations.WithAuth(protocolsio.PublicBearerToken{Token: string(tv)}))
 	}
-	rc, err := c.RateControl.NewRateController()
+	rc, err := cfg.RateControl.NewRateController()
 	if err != nil {
 		return nil, err
 	}
-	opts = append(opts, operations.WithRateController(rc, c.RateControl.ExponentialBackoff.StatusCodes...))
+	opts = append(opts, operations.WithRateController(rc, cfg.RateControl.ExponentialBackoff.StatusCodes...))
 	return opts, nil
 }

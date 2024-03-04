@@ -12,7 +12,6 @@ import (
 	"log"
 	"time"
 
-	"cloudeng.io/cmdutil/cmdyaml"
 	"cloudeng.io/errors"
 	"cloudeng.io/file/checkpoint"
 	"cloudeng.io/file/content"
@@ -24,28 +23,19 @@ import (
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
 	"cloudeng.io/webapi/operations/apitokens"
+	"gopkg.in/yaml.v3"
 )
 
-type CommonFlags struct {
-	BenchlingConfig string `subcmd:"benchling-config,$HOME/.benchling.yaml,'benchling.com config file'"`
-}
+type GetFlags struct{}
 
-type GetFlags struct {
-	CommonFlags
-}
+type CrawlFlags struct{}
 
-type CrawlFlags struct {
-	CommonFlags
-}
-
-type IndexFlags struct {
-	CommonFlags
-}
+type IndexFlags struct{}
 
 // Çommand implements the command line operations available for protocols.io.
 type Command struct {
-	Auth
-	Config
+	token     *apitokens.T
+	config    apicrawlcmd.Crawl[Service]
 	chkpt     checkpoint.Operation
 	cfs       operations.FS
 	cacheRoot string
@@ -54,37 +44,25 @@ type Command struct {
 // NewCommand returns a new Command instance for the specified API crawl
 // with API authentication information read from the specified file or
 // from the context.
-func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, cfs operations.FS, chkpt checkpoint.Operation, cacheRoot, name, configFile string) (*Command, error) {
-	c := &Command{cfs: cfs, cacheRoot: cacheRoot, chkpt: chkpt}
-	ok, err := apicrawlcmd.ParseCrawlConfig(crawls, name, (*apicrawlcmd.Crawl[Service])(&c.Config))
-	if !ok {
-		return nil, fmt.Errorf("no configuration found for %v", name)
-	}
+func NewCommand(crawl apicrawlcmd.Crawl[yaml.Node], cfs operations.FS, chkpt checkpoint.Operation, cacheRoot string, token *apitokens.T) (*Command, error) {
+	c := &Command{cfs: cfs, cacheRoot: cacheRoot, chkpt: chkpt, token: token}
+	err := apicrawlcmd.ParseCrawlConfig(crawl, &c.config)
 	if err != nil {
 		return nil, err
-	}
-	if len(configFile) > 0 {
-		if err := cmdyaml.ParseConfigFile(ctx, configFile, &c.Auth); err != nil {
-			return nil, err
-		}
-	} else {
-		if ok, err := apitokens.ParseTokensYAML(ctx, name, &c.Auth); ok && err != nil {
-			return nil, err
-		}
 	}
 	return c, nil
 }
 
 func (c *Command) Crawl(ctx context.Context, _ CrawlFlags, entities ...string) error {
-	opts, err := c.OptionsForEndpoint(c.Auth)
+	opts, err := OptionsForEndpoint(c.config, c.token)
 	if err != nil {
 		return err
 	}
-	_, downloadsPath, checkpointPath := c.Cache.AbsolutePaths(c.cfs, c.cacheRoot)
-	if err := c.Cache.PrepareDownloads(ctx, c.cfs, downloadsPath); err != nil {
+	_, downloadsPath, checkpointPath := c.config.Cache.AbsolutePaths(c.cfs, c.cacheRoot)
+	if err := c.config.Cache.PrepareDownloads(ctx, c.cfs, downloadsPath); err != nil {
 		return err
 	}
-	if err := c.Cache.PrepareCheckpoint(ctx, c.chkpt, checkpointPath); err != nil {
+	if err := c.config.Cache.PrepareCheckpoint(ctx, c.chkpt, checkpointPath); err != nil {
 		return err
 	}
 
@@ -119,12 +97,13 @@ func (c *Command) Crawl(ctx context.Context, _ CrawlFlags, entities ...string) e
 }
 
 func (c *Command) crawlSaver(ctx context.Context, state Checkpoint, downloadsPath string, ch <-chan any) error {
-	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
+	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.config.Cache.ShardingPrefixLen))
 	var nUsers, nEntries, nFolders, nProjects int
 	var written int64
 	defer func() {
 		log.Printf("total written: %v (users: %v, entries %v, folders %v, projects %v)", written, nUsers, nEntries, nFolders, nProjects)
 	}()
+	concurrency := c.config.Cache.Concurrency
 	for {
 		start := time.Now()
 		var entity any
@@ -142,10 +121,10 @@ func (c *Command) crawlSaver(ctx context.Context, state Checkpoint, downloadsPat
 		switch v := entity.(type) {
 		case benchling.Users:
 			nUsers += len(v.Users)
-			err = save(ctx, c.cfs, downloadsPath, c.Cache.Concurrency, sharder, v.Users)
+			err = save(ctx, c.cfs, downloadsPath, concurrency, sharder, v.Users)
 		case benchling.Entries:
 			nEntries += len(v.Entries)
-			err = save(ctx, c.cfs, downloadsPath, c.Cache.Concurrency, sharder, v.Entries)
+			err = save(ctx, c.cfs, downloadsPath, concurrency, sharder, v.Entries)
 			state.EntriesDate = *(v.Entries[len(v.Entries)-1].ModifiedAt)
 			state.UsersDate = time.Now().Format(time.RFC3339)
 			if err := saveCheckpoint(ctx, c.chkpt, state); err != nil {
@@ -154,10 +133,10 @@ func (c *Command) crawlSaver(ctx context.Context, state Checkpoint, downloadsPat
 			}
 		case benchling.Folders:
 			nFolders += len(v.Folders)
-			err = save(ctx, c.cfs, downloadsPath, c.Cache.Concurrency, sharder, v.Folders)
+			err = save(ctx, c.cfs, downloadsPath, concurrency, sharder, v.Folders)
 		case benchling.Projects:
 			nProjects += len(v.Projects)
-			err = save(ctx, c.cfs, downloadsPath, c.Cache.Concurrency, sharder, v.Projects)
+			err = save(ctx, c.cfs, downloadsPath, concurrency, sharder, v.Projects)
 		}
 		total := nUsers + nEntries + nFolders + nProjects
 		log.Printf("written: %v (users: %v, entries %v, folders %v, projects %v) crawl: %v, save: %v", total, nUsers, nEntries, nFolders, nProjects, saveStart.Sub(start), time.Since(saveStart))
@@ -170,34 +149,34 @@ func (c *Command) crawlSaver(ctx context.Context, state Checkpoint, downloadsPat
 func (c *Command) crawlEntity(ctx context.Context, state Checkpoint, entity string, ch chan<- any, opts []operations.Option) error {
 	switch entity {
 	case "users":
-		params := c.ListUsersConfig(ctx)
+		params := c.config.Service.ListUsersConfig()
 		from := "> " + state.UsersDate
 		params.ModifiedAt = &from
 		cr := &crawler[benchling.Users, *benchlingsdk.ListUsersParams]{
-			serviceURL: c.Service.ServiceURL,
+			serviceURL: c.config.Service.ServiceURL,
 			params:     params,
 		}
 		return cr.run(ctx, ch, opts)
 	case "entries":
-		params := c.ListEntriesConfig(ctx)
+		params := c.config.Service.ListEntriesConfig()
 		from := "> " + state.EntriesDate
 		params.ModifiedAt = &from
 		cr := &crawler[benchling.Entries, *benchlingsdk.ListEntriesParams]{
-			serviceURL: c.Service.ServiceURL,
+			serviceURL: c.config.Service.ServiceURL,
 			params:     params,
 		}
 		return cr.run(ctx, ch, opts)
 	case "folders":
-		params := c.ListFoldersConfig(ctx)
+		params := c.config.Service.ListFoldersConfig()
 		cr := &crawler[benchling.Folders, *benchlingsdk.ListFoldersParams]{
-			serviceURL: c.Service.ServiceURL,
+			serviceURL: c.config.Service.ServiceURL,
 			params:     params,
 		}
 		return cr.run(ctx, ch, opts)
 	case "projects":
-		params := c.ListProjectsConfig(ctx)
+		params := c.config.Service.ListProjectsConfig()
 		cr := &crawler[benchling.Projects, *benchlingsdk.ListProjectsParams]{
-			serviceURL: c.Service.ServiceURL,
+			serviceURL: c.config.Service.ServiceURL,
 			params:     params,
 		}
 		return cr.run(ctx, ch, opts)
@@ -245,8 +224,8 @@ func save[ObjectT benchling.Objects](ctx context.Context, fs content.FS, root st
 // CreateIndexableDocuments constructs the documents to be indexed from the
 // various objects crawled from the benchling.com API.
 func (c *Command) CreateIndexableDocuments(ctx context.Context, _ IndexFlags) error {
-	_, downloads, _ := c.Cache.AbsolutePaths(c.cfs, c.cacheRoot)
-	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
+	_, downloads, _ := c.config.Cache.AbsolutePaths(c.cfs, c.cacheRoot)
+	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.config.Cache.ShardingPrefixLen))
 	nd := benchling.NewDocumentIndexer(c.cfs, downloads, sharder)
 	return nd.Index(ctx)
 }

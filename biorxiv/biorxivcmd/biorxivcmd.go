@@ -26,50 +26,37 @@ import (
 	"cloudeng.io/webapi/biorxiv"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
+	"gopkg.in/yaml.v3"
 )
 
-type CommonFlags struct {
-}
-
-type GetFlags struct {
-	CommonFlags
-}
+type GetFlags struct{}
 
 type CrawlFlags struct {
-	CommonFlags
 	Restart bool `subcmd:"restart,false,'restart the crawl, ignoring the saved checkpoint'"`
 }
 
 type ScanFlags struct {
-	CommonFlags
 	Template string `subcmd:"template,'{{.PreprintDOI}} {{.PreprintTitle}}',template to use for printing fields in the downloaded Preprint objects"`
 }
 
 type LookupFlags struct {
-	CommonFlags
 	Template string `subcmd:"template,'{{.}}',template to use for printing fields in the downloaded Preprint objects"`
 }
 
-type IndexFlags struct {
-	CommonFlags
-}
+type IndexFlags struct{}
 
 // Çommand implements the command line operations available for api.biorxiv.org.
 type Command struct {
-	Auth
-	Config
+	config    apicrawlcmd.Crawl[Service]
 	cfs       operations.FS
 	chkpt     checkpoint.Operation
 	cacheRoot string
 }
 
 // NewCommand returns a new Command instance for the specified API crawl.
-func NewCommand(_ context.Context, crawls apicrawlcmd.Crawls, cfs operations.FS, cacheRoot string, chkp checkpoint.Operation, name string) (*Command, error) {
+func NewCommand(_ context.Context, crawl apicrawlcmd.Crawl[yaml.Node], cfs operations.FS, cacheRoot string, chkp checkpoint.Operation) (*Command, error) {
 	c := &Command{cfs: cfs, chkpt: chkp, cacheRoot: cacheRoot}
-	ok, err := apicrawlcmd.ParseCrawlConfig(crawls, name, (*apicrawlcmd.Crawl[Service])(&c.Config))
-	if !ok {
-		return nil, fmt.Errorf("no crawl configuration found for %v", name)
-	}
+	err := apicrawlcmd.ParseCrawlConfig(crawl, &c.config)
 	if err != nil {
 		return nil, err
 	}
@@ -84,15 +71,15 @@ func NewCommand(_ context.Context, crawls apicrawlcmd.Crawls, cfs operations.FS,
 // that biorxiv doesn't add new preprints with dates that predate the
 // current one.
 func (c *Command) Crawl(ctx context.Context, flags CrawlFlags) error {
-	opts, err := c.OptionsForEndpoint(c.Auth)
+	opts, err := OptionsForEndpoint(c.config)
 	if err != nil {
 		return err
 	}
-	_, downloadsPath, chkptPath := c.Cache.AbsolutePaths(c.cfs, c.cacheRoot)
-	if err := c.Cache.PrepareDownloads(ctx, c.cfs, downloadsPath); err != nil {
+	_, downloadsPath, chkptPath := c.config.Cache.AbsolutePaths(c.cfs, c.cacheRoot)
+	if err := c.config.Cache.PrepareDownloads(ctx, c.cfs, downloadsPath); err != nil {
 		return err
 	}
-	if err := c.Cache.PrepareCheckpoint(ctx, c.chkpt, chkptPath); err != nil {
+	if err := c.config.Cache.PrepareCheckpoint(ctx, c.chkpt, chkptPath); err != nil {
 		return err
 	}
 
@@ -100,7 +87,7 @@ func (c *Command) Crawl(ctx context.Context, flags CrawlFlags) error {
 	if err != nil {
 		return err
 	}
-	crawlState.sync(flags.Restart, time.Time(c.Config.Service.StartDate), time.Time(c.Config.Service.EndDate))
+	crawlState.sync(flags.Restart, time.Time(c.config.Service.StartDate), time.Time(c.config.Service.EndDate))
 
 	log.Printf("starting crawl from %v to %v, cursor: %v\n", crawlState.From, crawlState.To, crawlState.Cursor)
 
@@ -111,7 +98,7 @@ func (c *Command) Crawl(ctx context.Context, flags CrawlFlags) error {
 		errCh <- c.crawlSaver(ctx, ch, crawlState, c.cfs, downloadsPath)
 	}()
 
-	sc := biorxiv.NewScanner(c.Config.Service.ServiceURL, crawlState.From, crawlState.To, crawlState.Cursor, opts...)
+	sc := biorxiv.NewScanner(c.config.Service.ServiceURL, crawlState.From, crawlState.To, crawlState.Cursor, opts...)
 	for sc.Scan(ctx) {
 		resp := sc.Response()
 		log.Printf("crawled %v preprints\n", len(resp.Collection))
@@ -130,9 +117,9 @@ func (c *Command) Crawl(ctx context.Context, flags CrawlFlags) error {
 }
 
 func (c *Command) crawlSaver(ctx context.Context, ch <-chan biorxiv.Response, cs crawlState, fs content.FS, root string) error {
-	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
+	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.config.Cache.ShardingPrefixLen))
 
-	store := stores.New(fs, c.Cache.Concurrency)
+	store := stores.New(fs, c.config.Cache.Concurrency)
 	defer store.Finish(ctx) //nolint:errcheck
 
 	written := 0
@@ -194,7 +181,7 @@ func (c *Command) scanDownloaded(ctx context.Context, tpl *template.Template, pr
 	if err != nil {
 		return err
 	}
-	store := stores.New(c.cfs, c.Cache.Concurrency)
+	store := stores.New(c.cfs, c.config.Cache.Concurrency)
 	names := make([]string, len(contents))
 	for i, entry := range contents {
 		names[i] = entry.Name
@@ -227,8 +214,8 @@ func (c *Command) ScanDownloaded(ctx context.Context, fv *ScanFlags) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %q: %v", fv.Template, err)
 	}
-	_, downloads, _ := c.Cache.AbsolutePaths(c.cfs, c.cacheRoot)
-	_, downloadsRel, _ := c.Cache.RelativePaths(c.cacheRoot)
+	_, downloads, _ := c.config.Cache.AbsolutePaths(c.cfs, c.cacheRoot)
+	_, downloadsRel, _ := c.config.Cache.RelativePaths(c.cacheRoot)
 	_ = downloadsRel
 	return filewalk.ContentsOnly(ctx, c.cfs, downloads,
 		func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
@@ -244,10 +231,10 @@ func (c *Command) LookupDownloaded(ctx context.Context, fv *LookupFlags, dois ..
 		return fmt.Errorf("failed to parse template: %q: %v", fv.Template, err)
 	}
 
-	_, downloads, _ := c.Cache.AbsolutePaths(c.cfs, c.cacheRoot)
+	_, downloads, _ := c.config.Cache.AbsolutePaths(c.cfs, c.cacheRoot)
 	store := stores.New(c.cfs, 0)
 
-	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
+	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.config.Cache.ShardingPrefixLen))
 
 	for _, doi := range dois {
 		prefix, suffix := sharder.Assign(fmt.Sprintf("%v", doi))

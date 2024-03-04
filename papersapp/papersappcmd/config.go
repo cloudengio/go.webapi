@@ -7,12 +7,9 @@ package papersappcmd
 import (
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
+	"cloudeng.io/webapi/operations/apitokens"
 	"cloudeng.io/webapi/papersapp"
 )
-
-type Auth struct {
-	APIKey string `yaml:"api_key" cmd:"API key for papersapp"`
-}
 
 type Service struct {
 	ServiceURL        string `yaml:"service_url" cmd:"papersapp service URL, typically https://api.papers.ai"`
@@ -20,18 +17,15 @@ type Service struct {
 	ListItemsPageSize int    `yaml:"list_items_page_size" cmd:"number of items in each page of results, typically 50"`
 }
 
-type Config apicrawlcmd.Crawl[Service]
-
-func (c Config) OptionsForEndpoint(auth Auth) ([]operations.Option, error) {
+func OptionsForEndpoint(cfg apicrawlcmd.Crawl[Service], token *apitokens.T) ([]operations.Option, error) {
 	opts := []operations.Option{}
-	if len(auth.APIKey) > 0 {
-		opts = append(opts,
-			operations.WithAuth(papersapp.NewAPIToken(auth.APIKey, c.Service.RefreshTokenURL)))
+	if tv := token.Token(); len(tv) > 0 {
+		opts = append(opts, operations.WithAuth(papersapp.NewAPIToken(string(tv), cfg.Service.RefreshTokenURL)))
 	}
-	rc, err := c.RateControl.NewRateController()
+	rc, err := cfg.RateControl.NewRateController()
 	if err != nil {
 		return nil, err
 	}
-	opts = append(opts, operations.WithRateController(rc, c.RateControl.ExponentialBackoff.StatusCodes...))
+	opts = append(opts, operations.WithRateController(rc, cfg.RateControl.ExponentialBackoff.StatusCodes...))
 	return opts, nil
 }

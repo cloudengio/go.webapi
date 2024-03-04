@@ -5,32 +5,14 @@
 package benchlingcmd
 
 import (
-	"context"
-	"os"
-	"strings"
-
 	"cloudeng.io/net/ratecontrol"
 	"cloudeng.io/webapi/benchling"
 	"cloudeng.io/webapi/benchling/benchlingsdk"
 	"cloudeng.io/webapi/operations"
-	"gopkg.in/yaml.v3"
 
 	"cloudeng.io/webapi/operations/apicrawlcmd"
+	"cloudeng.io/webapi/operations/apitokens"
 )
-
-type Auth struct {
-	APIKey string `yaml:"api_key" cmd:"API key for benchling"`
-}
-
-func (a *Auth) UnmarshalYAML(value *yaml.Node) error {
-	if err := value.Decode(a); err != nil {
-		return err
-	}
-	if strings.HasPrefix(a.APIKey, "envvar:") {
-		a.APIKey = os.ExpandEnv(strings.TrimSpace(strings.TrimPrefix(a.APIKey, "envvar:")))
-	}
-	return nil
-}
 
 type Service struct {
 	ServiceURL       string `yaml:"service_url" cmd:"benchling service URL, typically https://altoslabs.benchling.com/api/v2/"`
@@ -50,41 +32,40 @@ var (
 	projectSortOrder benchlingsdk.ListProjectsParamsSort = "modifiedAt:asc"
 )
 
-func (c Config) ListUsersConfig(_ context.Context) *benchlingsdk.ListUsersParams {
+func (s Service) ListUsersConfig() *benchlingsdk.ListUsersParams {
 	return &benchlingsdk.ListUsersParams{
 		Sort:     &userSortOrder,
-		PageSize: &c.Service.UsersPageSize,
+		PageSize: &s.UsersPageSize,
 	}
 }
 
-func (c Config) ListEntriesConfig(_ context.Context) *benchlingsdk.ListEntriesParams {
+func (s Service) ListEntriesConfig() *benchlingsdk.ListEntriesParams {
 	return &benchlingsdk.ListEntriesParams{
 		Sort:     &entrySortOrder,
-		PageSize: &c.Service.EntriesPageSize,
+		PageSize: &s.EntriesPageSize,
 	}
 }
 
-func (c Config) ListFoldersConfig(_ context.Context) *benchlingsdk.ListFoldersParams {
+func (s Service) ListFoldersConfig() *benchlingsdk.ListFoldersParams {
 	return &benchlingsdk.ListFoldersParams{
 		Sort:     &folderSortOrder,
-		PageSize: &c.Service.FoldersPageSize,
+		PageSize: &s.FoldersPageSize,
 	}
 }
 
-func (c Config) ListProjectsConfig(_ context.Context) *benchlingsdk.ListProjectsParams {
+func (s Service) ListProjectsConfig() *benchlingsdk.ListProjectsParams {
 	return &benchlingsdk.ListProjectsParams{
 		Sort:     &projectSortOrder,
-		PageSize: &c.Service.ProjectsPageSize,
+		PageSize: &s.ProjectsPageSize,
 	}
 }
 
-func (c Config) OptionsForEndpoint(auth Auth) ([]operations.Option, error) {
+func OptionsForEndpoint(cfg apicrawlcmd.Crawl[Service], token *apitokens.T) ([]operations.Option, error) {
 	opts := []operations.Option{}
-	if len(auth.APIKey) > 0 {
-		opts = append(opts,
-			operations.WithAuth(benchling.APIToken{Token: auth.APIKey}))
+	if tv := token.Token(); len(tv) > 0 {
+		opts = append(opts, operations.WithAuth(benchling.APIToken{Token: string(tv)}))
 	}
-	rateCfg := c.RateControl
+	rateCfg := cfg.RateControl
 	rcopts := []ratecontrol.Option{}
 	if rateCfg.Rate.BytesPerTick > 0 {
 		rcopts = append(rcopts, ratecontrol.WithBytesPerTick(rateCfg.Rate.Tick, rateCfg.Rate.BytesPerTick))
@@ -100,6 +81,6 @@ func (c Config) OptionsForEndpoint(auth Auth) ([]operations.Option, error) {
 				}))
 	}
 	rc := ratecontrol.New(rcopts...)
-	opts = append(opts, operations.WithRateController(rc, c.RateControl.ExponentialBackoff.StatusCodes...))
+	opts = append(opts, operations.WithRateController(rc, cfg.RateControl.ExponentialBackoff.StatusCodes...))
 	return opts, nil
 }
