@@ -25,14 +25,12 @@ func TestConfig(t *testing.T) {
 	if err := cmdyaml.ParseConfigString(protocolsioSpec, &crawls); err != nil {
 		t.Fatal(err)
 	}
-	var cfg protocolsiocmd.Config
-	ok, err := apicrawlcmd.ParseCrawlConfig(crawls, "protocols.io", (*apicrawlcmd.Crawl[protocolsiocmd.Service])(&cfg))
+	var cfg apicrawlcmd.Crawl[protocolsiocmd.Service]
+	err := apicrawlcmd.ParseCrawlConfig(crawls["protocols.io"], &cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := ok, true; got != want {
-		t.Errorf("got %v, want %v", got, want)
-	}
+
 	if got, want := cfg.Service.OrderField, "id"; got != want {
 		t.Errorf("got %v, want %v", got, want)
 	}

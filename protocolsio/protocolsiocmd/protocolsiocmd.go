@@ -14,7 +14,6 @@ import (
 	"sync"
 	"text/template"
 
-	"cloudeng.io/cmdutil/cmdyaml"
 	"cloudeng.io/cmdutil/flags"
 	"cloudeng.io/errors"
 	"cloudeng.io/file/checkpoint"
@@ -26,6 +25,7 @@ import (
 	"cloudeng.io/webapi/operations/apicrawlcmd"
 	"cloudeng.io/webapi/operations/apitokens"
 	"cloudeng.io/webapi/protocolsio/protocolsiosdk"
+	"gopkg.in/yaml.v3"
 )
 
 type CommonFlags struct {
@@ -52,42 +52,30 @@ type ScanFlags struct {
 
 // Çommand implements the command line operations available for protocols.io.
 type Command struct {
-	Auth
-	Config
-	cfs   operations.FS
-	chkpt checkpoint.Operation
+	token  *apitokens.T
+	config apicrawlcmd.Crawl[Service]
+	cfs    operations.FS
+	chkpt  checkpoint.Operation
 }
 
 // NewCommand returns a new Command instance for the specified API crawl
 // with API authentication information read from the specified file or
 // from the context.
-func NewCommand(ctx context.Context, crawls apicrawlcmd.Crawls, fs operations.FS, chkpt checkpoint.Operation, name, authFilename string) (*Command, error) {
-	c := &Command{cfs: fs, chkpt: chkpt}
-	ok, err := apicrawlcmd.ParseCrawlConfig(crawls, name, (*apicrawlcmd.Crawl[Service])(&c.Config))
-	if !ok {
-		return nil, fmt.Errorf("no configuration found for %v", name)
-	}
+func NewCommand(ctx context.Context, crawl apicrawlcmd.Crawl[yaml.Node], fs operations.FS, chkpt checkpoint.Operation, token *apitokens.T) (*Command, error) {
+	c := &Command{cfs: fs, chkpt: chkpt, token: token}
+	err := apicrawlcmd.ParseCrawlConfig(crawl, &c.config)
 	if err != nil {
 		return nil, err
-	}
-	if len(authFilename) > 0 {
-		if err := cmdyaml.ParseConfigFile(ctx, authFilename, &c.Auth); err != nil {
-			return nil, err
-		}
-	} else {
-		if ok, err := apitokens.ParseTokensYAML(ctx, name, &c.Auth); ok && err != nil {
-			return nil, err
-		}
 	}
 	return c, nil
 }
 
 func (c *Command) Crawl(ctx context.Context, fs content.FS, cacheRoot string, fv *CrawlFlags) error {
-	_, downloadsPath, chkptPath := c.Cache.AbsolutePaths(c.cfs, cacheRoot)
-	if err := c.Cache.PrepareDownloads(ctx, c.cfs, downloadsPath); err != nil {
+	_, downloadsPath, chkptPath := c.config.Cache.AbsolutePaths(c.cfs, cacheRoot)
+	if err := c.config.Cache.PrepareDownloads(ctx, c.cfs, downloadsPath); err != nil {
 		return err
 	}
-	if err := c.Cache.PrepareCheckpoint(ctx, c.chkpt, chkptPath); err != nil {
+	if err := c.config.Cache.PrepareCheckpoint(ctx, c.chkpt, chkptPath); err != nil {
 		return err
 	}
 	if fv.IgnoreCheckpoint {
@@ -96,9 +84,9 @@ func (c *Command) Crawl(ctx context.Context, fs content.FS, cacheRoot string, fv
 		}
 	}
 
-	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.Cache.ShardingPrefixLen))
+	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.config.Cache.ShardingPrefixLen))
 
-	crawler, err := c.NewProtocolCrawler(ctx, c.cfs, downloadsPath, c.chkpt, fv, c.Auth)
+	crawler, err := NewProtocolCrawler(ctx, c.config, c.cfs, downloadsPath, c.chkpt, fv, c.token)
 	if err != nil {
 		return err
 	}
@@ -154,7 +142,7 @@ func handleCrawledObject(ctx context.Context,
 }
 
 func (c *Command) Get(ctx context.Context, _ *GetFlags, args []string) error {
-	opts, err := c.Config.OptionsForEndpoint(c.Auth)
+	opts, err := OptionsForEndpoint(c.config, c.token)
 	if err != nil {
 		return err
 	}
@@ -175,8 +163,8 @@ func (c *Command) ScanDownloaded(ctx context.Context, root string, fv *ScanFlags
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %q: %v", fv.Template, err)
 	}
-	_, downloadsPath, _ := c.Cache.AbsolutePaths(c.cfs, root)
-	store := stores.New(c.cfs, c.Cache.Concurrency)
+	_, downloadsPath, _ := c.config.Cache.AbsolutePaths(c.cfs, root)
+	store := stores.New(c.cfs, c.config.Cache.Concurrency)
 	var mu sync.Mutex
 	err = filewalk.ContentsOnly(ctx, c.cfs, downloadsPath, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
 		if err != nil {
