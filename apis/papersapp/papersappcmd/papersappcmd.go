@@ -21,7 +21,6 @@ import (
 	"cloudeng.io/webapi/apis/papersapp/papersappsdk"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
-	"cloudeng.io/webapi/operations/apitokens"
 	"gopkg.in/yaml.v3"
 )
 
@@ -31,42 +30,35 @@ type ScanFlags struct{}
 
 // Çommand implements the command line operations available for papersapp.com.
 type Command struct {
-	token  *apitokens.T
-	config apicrawlcmd.Crawl[Service]
-	cfs    operations.FS
+	state apicrawlcmd.State[Service]
 }
 
-// NewCommand returns a new Command instance for the specified API crawl
-// with API authentication information read from the specified file or
-// from the context.
-func NewCommand(crawl apicrawlcmd.Crawl[yaml.Node], cfs operations.FS, token *apitokens.T) (*Command, error) {
-	c := &Command{cfs: cfs, token: token}
-	err := apicrawlcmd.ParseCrawlConfig(crawl, &c.config)
-	if err != nil {
-		return nil, err
-	}
-	return c, nil
+// NewCommand returns a new Command instance for readcube/papersapp
+// API related commands.
+func NewCommand(ctx context.Context, config apicrawlcmd.Crawl[yaml.Node], resources apicrawlcmd.Resources) (*Command, error) {
+	state, err := apicrawlcmd.NewState[Service](ctx, config, resources)
+	return &Command{state: state}, err
 }
 
-func (c *Command) Crawl(ctx context.Context, cacheRoot string, _ *CrawlFlags) error {
-	opts, err := OptionsForEndpoint(c.config, c.token)
+func (c *Command) Crawl(ctx context.Context, _ *CrawlFlags) error {
+	opts, err := OptionsForEndpoint(c.state.Config, c.state.Token)
 	if err != nil {
 		return err
 	}
 
-	_, downloadsPath, _ := c.config.Cache.AbsolutePaths(c.cfs, cacheRoot)
-	if err := c.config.Cache.PrepareDownloads(ctx, c.cfs, downloadsPath); err != nil {
+	downloadsPath, _ := c.state.Config.Cache.Paths()
+	if err := c.state.Config.Cache.PrepareDownloads(ctx, c.state.Store); err != nil {
 		return err
 	}
 
-	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.config.Cache.ShardingPrefixLen))
+	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.state.Config.Cache.ShardingPrefixLen))
 
-	collections, err := papersapp.ListCollections(ctx, c.config.Service.ServiceURL, opts...)
+	collections, err := papersapp.ListCollections(ctx, c.state.Config.Service.ServiceURL, opts...)
 	if err != nil {
 		return err
 	}
 
-	collectionsCache := stores.New(c.cfs, c.config.Cache.Concurrency)
+	collectionsCache := stores.New(c.state.Store, c.state.Config.Cache.Concurrency)
 	for _, col := range collections {
 		obj := content.Object[*papersappsdk.Collection, operations.Response]{
 			Type:     papersapp.CollectionType,
@@ -89,8 +81,8 @@ func (c *Command) Crawl(ctx context.Context, cacheRoot string, _ *CrawlFlags) er
 			continue
 		}
 		crawler := &crawlCollection{
-			config:     c.config,
-			fs:         c.cfs,
+			config:     c.state.Config,
+			fs:         c.state.Store,
 			root:       downloadsPath,
 			sharder:    sharder,
 			collection: col,
@@ -211,10 +203,10 @@ func scanDownloaded(ctx context.Context, fs content.FS, concurrency int, gzipWri
 	})
 }
 
-func (c *Command) ScanDownloaded(ctx context.Context, root string, _ *ScanFlags) error {
-	_, downloadsPath, _ := c.config.Cache.AbsolutePaths(c.cfs, root)
-	err := filewalk.ContentsOnly(ctx, c.cfs, downloadsPath, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
-		return scanDownloaded(ctx, c.cfs, c.config.Cache.Concurrency, nil, prefix, contents, err)
+func (c *Command) ScanDownloaded(ctx context.Context, _ *ScanFlags) error {
+	downloadsPath, _ := c.state.Config.Cache.Paths()
+	err := filewalk.ContentsOnly(ctx, c.state.Store, downloadsPath, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
+		return scanDownloaded(ctx, c.state.Store, c.state.Config.Cache.Concurrency, nil, prefix, contents, err)
 	})
 	return err
 }

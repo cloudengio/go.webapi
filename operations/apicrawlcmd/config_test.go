@@ -14,14 +14,17 @@ import (
 
 const apiCrawlSpec = `
 api1:
-  cache_checkpoint: path/to/checkpoint
-  cache_sharding_prefix_len: 1
-  service:
+  cache:
+    checkpoint: path/to/checkpoint
+    sharding_prefix_len: 1
+    service_config:
+      aws: true
+  service_config:
     something: 1
 api2:
   exponential_backoff:
     initial_delay: 60s
-  service:
+  service_config:
     else: 2
 `
 
