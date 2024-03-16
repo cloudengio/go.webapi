@@ -8,7 +8,7 @@ require (
 	cloudeng.io/net v0.0.0-20240315173010-822871381e62
 	cloudeng.io/path v0.0.9
 	cloudeng.io/sync v0.0.8
-	cloudeng.io/webapi/operations v0.0.0-20240304190508-aff8e8812700
+	cloudeng.io/webapi/operations v0.0.0-20240316214133-4850ad239ee1
 	github.com/getkin/kin-openapi v0.123.0
 	github.com/labstack/echo/v4 v4.11.4
 	github.com/oapi-codegen/runtime v1.1.1
@@ -17,7 +17,7 @@ require (
 
 require (
 	cloudeng.io/cmdutil v0.0.0-20240301160019-e47d52cd5d84 // indirect
-	cloudeng.io/os v0.0.0-20240315173010-822871381e62 // indirect
+	cloudeng.io/os v0.0.0-20240316212519-c83428bae4cf // indirect
 	cloudeng.io/text v0.0.11 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect

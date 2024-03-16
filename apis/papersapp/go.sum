@@ -9,8 +9,8 @@ cloudeng.io/file v0.0.0-20240316212519-c83428bae4cf h1:7LxK8qUatnCCOLGNAPZU91uIC
 cloudeng.io/file v0.0.0-20240316212519-c83428bae4cf/go.mod h1:cmNGFILlDaNku6KiLsXeAGjY/227h2Pdb3pY763KG9s=
 cloudeng.io/net v0.0.0-20240315173010-822871381e62 h1:ZznULSxracFn9ji/iix+i68r1aeJI5Thk1mglsmLUNo=
 cloudeng.io/net v0.0.0-20240315173010-822871381e62/go.mod h1:1MmRGFc96u3Ml+XNlnsq/Pjmu5XwDxXi9zvkKpkTPlk=
-cloudeng.io/os v0.0.0-20240315173010-822871381e62 h1:L2puLEgKOPu/gsAU7XYRd+AM+GCRNctKxxHhw2LoLvU=
-cloudeng.io/os v0.0.0-20240315173010-822871381e62/go.mod h1:astGX/wZRKN9SuNzFyaFmpE2GilpMaM7TYO1UKbBfaU=
+cloudeng.io/os v0.0.0-20240316212519-c83428bae4cf h1:6Wg5fh9h4nqemzVJmDyo2A4825gj8yNdyrd25SxkVMk=
+cloudeng.io/os v0.0.0-20240316212519-c83428bae4cf/go.mod h1:astGX/wZRKN9SuNzFyaFmpE2GilpMaM7TYO1UKbBfaU=
 cloudeng.io/path v0.0.9 h1:4kqfJ2OJwScl4E+iTo41ofV+pc4y8ZevAfUVkGSNALI=
 cloudeng.io/path v0.0.9/go.mod h1:ZNgON0dxZp8dA2igYqywNcB3cEc5cvJniYaYVPWy3l8=
 cloudeng.io/sync v0.0.8 h1:N8o5Qo5sjxwDktWIW/7rfK14O74jGS3pprefjF3EFKA=
@@ -19,8 +19,8 @@ cloudeng.io/sys v0.0.0-20240213043943-f6a8f92f083f h1:KdhLXue6VSV+d0pSSAfD/0awkr
 cloudeng.io/sys v0.0.0-20240213043943-f6a8f92f083f/go.mod h1:6eUpMj/QN8awJqgPi9IIPWeVV1H27XcfF2bta2MzmOY=
 cloudeng.io/text v0.0.11 h1:q3+p3gxwNdr/V+k4+77fj9QxVpUU8G7B4+v26m+sE8I=
 cloudeng.io/text v0.0.11/go.mod h1:99L3CQ55YhUy2+lHlFPowYyCoXO86fmkvNtcMT2X3GU=
-cloudeng.io/webapi/operations v0.0.0-20240304190508-aff8e8812700 h1:yvKEgHKMhRqmu6ZvgbytXrrxkoZuUu6yS91eX5z/92A=
-cloudeng.io/webapi/operations v0.0.0-20240304190508-aff8e8812700/go.mod h1:SqDrBZ5chKUVsOjsiYv1bsRNmQ7u9rlp5aZpxAARzD4=
+cloudeng.io/webapi/operations v0.0.0-20240316214133-4850ad239ee1 h1:lzGUdO/i1AU1Guz/vSxvzhqWXUxjJYpSxuwQZ6Kf76w=
+cloudeng.io/webapi/operations v0.0.0-20240316214133-4850ad239ee1/go.mod h1:dswC4PerQ0HjXwkzf08tNtFoP4fabp4M1l0oZV5YRWU=
 cloudeng.io/webapi/webapitestutil v0.0.0-20230204003545-f310593967e5 h1:jzjeFPX1nflSztwDt2Xv+IiqjBGkkSB6vvwb5j7fjLQ=
 cloudeng.io/webapi/webapitestutil v0.0.0-20230204003545-f310593967e5/go.mod h1:0tQ0jYj6jH3d4Jj0c2oOaB5TLbNwLu6kxQdS+2GbdbY=
 github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 h1:DklsrG3dyBCFEj5IhUbnKptjxatkF07cF2ak3yi77so=

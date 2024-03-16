@@ -14,7 +14,7 @@ require (
 )
 
 require (
-	cloudeng.io/os v0.0.0-20240315173010-822871381e62 // indirect
+	cloudeng.io/os v0.0.0-20240316212519-c83428bae4cf // indirect
 	cloudeng.io/path v0.0.9 // indirect
 	cloudeng.io/sync v0.0.8 // indirect
 	cloudeng.io/text v0.0.11 // indirect
