@@ -94,13 +94,13 @@ func handleCrawledObject(ctx context.Context,
 	store := stores.New(fs, 0)
 	for _, obj := range objs {
 		if obj.Response.Current != 0 && obj.Response.Total != 0 {
-			log.Printf("progress: %v/%v\n", obj.Response.Current, obj.Response.Total)
+			log.Printf("protocols.io: progress: %v/%v\n", obj.Response.Current, obj.Response.Total)
 		}
 		if obj.Value.Protocol.ID == 0 {
 			// Protocol is up-to-date on disk.
 			return nil
 		}
-		log.Printf("protocol ID: %v\n", obj.Value.Protocol.ID)
+		log.Printf("protocols.io: protocol ID: %v\n", obj.Value.Protocol.ID)
 		if !save {
 			return nil
 		}
@@ -114,9 +114,9 @@ func handleCrawledObject(ctx context.Context,
 		if state := obj.Response.Checkpoint; len(state) > 0 {
 			name, err := chk.Checkpoint(ctx, "", state)
 			if err != nil {
-				log.Printf("failed to save checkpoint: %v: %v\n", name, err)
+				log.Printf("protocols.io: failed to save checkpoint: %v: %v\n", name, err)
 			} else {
-				log.Printf("checkpoint: %v\n", name)
+				log.Printf("protocols.io: checkpoint: %v\n", name)
 			}
 		}
 	}
@@ -150,7 +150,7 @@ func (c *Command) ScanDownloaded(ctx context.Context, fv *ScanFlags) error {
 	var mu sync.Mutex
 	err = filewalk.ContentsOnly(ctx, c.state.Store, downloadsPath, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
 		if err != nil {
-			log.Printf("error: %v: %v", prefix, err)
+			log.Printf("protocols.io: error: %v: %v", prefix, err)
 		}
 		names := make([]string, len(contents))
 		for i, c := range contents {

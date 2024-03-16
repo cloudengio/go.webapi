@@ -74,7 +74,7 @@ func (c *Command) Crawl(ctx context.Context, _ *CrawlFlags) error {
 	if err := collectionsCache.Finish(ctx); err != nil {
 		return err
 	}
-	log.Printf("crawled %v collections\n", len(collections))
+	log.Printf("papersapp: crawled %v collections\n", len(collections))
 
 	for _, col := range collections {
 		if !col.Shared {
@@ -109,7 +109,7 @@ func (cc *crawlCollection) run(ctx context.Context) error {
 	store := stores.New(cc.fs, cc.config.Cache.Concurrency)
 	defer func() {
 		store.Finish(ctx) //nolint:errcheck
-		log.Printf("total written: %v: %v\n", written, cc.collection.Name)
+		log.Printf("papersapp: total written: %v: %v\n", written, cc.collection.Name)
 	}()
 
 	join := cc.fs.Join
@@ -144,11 +144,11 @@ func (cc *crawlCollection) run(ctx context.Context) error {
 			}
 			written++
 			if written%100 == 0 {
-				log.Printf("written: %v\n", written)
+				log.Printf("papersapp: written: %v\n", written)
 			}
 		}
 	}
-	log.Printf("%v: % 8v (%v): done\n", cc.collection.ID, dl, cc.collection.Name)
+	log.Printf("papersapp: %v: % 8v (%v): done\n", cc.collection.ID, dl, cc.collection.Name)
 	if err := sc.Err(); err != nil {
 		return err
 	}
@@ -181,14 +181,14 @@ func scanDownloaded(ctx context.Context, fs content.FS, concurrency int, gzipWri
 			if err := obj.Decode(buf); err != nil {
 				return err
 			}
-			log.Printf("collection: %v: %v\n", obj.Value.ID, obj.Value.Name)
+			log.Printf("papersapp: collection: %v: %v\n", obj.Value.ID, obj.Value.Name)
 		case papersapp.ItemType:
 			var obj content.Object[papersapp.Item, operations.Response]
 			if err := obj.Decode(buf); err != nil {
 				return err
 			}
 			item := obj.Value
-			log.Printf("item: %v: %v: %v\n", item.Item.ItemType, item.Item.ID, item.Collection.Name)
+			log.Printf("papersapp: item: %v: %v: %v\n", item.Item.ItemType, item.Item.ID, item.Collection.Name)
 			if gzipWriter != nil {
 				buf, err := json.Marshal(item)
 				if err != nil {

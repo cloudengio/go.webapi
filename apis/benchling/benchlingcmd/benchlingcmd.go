@@ -57,7 +57,7 @@ func (c *Command) Crawl(ctx context.Context, _ CrawlFlags, entities ...string) e
 	if err != nil {
 		return err
 	}
-	log.Printf("checkpoint: user date: %v, entry date: %v", state.UsersDate, state.EntriesDate)
+	log.Printf("benchling: checkpoint: user date: %v, entry date: %v", state.UsersDate, state.EntriesDate)
 
 	ch := make(chan any, 100)
 
@@ -72,7 +72,7 @@ func (c *Command) Crawl(ctx context.Context, _ CrawlFlags, entities ...string) e
 		entity := entity
 		entityGroup.Go(func() error {
 			err := c.crawlEntity(ctx, state, entity, ch, opts)
-			log.Printf("completed crawl of %v: %v", entity, err)
+			log.Printf("benchling: completed crawl of %v: %v", entity, err)
 			return err
 		})
 	}
@@ -88,7 +88,7 @@ func (c *Command) crawlSaver(ctx context.Context, state Checkpoint, downloadsPat
 	var nUsers, nEntries, nFolders, nProjects int
 	var written int64
 	defer func() {
-		log.Printf("total written: %v (users: %v, entries %v, folders %v, projects %v)", written, nUsers, nEntries, nFolders, nProjects)
+		log.Printf("benchling: total written: %v (users: %v, entries %v, folders %v, projects %v)", written, nUsers, nEntries, nFolders, nProjects)
 	}()
 	concurrency := c.state.Config.Cache.Concurrency
 	for {
@@ -115,7 +115,7 @@ func (c *Command) crawlSaver(ctx context.Context, state Checkpoint, downloadsPat
 			state.EntriesDate = *(v.Entries[len(v.Entries)-1].ModifiedAt)
 			state.UsersDate = time.Now().Format(time.RFC3339)
 			if err := saveCheckpoint(ctx, c.state.Checkpoint, state); err != nil {
-				log.Printf("failed to save checkpoint: %v", err)
+				log.Printf("benchling: failed to save checkpoint: %v", err)
 				return err
 			}
 		case benchling.Folders:
@@ -126,7 +126,7 @@ func (c *Command) crawlSaver(ctx context.Context, state Checkpoint, downloadsPat
 			err = save(ctx, c.state.Store, downloadsPath, concurrency, sharder, v.Projects)
 		}
 		total := nUsers + nEntries + nFolders + nProjects
-		log.Printf("written: %v (users: %v, entries %v, folders %v, projects %v) crawl: %v, save: %v", total, nUsers, nEntries, nFolders, nProjects, saveStart.Sub(start), time.Since(saveStart))
+		log.Printf("benchling: written: %v (users: %v, entries %v, folders %v, projects %v) crawl: %v, save: %v", total, nUsers, nEntries, nFolders, nProjects, saveStart.Sub(start), time.Since(saveStart))
 		if err != nil {
 			return err
 		}
