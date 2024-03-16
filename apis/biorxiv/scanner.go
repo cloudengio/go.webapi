@@ -6,11 +6,13 @@ package biorxiv
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
 	"time"
 
+	"cloudeng.io/webapi/apis/biorxiv/internal"
 	"cloudeng.io/webapi/operations"
 )
 
@@ -35,17 +37,18 @@ func (pg *paginator) Next(_ context.Context, t Response, r *http.Response) (req 
 		return
 	}
 	msg := t.Messages[0]
-	var cursor int64
-	switch v := msg.Cursor.(type) {
-	case int:
-		cursor = int64(v)
-	case string:
-		cursor, err = strconv.ParseInt(v, 10, 64)
-		if err != nil {
-			return
-		}
+	cursor, err := internal.AsInt64(msg.Cursor)
+	if err != nil {
+		err = fmt.Errorf("unexpected cursor: %v: %v", msg.Cursor, err)
+		return
 	}
-	if cursor+msg.Count >= msg.Total {
+
+	total, err := internal.AsInt64(msg.Total)
+	if err != nil {
+		err = fmt.Errorf("unexpected total: %v: %v", msg.Total, err)
+		return
+	}
+	if cursor+msg.Count >= total {
 		done = true
 		return
 	}

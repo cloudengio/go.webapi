@@ -14,7 +14,7 @@ import (
 
 const protocolsioSpec = `
 protocols.io:
-  service:
+  service_config:
     order_field: id
   rate_control:
     requests_per_tick: 3

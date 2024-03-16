@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -33,15 +32,16 @@ type DocumentIndexer struct {
 	entries     map[string]benchlingsdk.Entry
 }
 
-func NewDocumentIndexer(fs operations.FS, downloads string, sharder path.Sharder) *DocumentIndexer {
+func NewDocumentIndexer(fs operations.FS, downloads string, sharder path.Sharder, concurrency int) *DocumentIndexer {
 	return &DocumentIndexer{
-		fs:        fs,
-		downloads: downloads,
-		users:     make(map[string]benchlingsdk.User),
-		projects:  make(map[string]benchlingsdk.Project),
-		folders:   make(map[string]benchlingsdk.Folder),
-		entries:   make(map[string]benchlingsdk.Entry),
-		sharder:   sharder,
+		fs:          fs,
+		downloads:   downloads,
+		concurrency: concurrency,
+		users:       make(map[string]benchlingsdk.User),
+		projects:    make(map[string]benchlingsdk.Project),
+		folders:     make(map[string]benchlingsdk.Folder),
+		entries:     make(map[string]benchlingsdk.Entry),
+		sharder:     sharder,
 	}
 }
 
@@ -99,7 +99,7 @@ func (di *DocumentIndexer) populate(ctx context.Context, prefix string, contents
 		return err
 	}
 	start := time.Now()
-	store := stores.NewAsync(di.fs, runtime.NumCPU()*2)
+	store := stores.New(di.fs, di.concurrency)
 	defer func() {
 		nUsers := len(di.users)
 		nEntries := len(di.entries)

@@ -35,7 +35,7 @@ type Message struct {
 	Interval string `json:"interval"`
 	Cursor   any    `json:"cursor"` // Can be an int or a string!
 	Count    int64  `json:"count"`
-	Total    int64  `json:"total"`
+	Total    any    `json:"total"` // Can be an int or a string!
 }
 
 // Response represents the response from api.biorxiv.org for an API request

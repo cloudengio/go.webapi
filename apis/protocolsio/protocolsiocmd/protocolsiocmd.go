@@ -24,7 +24,6 @@ import (
 	"cloudeng.io/webapi/apis/protocolsio/protocolsiosdk"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
-	"cloudeng.io/webapi/operations/apitokens"
 	"gopkg.in/yaml.v3"
 )
 
@@ -44,41 +43,32 @@ type ScanFlags struct {
 
 // Çommand implements the command line operations available for protocols.io.
 type Command struct {
-	token  *apitokens.T
-	config apicrawlcmd.Crawl[Service]
-	cfs    operations.FS
-	chkpt  checkpoint.Operation
+	state apicrawlcmd.State[Service]
 }
 
-// NewCommand returns a new Command instance for the specified API crawl
-// with API authentication information read from the specified file or
-// from the context.
-func NewCommand(crawl apicrawlcmd.Crawl[yaml.Node], fs operations.FS, chkpt checkpoint.Operation, token *apitokens.T) (*Command, error) {
-	c := &Command{cfs: fs, chkpt: chkpt, token: token}
-	err := apicrawlcmd.ParseCrawlConfig(crawl, &c.config)
-	if err != nil {
-		return nil, err
-	}
-	return c, nil
+// NewCommand returns a new Command instance for protocols.io API related commands.
+func NewCommand(ctx context.Context, config apicrawlcmd.Crawl[yaml.Node], resources apicrawlcmd.Resources) (*Command, error) {
+	state, err := apicrawlcmd.NewState[Service](ctx, config, resources)
+	return &Command{state: state}, err
 }
 
-func (c *Command) Crawl(ctx context.Context, fs content.FS, cacheRoot string, fv *CrawlFlags) error {
-	_, downloadsPath, chkptPath := c.config.Cache.AbsolutePaths(c.cfs, cacheRoot)
-	if err := c.config.Cache.PrepareDownloads(ctx, c.cfs, downloadsPath); err != nil {
+func (c *Command) Crawl(ctx context.Context, fv *CrawlFlags) error {
+	downloadsPath, _ := c.state.Config.Cache.Paths()
+	if err := c.state.Config.Cache.PrepareDownloads(ctx, c.state.Store); err != nil {
 		return err
 	}
-	if err := c.config.Cache.PrepareCheckpoint(ctx, c.chkpt, chkptPath); err != nil {
+	if err := c.state.Config.Cache.PrepareCheckpoint(ctx, c.state.Checkpoint); err != nil {
 		return err
 	}
 	if fv.IgnoreCheckpoint {
-		if err := c.chkpt.Clear(ctx); err != nil {
+		if err := c.state.Checkpoint.Clear(ctx); err != nil {
 			return err
 		}
 	}
 
-	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.config.Cache.ShardingPrefixLen))
+	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.state.Config.Cache.ShardingPrefixLen))
 
-	crawler, err := NewProtocolCrawler(ctx, c.config, c.cfs, downloadsPath, c.chkpt, fv, c.token)
+	crawler, err := newProtocolCrawler(ctx, c.state.Config, c.state.Store, downloadsPath, c.state.Checkpoint, fv, c.state.Token)
 	if err != nil {
 		return err
 	}
@@ -86,10 +76,10 @@ func (c *Command) Crawl(ctx context.Context, fs content.FS, cacheRoot string, fv
 	var errs errors.M
 	err = operations.RunCrawl(ctx, crawler,
 		func(ctx context.Context, objects []content.Object[protocolsiosdk.ProtocolPayload, operations.Response]) error {
-			return handleCrawledObject(ctx, fv.Save, sharder, fs, downloadsPath, c.chkpt, objects)
+			return handleCrawledObject(ctx, fv.Save, sharder, c.state.Store, downloadsPath, c.state.Checkpoint, objects)
 		})
 	errs.Append(err)
-	errs.Append(c.chkpt.Compact(ctx, ""))
+	errs.Append(c.state.Checkpoint.Compact(ctx, ""))
 	return errs.Err()
 }
 
@@ -104,13 +94,13 @@ func handleCrawledObject(ctx context.Context,
 	store := stores.New(fs, 0)
 	for _, obj := range objs {
 		if obj.Response.Current != 0 && obj.Response.Total != 0 {
-			log.Printf("progress: %v/%v\n", obj.Response.Current, obj.Response.Total)
+			log.Printf("protocols.io: progress: %v/%v\n", obj.Response.Current, obj.Response.Total)
 		}
 		if obj.Value.Protocol.ID == 0 {
 			// Protocol is up-to-date on disk.
 			return nil
 		}
-		log.Printf("protocol ID: %v\n", obj.Value.Protocol.ID)
+		log.Printf("protocols.io: protocol ID: %v\n", obj.Value.Protocol.ID)
 		if !save {
 			return nil
 		}
@@ -124,9 +114,9 @@ func handleCrawledObject(ctx context.Context,
 		if state := obj.Response.Checkpoint; len(state) > 0 {
 			name, err := chk.Checkpoint(ctx, "", state)
 			if err != nil {
-				log.Printf("failed to save checkpoint: %v: %v\n", name, err)
+				log.Printf("protocols.io: failed to save checkpoint: %v: %v\n", name, err)
 			} else {
-				log.Printf("checkpoint: %v\n", name)
+				log.Printf("protocols.io: checkpoint: %v\n", name)
 			}
 		}
 	}
@@ -134,7 +124,7 @@ func handleCrawledObject(ctx context.Context,
 }
 
 func (c *Command) Get(ctx context.Context, _ *GetFlags, args []string) error {
-	opts, err := OptionsForEndpoint(c.config, c.token)
+	opts, err := OptionsForEndpoint(c.state.Config, c.state.Token)
 	if err != nil {
 		return err
 	}
@@ -150,17 +140,17 @@ func (c *Command) Get(ctx context.Context, _ *GetFlags, args []string) error {
 	return nil
 }
 
-func (c *Command) ScanDownloaded(ctx context.Context, root string, fv *ScanFlags) error {
+func (c *Command) ScanDownloaded(ctx context.Context, fv *ScanFlags) error {
 	tpl, err := template.New("protocolsio").Parse(fv.Template)
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %q: %v", fv.Template, err)
 	}
-	_, downloadsPath, _ := c.config.Cache.AbsolutePaths(c.cfs, root)
-	store := stores.New(c.cfs, c.config.Cache.Concurrency)
+	downloadsPath, _ := c.state.Config.Cache.Paths()
+	store := stores.New(c.state.Store, c.state.Config.Cache.Concurrency)
 	var mu sync.Mutex
-	err = filewalk.ContentsOnly(ctx, c.cfs, downloadsPath, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
+	err = filewalk.ContentsOnly(ctx, c.state.Store, downloadsPath, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
 		if err != nil {
-			log.Printf("error: %v: %v", prefix, err)
+			log.Printf("protocols.io: error: %v: %v", prefix, err)
 		}
 		names := make([]string, len(contents))
 		for i, c := range contents {

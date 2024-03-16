@@ -79,9 +79,9 @@ func createVersionMap(ctx context.Context, fs operations.FS, concurrency int, do
 	return vmap, err
 }
 
-// NewProtocolCrawler creates a new instance of operations.Crawler
+// newProtocolCrawler creates a new instance of operations.Crawler
 // that can be used to crawl/download protocols on protocols.io.
-func NewProtocolCrawler(ctx context.Context, cfg apicrawlcmd.Crawl[Service], fs operations.FS, downloadsPath string, op checkpoint.Operation, fv *CrawlFlags, token *apitokens.T) (*operations.Crawler[protocolsiosdk.ListProtocolsV3, protocolsiosdk.ProtocolPayload], error) {
+func newProtocolCrawler(ctx context.Context, cfg apicrawlcmd.Crawl[Service], fs operations.FS, downloadsPath string, op checkpoint.Operation, fv *CrawlFlags, token *apitokens.T) (*operations.Crawler[protocolsiosdk.ListProtocolsV3, protocolsiosdk.ProtocolPayload], error) {
 
 	cp, err := latestCheckpoint(ctx, op)
 	if err != nil {
