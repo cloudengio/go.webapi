@@ -16,6 +16,10 @@ func AsInt64(v any) (int64, error) {
 	switch v := v.(type) {
 	case int:
 		return int64(v), nil
+	case float64:
+		return int64(v), nil
+	case float32:
+		return int64(v), nil
 	case string:
 		return strconv.ParseInt(v, 10, 64)
 	}
