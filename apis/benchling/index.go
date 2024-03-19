@@ -51,7 +51,7 @@ func (di *DocumentIndexer) Index(ctx context.Context) error {
 
 func (di *DocumentIndexer) readFile(_ context.Context, prefix, name string, ctype content.Type, buf []byte, err error) error {
 	if err != nil {
-		log.Printf("read %v: error: %v\n", di.fs.Join(prefix, name), err)
+		log.Printf("benchling indexder: read %v: error: %v\n", di.fs.Join(prefix, name), err)
 		return err
 	}
 	switch ctype {
@@ -106,7 +106,7 @@ func (di *DocumentIndexer) populate(ctx context.Context, prefix string, contents
 		nFolders := len(di.folders)
 		nProjects := len(di.projects)
 		total := nUsers + nEntries + nFolders + nProjects
-		log.Printf("%v total read: %v (users: %v, entries %v, folders %v, projects %v): read %v", prefix, total, nUsers, nEntries, nFolders, nProjects, time.Since(start))
+		log.Printf("benchling indexder: %v total read: %v (users: %v, entries %v, folders %v, projects %v): read %v", prefix, total, nUsers, nEntries, nFolders, nProjects, time.Since(start))
 	}()
 
 	names := make([]string, len(contents))
@@ -140,7 +140,7 @@ func (di *DocumentIndexer) dayText(entry *benchlingsdk.Entry) string {
 			for _, n := range *dayEntry.Notes {
 				sn, handled, err := handleSimpleNotePart(n)
 				if err != nil {
-					log.Printf("EntryDay_Notes_Item: %#v: %v", n, err)
+					log.Printf("benchling indexer: EntryDay_Notes_Item: %#v: %v", n, err)
 					continue
 				}
 				if handled {
@@ -150,7 +150,7 @@ func (di *DocumentIndexer) dayText(entry *benchlingsdk.Entry) string {
 				}
 				note, err := n.ValueByDiscriminator()
 				if err != nil {
-					log.Printf("EntryDay_Notes_Item: %#v: %v", n, err)
+					log.Printf("benchling indexer: EntryDay_Notes_Item: %#v: %v", n, err)
 					continue
 				}
 				switch v := note.(type) {
@@ -181,7 +181,7 @@ func (di *DocumentIndexer) index(ctx context.Context) error {
 	join := di.fs.Join
 	store := stores.New(di.fs, di.concurrency)
 	defer store.Finish(ctx) //nolint:errcheck
-	log.Printf("indexing: %v entries\n", len(di.entries))
+	log.Printf("benchling indexer: %v entries\n", len(di.entries))
 	n := 0
 	last := time.Now()
 	for _, entry := range di.entries {
@@ -211,15 +211,15 @@ func (di *DocumentIndexer) index(ctx context.Context) error {
 		prefix, suffix := di.sharder.Assign(fmt.Sprintf("%v", id))
 		prefix = join(di.downloads, prefix)
 		if err := obj.Store(ctx, store, prefix, suffix, content.JSONObjectEncoding, content.GOBObjectEncoding); err != nil {
-			log.Printf("failed to write user: %v as %v %v: %v\n", id, prefix, suffix, err)
+			log.Printf("benchling indexer: failed to write user: %v as %v %v: %v\n", id, prefix, suffix, err)
 		}
 		n++
 		if n%100 == 0 {
-			log.Printf("written %v/%v: %v\n", n, len(di.entries), time.Since(last))
+			log.Printf("benchling indexer: written %v/%v: %v\n", n, len(di.entries), time.Since(last))
 			last = time.Now()
 		}
 	}
-	log.Printf("written %v/%v: %v\n", n, len(di.entries), time.Since(last))
+	log.Printf("benchling indexer: written %v/%v: %v\n", n, len(di.entries), time.Since(last))
 	return store.Finish(ctx)
 }
 
