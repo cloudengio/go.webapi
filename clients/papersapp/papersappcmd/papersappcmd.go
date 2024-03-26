@@ -46,7 +46,7 @@ func (c *Command) Crawl(ctx context.Context, _ *CrawlFlags) error {
 		return err
 	}
 
-	downloadsPath, _ := c.state.Config.Cache.Paths()
+	downloadPath := c.state.Config.Cache.DownloadPath()
 	if err := c.state.Config.Cache.PrepareDownloads(ctx, c.state.Store); err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func (c *Command) Crawl(ctx context.Context, _ *CrawlFlags) error {
 			Response: operations.Response{},
 		}
 		prefix, suffix := sharder.Assign(fmt.Sprintf("%v", col.ID))
-		prefix = collectionsCache.FS().Join(downloadsPath, prefix)
+		prefix = collectionsCache.FS().Join(downloadPath, prefix)
 		if err := obj.Store(ctx, collectionsCache, prefix, suffix, content.JSONObjectEncoding, content.GOBObjectEncoding); err != nil {
 			return err
 		}
@@ -83,7 +83,7 @@ func (c *Command) Crawl(ctx context.Context, _ *CrawlFlags) error {
 		crawler := &crawlCollection{
 			config:     c.state.Config,
 			fs:         c.state.Store,
-			root:       downloadsPath,
+			root:       downloadPath,
 			sharder:    sharder,
 			collection: col,
 			opts:       opts,
@@ -204,8 +204,8 @@ func scanDownloaded(ctx context.Context, fs content.FS, concurrency int, gzipWri
 }
 
 func (c *Command) ScanDownloaded(ctx context.Context, _ *ScanFlags) error {
-	downloadsPath, _ := c.state.Config.Cache.Paths()
-	err := filewalk.ContentsOnly(ctx, c.state.Store, downloadsPath, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
+	downloadPath := c.state.Config.Cache.DownloadPath()
+	err := filewalk.ContentsOnly(ctx, c.state.Store, downloadPath, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
 		return scanDownloaded(ctx, c.state.Store, c.state.Config.Cache.Concurrency, nil, prefix, contents, err)
 	})
 	return err

@@ -53,7 +53,7 @@ func NewCommand(ctx context.Context, config apicrawlcmd.Crawl[yaml.Node], resour
 }
 
 func (c *Command) Crawl(ctx context.Context, fv *CrawlFlags) error {
-	downloadsPath, _ := c.state.Config.Cache.Paths()
+	downloadPath := c.state.Config.Cache.DownloadPath()
 	if err := c.state.Config.Cache.PrepareDownloads(ctx, c.state.Store); err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func (c *Command) Crawl(ctx context.Context, fv *CrawlFlags) error {
 
 	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.state.Config.Cache.ShardingPrefixLen))
 
-	crawler, err := newProtocolCrawler(ctx, c.state.Config, c.state.Store, downloadsPath, c.state.Checkpoint, fv, c.state.Token)
+	crawler, err := newProtocolCrawler(ctx, c.state.Config, c.state.Store, downloadPath, c.state.Checkpoint, fv, c.state.Token)
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func (c *Command) Crawl(ctx context.Context, fv *CrawlFlags) error {
 	var errs errors.M
 	err = operations.RunCrawl(ctx, crawler,
 		func(ctx context.Context, objects []content.Object[protocolsiosdk.ProtocolPayload, operations.Response]) error {
-			return handleCrawledObject(ctx, fv.Save, sharder, c.state.Store, downloadsPath, c.state.Checkpoint, objects)
+			return handleCrawledObject(ctx, fv.Save, sharder, c.state.Store, downloadPath, c.state.Checkpoint, objects)
 		})
 	errs.Append(err)
 	errs.Append(c.state.Checkpoint.Compact(ctx, ""))
@@ -145,10 +145,10 @@ func (c *Command) ScanDownloaded(ctx context.Context, fv *ScanFlags) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %q: %v", fv.Template, err)
 	}
-	downloadsPath, _ := c.state.Config.Cache.Paths()
+	downloadPath := c.state.Config.Cache.DownloadPath()
 	store := stores.New(c.state.Store, c.state.Config.Cache.Concurrency)
 	var mu sync.Mutex
-	err = filewalk.ContentsOnly(ctx, c.state.Store, downloadsPath, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
+	err = filewalk.ContentsOnly(ctx, c.state.Store, downloadPath, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
 		if err != nil {
 			log.Printf("protocols.io: error: %v: %v", prefix, err)
 		}

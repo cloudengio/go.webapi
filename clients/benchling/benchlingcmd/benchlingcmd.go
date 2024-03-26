@@ -46,7 +46,6 @@ func (c *Command) Crawl(ctx context.Context, _ CrawlFlags, entities ...string) e
 	if err != nil {
 		return err
 	}
-	downloadsPath, _ := c.state.Config.Cache.Paths()
 	if err := c.state.Config.Cache.PrepareDownloads(ctx, c.state.Store); err != nil {
 		return err
 	}
@@ -64,7 +63,7 @@ func (c *Command) Crawl(ctx context.Context, _ CrawlFlags, entities ...string) e
 	var crawlGroup errgroup.T
 	var errs errors.M
 	crawlGroup.Go(func() error {
-		return c.crawlSaver(ctx, state, downloadsPath, ch)
+		return c.crawlSaver(ctx, state, c.state.Config.Cache.DownloadPath(), ch)
 	})
 
 	var entityGroup errgroup.T
@@ -211,8 +210,7 @@ func save[ObjectT benchling.Objects](ctx context.Context, fs content.FS, root st
 // CreateIndexableDocuments constructs the documents to be indexed from the
 // various objects crawled from the benchling.com API.
 func (c *Command) CreateIndexableDocuments(ctx context.Context, _ IndexFlags) error {
-	downloads, _ := c.state.Config.Cache.Paths()
 	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.state.Config.Cache.ShardingPrefixLen))
-	nd := benchling.NewDocumentIndexer(c.state.Store, downloads, sharder, c.state.Config.Cache.Concurrency)
+	nd := benchling.NewDocumentIndexer(c.state.Store, c.state.Config.Cache.DownloadPath(), sharder, c.state.Config.Cache.Concurrency)
 	return nd.Index(ctx)
 }
