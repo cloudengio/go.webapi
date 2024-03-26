@@ -11,6 +11,7 @@ require (
 )
 
 require (
+	cloudeng.io/file v0.0.0-20240326195459-e2c53ed6771a // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/invopop/yaml v0.2.0 // indirect

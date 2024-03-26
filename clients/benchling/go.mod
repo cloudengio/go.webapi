@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	cloudeng.io/errors v0.0.10
-	cloudeng.io/file v0.0.0-20240316212519-c83428bae4cf
+	cloudeng.io/file v0.0.0-20240326195459-e2c53ed6771a
 	cloudeng.io/net v0.0.0-20240315173010-822871381e62
 	cloudeng.io/path v0.0.9
 	cloudeng.io/sync v0.0.8

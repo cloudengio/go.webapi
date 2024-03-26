@@ -67,7 +67,7 @@ func (c *Command) Crawl(ctx context.Context, flags CrawlFlags) error {
 	if err != nil {
 		return err
 	}
-	downloadsPath, _ := c.state.Config.Cache.Paths()
+	downloadPath := c.state.Config.Cache.DownloadPath()
 	if err := c.state.Config.Cache.PrepareDownloads(ctx, c.state.Store); err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func (c *Command) Crawl(ctx context.Context, flags CrawlFlags) error {
 	ch := make(chan biorxiv.Response, 10)
 
 	go func() {
-		errCh <- c.crawlSaver(ctx, ch, crawlState, c.state.Store, downloadsPath)
+		errCh <- c.crawlSaver(ctx, ch, crawlState, c.state.Store, downloadPath)
 	}()
 
 	sc := biorxiv.NewScanner(c.state.Config.Service.ServiceURL, crawlState.From, crawlState.To, crawlState.Cursor, opts...)
@@ -207,8 +207,8 @@ func (c *Command) ScanDownloaded(ctx context.Context, fv *ScanFlags) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %q: %v", fv.Template, err)
 	}
-	downloads, _ := c.state.Config.Cache.Paths()
-	return filewalk.ContentsOnly(ctx, c.state.Store, downloads,
+	downloadPath := c.state.Config.Cache.DownloadPath()
+	return filewalk.ContentsOnly(ctx, c.state.Store, downloadPath,
 		func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
 			return c.scanDownloaded(ctx, tpl, prefix, contents, err)
 		})
@@ -222,14 +222,14 @@ func (c *Command) LookupDownloaded(ctx context.Context, fv *LookupFlags, dois ..
 		return fmt.Errorf("failed to parse template: %q: %v", fv.Template, err)
 	}
 
-	downloads, _ := c.state.Config.Cache.Paths()
+	downloadPath := c.state.Config.Cache.DownloadPath()
 	store := stores.New(c.state.Store, 0)
 
 	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.state.Config.Cache.ShardingPrefixLen))
 
 	for _, doi := range dois {
 		prefix, suffix := sharder.Assign(fmt.Sprintf("%v", doi))
-		prefix = store.FS().Join(downloads, prefix)
+		prefix = store.FS().Join(downloadPath, prefix)
 		var obj content.Object[biorxiv.PreprintDetail, struct{}]
 		_, err := obj.Load(ctx, store, prefix, suffix)
 		if err != nil {

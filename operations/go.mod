@@ -7,7 +7,7 @@ require cloudeng.io/webapi/webapitestutil v0.0.0-20230204003545-f310593967e5
 require (
 	cloudeng.io/cmdutil v0.0.0-20240213043943-f6a8f92f083f
 	cloudeng.io/errors v0.0.10
-	cloudeng.io/file v0.0.0-20240316212519-c83428bae4cf
+	cloudeng.io/file v0.0.0-20240326195459-e2c53ed6771a
 	cloudeng.io/net v0.0.0-20240315173010-822871381e62
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1

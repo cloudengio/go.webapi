@@ -3,7 +3,7 @@ module cloudeng.io/webapi/clients/papersapp
 go 1.21
 
 require (
-	cloudeng.io/file v0.0.0-20240316212519-c83428bae4cf
+	cloudeng.io/file v0.0.0-20240326195459-e2c53ed6771a
 	cloudeng.io/path v0.0.9
 	cloudeng.io/webapi/operations v0.0.0-20240316214133-4850ad239ee1
 	github.com/go-openapi/errors v0.22.0
