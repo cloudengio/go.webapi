@@ -31,15 +31,15 @@ func TestDiscriminatorf(t *testing.T) {
 	txt := asYAML(t, doc)
 	contains(t, 4, txt, `
 Pet:
-  type: object
-  required:
-    - pet_type
+  discriminator:
+    propertyName: pet_type
   properties:
     pet_type:
       type: string
     something_else:
       type: string
-  discriminator:
-    propertyName: pet_type
+  required:
+    - pet_type
+  type: object
 `)
 }
