@@ -146,8 +146,15 @@ func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *
 		if resp.StatusCode == http.StatusOK {
 			return ep.handleResponse(resp, retries)
 		}
-		return m, nil, nil, handleError(nil, resp.Status, resp.StatusCode, retries)
+		return ep.handleErrorResponse(resp, retries)
 	}
+}
+
+func (ep *Endpoint[T]) handleErrorResponse(resp *http.Response, steps int) (T, *http.Response, []byte, error) {
+	var result T
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	return result, resp, body, handleError(nil, resp.Status, resp.StatusCode, steps)
 }
 
 func (ep *Endpoint[T]) handleResponse(resp *http.Response, steps int) (T, *http.Response, []byte, error) {
