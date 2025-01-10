@@ -16,7 +16,6 @@ import (
 	"regexp"
 	"slices"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -39,6 +38,7 @@ func writeFile(name string, w http.ResponseWriter) {
 	}
 }
 
+/*
 type expiration struct {
 	sync.Mutex
 	expiration time.Duration
@@ -58,7 +58,7 @@ func (e *expiration) Get() time.Duration {
 
 var (
 	globalExpiration = &expiration{}
-)
+)*/
 
 func writeFileModifiedExpiration(name string, w http.ResponseWriter) {
 	f, err := os.Open(filepath.Join("testdata", name))
@@ -74,14 +74,13 @@ func writeFileModifiedExpiration(name string, w http.ResponseWriter) {
 	}
 
 	re := regexp.MustCompile(`"validTimes":\s*"(.*?)"`)
-	exp := globalExpiration.Get()
-	n := fmt.Sprintf(`"validTimes": "%s/%s"`, time.Now().In(time.UTC).Format("2006-01-02T15:04:05-07:00"), datetime.AsISO8601Period(exp))
+	//exp := globalExpiration.Get()
+	n := fmt.Sprintf(`"validTimes": "%s/%s"`, time.Now().In(time.UTC).Format("2006-01-02T15:04:05-07:00"), datetime.AsISO8601Period(time.Hour*24*7))
 	nbuf := re.ReplaceAll(buf.Bytes(), []byte(n))
 	w.Header().Set("Content-Type", "application/json")
 	if _, err := w.Write(nbuf); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	fmt.Printf("XXX %s\n", nbuf)
 }
 
 var (
@@ -154,14 +153,13 @@ func TestForecasts(t *testing.T) {
 	for _, tc := range []struct {
 		gp            nws.GridPoints
 		opts          []nws.Option
-		exp           time.Duration
 		forecastCalls int64
 	}{
-		{nws.GridPoints{"TOP", 32, 81}, nil, time.Hour, 1},
-		{nws.GridPoints{"TOP", 32, 81}, nil, 0, 3},
+		{nws.GridPoints{"TOP", 32, 81}, nil, 1},
+		{nws.GridPoints{"TOP", 32, 81},
+			[]nws.Option{nws.WithForecastExpiration(time.Nanosecond)}, 3},
 	} {
 
-		globalExpiration.Set(tc.exp)
 		api := nws.NewAPI(tc.opts...)
 		api.SetHost(srv.URL)
 
@@ -170,7 +168,10 @@ func TestForecasts(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to get forecasts: %v", err)
 			}
-			if got, want := fc.ValidUntil, time.Now().Truncate(time.Second).In(time.UTC).Add(tc.exp); !got.Equal(want) {
+			if got, want := fc.ValidFrom, time.Now().Truncate(time.Second).In(time.UTC); !got.Equal(want) {
+				t.Errorf("got %v, want %v", got, want)
+			}
+			if got, want := fc.ValidFor, time.Hour*24*7; got != want {
 				t.Errorf("got %v, want %v", got, want)
 			}
 			if got, want := len(fc.Periods), 14; got != want {

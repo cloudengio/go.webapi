@@ -33,23 +33,13 @@ const (
 	APIHost = "https://api.weather.gov"
 )
 
-type gridPointForecasts struct {
-	X        int    `json:"gridX"`
-	Y        int    `json:"gridY"`
-	ID       string `json:"gridId"`
-	Forecast string `json:"forecast"`
-}
-
 type gridPointResponse struct {
-	Properties gridPointForecasts `json:"properties"`
-}
-
-type Forecast struct {
-	StartTime           time.Time `json:"startTime"`
-	EndTime             time.Time `json:"endTime"`
-	Name                string    `json:"name"`
-	ShortForecast       string    `json:"shortForecast"`
-	OpaqueCloudCoverage OpaqueCloudCoverage
+	Properties struct {
+		X        int    `json:"gridX"`
+		Y        int    `json:"gridY"`
+		ID       string `json:"gridId"`
+		Forecast string `json:"forecast"`
+	}
 }
 
 type forecastResponse struct {
@@ -59,6 +49,14 @@ type forecastResponse struct {
 		ValidTimes string     `json:"validTimes"`
 		Periods    []Forecast `json:"periods"`
 	}
+}
+
+type Forecast struct {
+	StartTime           time.Time `json:"startTime"`
+	EndTime             time.Time `json:"endTime"`
+	Name                string    `json:"name"`
+	ShortForecast       string    `json:"shortForecast"`
+	OpaqueCloudCoverage OpaqueCloudCoverage
 }
 
 type API struct {
@@ -75,8 +73,15 @@ func WithGridpointExpiration(d time.Duration) Option {
 	}
 }
 
+func WithForecastExpiration(d time.Duration) Option {
+	return func(o *options) {
+		o.forecastExpiration = d
+	}
+}
+
 type options struct {
 	gridpointExpiration time.Duration
+	forecastExpiration  time.Duration
 }
 
 func NewAPI(opts ...Option) *API {
@@ -88,7 +93,7 @@ func NewAPI(opts ...Option) *API {
 	api := &API{
 		host:          APIHost,
 		pointsCache:   newGridPointsCache(o.gridpointExpiration),
-		forecastCache: newForecastCache(),
+		forecastCache: newForecastCache(o.forecastExpiration),
 	}
 
 	return api
@@ -132,10 +137,11 @@ func (a *API) GetGridPoints(ctx context.Context, lat, long float64, opts ...oper
 }
 
 type Forecasts struct {
-	Generated  time.Time
-	Updated    time.Time
-	ValidUntil time.Time
-	Periods    []Forecast
+	Generated time.Time
+	Updated   time.Time
+	ValidFrom time.Time
+	ValidFor  time.Duration
+	Periods   []Forecast
 }
 
 func (a *API) GetForecasts(ctx context.Context, gp GridPoints, opts ...operations.Option) (Forecasts, error) {
@@ -157,10 +163,11 @@ func (a *API) GetForecasts(ctx context.Context, gp GridPoints, opts ...operation
 		return Forecasts{}, fmt.Errorf("failed to parse valid times: %q: %w", frc.Properties.ValidTimes, err)
 	}
 	fc := Forecasts{
-		Generated:  frc.Properties.Generated,
-		Updated:    frc.Properties.Updated,
-		ValidUntil: valid.Add(dur),
-		Periods:    make([]Forecast, len(frc.Properties.Periods)),
+		Generated: frc.Properties.Generated,
+		Updated:   frc.Properties.Updated,
+		ValidFrom: valid,
+		ValidFor:  dur,
+		Periods:   make([]Forecast, len(frc.Properties.Periods)),
 	}
 	fc.Periods = make([]Forecast, len(frc.Properties.Periods))
 	copy(fc.Periods, frc.Properties.Periods)

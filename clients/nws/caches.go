@@ -59,13 +59,15 @@ type forecastEntry struct {
 }
 
 type forecastCache struct {
-	mu      sync.Mutex
-	entries *list.Double[forecastEntry]
+	mu                 sync.Mutex
+	entries            *list.Double[forecastEntry]
+	forecastExpiration time.Duration
 }
 
-func newForecastCache() *forecastCache {
+func newForecastCache(expiration time.Duration) *forecastCache {
 	return &forecastCache{
-		entries: list.NewDouble[forecastEntry](),
+		entries:            list.NewDouble[forecastEntry](),
+		forecastExpiration: expiration,
 	}
 }
 
@@ -74,7 +76,11 @@ func (fc *forecastCache) lookup(gp GridPoints) (Forecasts, bool) {
 	defer fc.mu.Unlock()
 	for e := range fc.entries.Forward() {
 		if e.gp == gp {
-			if time.Now().After(e.forecasts.ValidUntil) {
+			exp := e.forecasts.ValidFor
+			if fc.forecastExpiration > 0 {
+				exp = min(e.forecasts.ValidFor, fc.forecastExpiration)
+			}
+			if time.Now().After(e.forecasts.ValidFrom.Add(exp)) {
 				return Forecasts{}, false
 			}
 			return e.forecasts, true
