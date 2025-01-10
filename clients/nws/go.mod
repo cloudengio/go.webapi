@@ -6,6 +6,7 @@ require (
 	cloudeng.io/algo v0.0.0-20250109190841-16f2cfe4fde2
 	cloudeng.io/datetime v0.0.0-20250109190841-16f2cfe4fde2
 	cloudeng.io/webapi/operations v0.0.0-20240326200628-ccb06fbdd668
+	cloudeng.io/webapi/webapitestutil v0.0.0-20230204003545-f310593967e5
 )
 
 require (
