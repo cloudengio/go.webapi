@@ -11,6 +11,8 @@ cloudeng.io/webapi/openapi v0.0.0-20240326200628-ccb06fbdd668 h1:rXZ+dd7uMd9CX8S
 cloudeng.io/webapi/openapi v0.0.0-20240326200628-ccb06fbdd668/go.mod h1:ZnUTMIHOP5vYzx75zkDUYjt9AldhZs5JIdxZclBnft4=
 cloudeng.io/webapi/openapi v0.0.0-20250110021036-3bbeefb39ea3 h1:moNZ1k2VnmDWkIRphc4+1wgmXD9j2tVDjwosbNcArAA=
 cloudeng.io/webapi/openapi v0.0.0-20250110021036-3bbeefb39ea3/go.mod h1:VUivOLVX11KdskeeWeCE1bNZppp/+luZ+3UJPkA0oI8=
+cloudeng.io/webapi/openapi v0.0.0-20250110024459-cc7cc4cb8194 h1:Uzhv74g1Ehol5cgfYK7sVLBuysHxhpXEzeJ1/wPdGvc=
+cloudeng.io/webapi/openapi v0.0.0-20250110024459-cc7cc4cb8194/go.mod h1:VUivOLVX11KdskeeWeCE1bNZppp/+luZ+3UJPkA0oI8=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/getkin/kin-openapi v0.128.0 h1:jqq3D9vC9pPq1dGcOCv7yOp1DaEe7c/T1vzcLbITSp4=
