@@ -106,7 +106,7 @@ func TestLookup(t *testing.T) {
 		api.SetHost(srv.URL)
 
 		for i := 0; i < 3; i++ {
-			gp, err := api.GetGridPoints(ctx, tc.lat, tc.long)
+			gp, err := api.LookupGridPoints(ctx, tc.lat, tc.long)
 			if err != nil {
 				t.Fatalf("failed to get grid points: %v", err)
 			}

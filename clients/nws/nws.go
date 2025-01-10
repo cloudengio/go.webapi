@@ -51,6 +51,7 @@ type forecastResponse struct {
 	}
 }
 
+// Forecast represents a forecast for a specific period of time.
 type Forecast struct {
 	StartTime           time.Time `json:"startTime"`
 	EndTime             time.Time `json:"endTime"`
@@ -59,6 +60,7 @@ type Forecast struct {
 	OpaqueCloudCoverage OpaqueCloudCoverage
 }
 
+// API represents a client for the National Weather Service API.
 type API struct {
 	host          string
 	pointsCache   *gridPointsCache
@@ -67,12 +69,18 @@ type API struct {
 
 type Option func(o *options)
 
+// WithGridpointExpiration sets the expiration time for gridpoint cache entries.
+// The mapping from lat/long to gridpoints is largely stable so this can be
+// set to a long duration, the default is 1 week.
 func WithGridpointExpiration(d time.Duration) Option {
 	return func(o *options) {
 		o.gridpointExpiration = d
 	}
 }
 
+// WithForecastExpiration sets the expiration time for forecast cache entries,
+// if not set, the ValidTimes times entry in the forecast will be used. Set
+// this to a lower value to update the forecast more requgularly (eg. to 24 hours).
 func WithForecastExpiration(d time.Duration) Option {
 	return func(o *options) {
 		o.forecastExpiration = d
@@ -84,6 +92,7 @@ type options struct {
 	forecastExpiration  time.Duration
 }
 
+// NewAPI creates a new instance of the National Weather Service API client.
 func NewAPI(opts ...Option) *API {
 	var o options
 	o.gridpointExpiration = time.Hour * 24 * 7
@@ -102,13 +111,18 @@ func (a *API) SetHost(host string) {
 	a.host = host
 }
 
+// GridPoints represents the grid points for a specific lat/long.
 type GridPoints struct {
 	ID    string
 	GridX int
 	GridY int
 }
 
-func (a *API) GetGridPoints(ctx context.Context, lat, long float64, opts ...operations.Option) (GridPoints, error) {
+// LookupGridPoints returns the grid points for the specified lat/long. A
+// cache keyed by exact lat/long is used to avoid repeated lookups. The
+// expiration of cache entries defaults to 1 week and can be overridden
+// with the WSithGridpointExpiration option.
+func (a *API) LookupGridPoints(ctx context.Context, lat, long float64, opts ...operations.Option) (GridPoints, error) {
 	if x, y, f, ok := a.pointsCache.lookup(lat, long); ok {
 		return GridPoints{
 			ID:    f,
@@ -136,6 +150,7 @@ func (a *API) GetGridPoints(ctx context.Context, lat, long float64, opts ...oper
 	return gr, nil
 }
 
+// Forecasts represents the forecasts for a specific grid point.
 type Forecasts struct {
 	Generated time.Time
 	Updated   time.Time
@@ -144,6 +159,10 @@ type Forecasts struct {
 	Periods   []Forecast
 }
 
+// GetForecasts returns the forecasts for the specified grid point. A cache
+// keyed by grid point is used to avoid repeated lookups. The expiration of
+// cache entries defaults to the ValidTimes entry in the forecast and can be
+// overridden with the WithForecastExpiration option.
 func (a *API) GetForecasts(ctx context.Context, gp GridPoints, opts ...operations.Option) (Forecasts, error) {
 	if fc, ok := a.forecastCache.lookup(gp); ok {
 		return fc, nil
@@ -194,6 +213,8 @@ func parseValidTimes(val string) (time.Time, time.Duration, error) {
 	return start, period, nil
 }
 
+// PeriodFor returns the forecast for the specified time. The returned bool
+// is false if there is no forecast for the specified time.
 func (fc Forecasts) PeriodFor(when time.Time) (Forecast, bool) {
 	for _, f := range fc.Periods {
 		if !f.StartTime.After(when) && f.EndTime.After(when) {
@@ -203,6 +224,8 @@ func (fc Forecasts) PeriodFor(when time.Time) (Forecast, bool) {
 	return Forecast{}, false
 }
 
+// CloudOpacityFromShortForecast returns the cloud opacity based on the short
+// forecast string.
 func CloudOpacityFromShortForecast(forecast string) OpaqueCloudCoverage {
 	forecast = strings.ToLower(forecast)
 	switch {
