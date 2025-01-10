@@ -68,7 +68,7 @@ func hasSchema(s *openapi3.SchemaRef) bool {
 		return true
 	}
 	v := s.Value
-	if len(v.Type) > 0 || len(v.AllOf) > 0 || len(v.OneOf) > 0 || len(v.AnyOf) > 0 || len(v.Enum) > 0 {
+	if v.Type != nil || len(v.AllOf) > 0 || len(v.OneOf) > 0 || len(v.AnyOf) > 0 || len(v.Enum) > 0 {
 		return true
 	}
 	for _, p := range v.Properties {

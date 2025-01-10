@@ -50,9 +50,9 @@ API2:
     promoteEg:
       allOf:
         - type: object
-      type: object
       description: something
       readOnly: true
+      type: object
 API3:
 `)
 	contains(t, 4, txt, `
@@ -61,10 +61,10 @@ API3:
     promoteEg:
       allOf:
         - type: object
-      type: object
       properties:
         egURL:
           description: a URL
+      type: object
 Base:
 `)
 	contains(t, 4, txt, `
@@ -72,10 +72,10 @@ MergeEg:
   properties:
     API:
       allOf:
-        - type: object
-          properties:
+        - properties:
             egURL:
               description: describe the previous type
+          type: object
       type: object
 `)
 }

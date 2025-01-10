@@ -86,16 +86,16 @@ func TestRewrite(t *testing.T) {
 	txt := asYAML(t, doc)
 	contains(t, 8, txt, `
 end:
-  type: integer
   example: example_replacement
+  type: integer
 id:
-  type: string
   example: something-new
-name:
   type: string
+name:
   maxLength: 255
+  type: string
 start:
-  type: integer
   example: example_replacement
+  type: integer
 `)
 }
