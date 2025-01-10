@@ -38,28 +38,6 @@ func writeFile(name string, w http.ResponseWriter) {
 	}
 }
 
-/*
-type expiration struct {
-	sync.Mutex
-	expiration time.Duration
-}
-
-func (e *expiration) Set(d time.Duration) {
-	e.Lock()
-	defer e.Unlock()
-	e.expiration = d
-}
-
-func (e *expiration) Get() time.Duration {
-	e.Lock()
-	defer e.Unlock()
-	return e.expiration
-}
-
-var (
-	globalExpiration = &expiration{}
-)*/
-
 func writeFileModifiedExpiration(name string, w http.ResponseWriter) {
 	f, err := os.Open(filepath.Join("testdata", name))
 	if err != nil {
@@ -74,7 +52,6 @@ func writeFileModifiedExpiration(name string, w http.ResponseWriter) {
 	}
 
 	re := regexp.MustCompile(`"validTimes":\s*"(.*?)"`)
-	//exp := globalExpiration.Get()
 	n := fmt.Sprintf(`"validTimes": "%s/%s"`, time.Now().In(time.UTC).Format("2006-01-02T15:04:05-07:00"), datetime.AsISO8601Period(time.Hour*24*7))
 	nbuf := re.ReplaceAll(buf.Bytes(), []byte(n))
 	w.Header().Set("Content-Type", "application/json")
