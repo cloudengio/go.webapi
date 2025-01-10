@@ -14,8 +14,8 @@ const replacementConfig = `configs:
   - replacements:
     - path: [components, schemas, API, properties, ignoreEg, allOf]
       replacement:
-        type: string
         example: new example
+        type: string
 `
 
 func TestReplacement(t *testing.T) {
@@ -33,8 +33,8 @@ func TestReplacement(t *testing.T) {
 API:
   properties:
     ignoreEg:
-      type: string
       example: new example
+      type: string
 API2:
 `)
 }
