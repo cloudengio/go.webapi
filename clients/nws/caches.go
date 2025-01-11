@@ -35,7 +35,7 @@ func newGridPointsCache(expiration time.Duration) *gridPointsCache {
 func (gpc *gridPointsCache) lookup(lat, long float64) (x, y int, id string, ok bool) {
 	gpc.mu.Lock()
 	defer gpc.mu.Unlock()
-	if time.Since(gpc.lastUpdate) > gpc.expiration {
+	if time.Since(gpc.lastUpdate) >= gpc.expiration {
 		gpc.entries.Reset()
 	}
 	for e := range gpc.entries.Forward() {

@@ -1,4 +1,4 @@
-name: go-macos
+name: go-windows
 
 on:   
   push:
@@ -8,10 +8,10 @@ on:
 
 jobs:
   test:
-    uses: cloudengio/.github/.github/workflows/go-test-mulitmod.yml@main
+    uses: cloudengio/.github/.github/workflows/go-test-multimod.yml@main
     with:
       go-versions: |
         [
           "1.23.x"
         ]
-      os-version: macos-latest
+      os-version: windows-latest

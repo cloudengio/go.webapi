@@ -1,5 +1,6 @@
 ![linux](https://github.com/cloudengio/webapi/actions/workflows/linux.yml/badge.svg)
 ![macos](https://github.com/cloudengio/webapi/actions/workflows/macos.yml/badge.svg)
+![windows](https://github.com/cloudengio/webapi/actions/workflows/windows.yml/badge.svg)
 ![CodeQL](https://github.com/cloudengio/webapi/actions/workflows/codeql.yml/badge.svg)
 
 # webapi
