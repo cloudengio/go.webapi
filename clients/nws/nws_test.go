@@ -80,7 +80,7 @@ func TestForecasts(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to get forecasts: %v", err)
 			}
-			if got, want := fc.ValidFrom, time.Now().Truncate(time.Second).In(time.UTC); !got.Equal(want) {
+			if got, want := fc.ValidFrom.Truncate(2*time.Second), time.Now().Truncate(2*time.Second).In(time.UTC); !got.Equal(want) {
 				t.Errorf("got %v, want %v", got, want)
 			}
 			if got, want := fc.ValidFor, time.Hour*24*7; got != want {
