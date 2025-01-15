@@ -5,87 +5,20 @@
 package nws_test
 
 import (
-	"bytes"
 	"context"
-	"fmt"
-	"io"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"path/filepath"
-	"regexp"
 	"slices"
-	"strings"
-	"sync/atomic"
 	"testing"
 	"time"
 
-	"cloudeng.io/datetime"
 	"cloudeng.io/webapi/clients/nws"
-	"cloudeng.io/webapi/webapitestutil"
+	"cloudeng.io/webapi/clients/nws/nwstestutil"
 )
-
-func writeFile(name string, w http.ResponseWriter) {
-	f, err := os.Open(filepath.Join("testdata", name))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer f.Close()
-	w.Header().Set("Content-Type", "application/json")
-	if _, err := io.Copy(w, f); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-func writeFileModifiedExpiration(name string, w http.ResponseWriter) {
-	f, err := os.Open(filepath.Join("testdata", name))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	buf := &bytes.Buffer{}
-	defer f.Close()
-	if _, err := io.Copy(buf, f); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	re := regexp.MustCompile(`"validTimes":\s*"(.*?)"`)
-	n := fmt.Sprintf(`"validTimes": "%s/%s"`, time.Now().In(time.UTC).Format("2006-01-02T15:04:05-07:00"), datetime.AsISO8601Period(time.Hour*24*7))
-	nbuf := re.ReplaceAll(buf.Bytes(), []byte(n))
-	w.Header().Set("Content-Type", "application/json")
-	if _, err := w.Write(nbuf); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-var (
-	pointsCalled   int64
-	forecastCalled int64
-)
-
-func runMock() *httptest.Server {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.Contains(r.URL.Path, "points") {
-			atomic.AddInt64(&pointsCalled, 1)
-			writeFile("gridpoint.json", w)
-			return
-		}
-		if strings.Contains(r.URL.Path, "forecasts") {
-			atomic.AddInt64(&forecastCalled, 1)
-			writeFileModifiedExpiration("forecasts.json", w)
-			return
-		}
-		http.Error(w, r.URL.Path, http.StatusNotFound)
-	})
-	return webapitestutil.NewServer(handler)
-}
 
 func TestLookup(t *testing.T) {
 	ctx := context.Background()
-	srv := runMock()
+	srv := nwstestutil.NewMockServer()
 	defer srv.Close()
+	url := srv.Run()
 
 	for _, tc := range []struct {
 		lat, long  float64
@@ -103,7 +36,7 @@ func TestLookup(t *testing.T) {
 			3},
 	} {
 		api := nws.NewAPI(tc.opts...)
-		api.SetHost(srv.URL)
+		api.SetHost(url)
 
 		for i := 0; i < 3; i++ {
 			gp, err := api.LookupGridPoints(ctx, tc.lat, tc.long)
@@ -114,18 +47,20 @@ func TestLookup(t *testing.T) {
 				t.Errorf("got %v, want %v", got, want)
 			}
 		}
-		if got, want := atomic.LoadInt64(&pointsCalled), tc.pointCalls; got != want {
+		if got, want := srv.LookupCalls(), tc.pointCalls; got != want {
 			t.Errorf("got %v, want %v", got, want)
 		}
-		atomic.StoreInt64(&pointsCalled, 0)
+		srv.ResetLookupCalls()
 	}
 
 }
 
 func TestForecasts(t *testing.T) {
 	ctx := context.Background()
-	srv := runMock()
+	srv := nwstestutil.NewMockServer()
+	srv.SetValidTimes(time.Now().In(time.UTC))
 	defer srv.Close()
+	url := srv.Run()
 
 	for _, tc := range []struct {
 		gp            nws.GridPoints
@@ -138,7 +73,7 @@ func TestForecasts(t *testing.T) {
 	} {
 
 		api := nws.NewAPI(tc.opts...)
-		api.SetHost(srv.URL)
+		api.SetHost(url)
 
 		for i := 0; i < 3; i++ {
 			fc, err := api.GetForecasts(ctx, tc.gp)
@@ -188,27 +123,30 @@ func TestForecasts(t *testing.T) {
 				t.Errorf("got %v, want %v", got, want)
 			}
 		}
-		if got, want := atomic.LoadInt64(&forecastCalled), tc.forecastCalls; got != want {
+		if got, want := srv.ForecastCalls(), tc.forecastCalls; got != want {
 			t.Errorf("got %v, want %v", got, want)
 		}
-		atomic.StoreInt64(&forecastCalled, 0)
+		srv.ResetForecastCalls()
 	}
 
 }
 
 func TestPeriodLookup(t *testing.T) {
 	ctx := context.Background()
-	srv := runMock()
+	srv := nwstestutil.NewMockServer()
+	srv.SetValidTimes(time.Now().In(time.UTC))
 	defer srv.Close()
+	url := srv.Run()
+
 	gp := nws.GridPoints{"TOP", 32, 81}
 	api := nws.NewAPI()
-	api.SetHost(srv.URL)
+	api.SetHost(url)
 	fc, err := api.GetForecasts(ctx, gp)
 	if err != nil {
 		t.Fatalf("failed to get forecasts: %v", err)
 	}
 
-	if got, want := atomic.LoadInt64(&forecastCalled), int64(1); got != want {
+	if got, want := srv.ForecastCalls(), int64(1); got != want {
 		t.Errorf("got %v, want %v", got, want)
 	}
 
