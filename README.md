@@ -1,7 +1,7 @@
-![linux](https://github.com/cloudengio/webapi/actions/workflows/linux.yml/badge.svg)
-![macos](https://github.com/cloudengio/webapi/actions/workflows/macos.yml/badge.svg)
-![windows](https://github.com/cloudengio/webapi/actions/workflows/windows.yml/badge.svg)
-![CodeQL](https://github.com/cloudengio/webapi/actions/workflows/codeql.yml/badge.svg)
+[![linux](https://github.com/cloudengio/webapi/actions/workflows/linux.yml/badge.svg)](https://github.com/cloudengio/webapi/actions/workflows/linux.yml)
+[![macos](https://github.com/cloudengio/webapi/actions/workflows/macos.yml/badge.svg)](https://github.com/cloudengio/webapi/actions/workflows/macos.yml)
+[![windows](https://github.com/cloudengio/webapi/actions/workflows/windows.yml/badge.svg)](https://github.com/cloudengio/webapi/actions/workflows/windows.yml)
+[![CodeQL](https://github.com/cloudengio/webapi/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/cloudengio/webapi/actions/workflows/github-code-scanning/codeql)
 
 # webapi
 
