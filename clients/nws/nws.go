@@ -44,20 +44,11 @@ type gridPointResponse struct {
 
 type forecastResponse struct {
 	Properties struct {
-		Generated  time.Time  `json:"generatedAt"`
-		Updated    time.Time  `json:"updateTime"`
-		ValidTimes string     `json:"validTimes"`
-		Periods    []Forecast `json:"periods"`
+		Generated  time.Time `json:"generatedAt"`
+		Updated    time.Time `json:"updateTime"`
+		ValidTimes string    `json:"validTimes"`
+		Periods    []Period  `json:"periods"`
 	}
-}
-
-// Forecast represents a forecast for a specific period of time.
-type Forecast struct {
-	StartTime           time.Time `json:"startTime"`
-	EndTime             time.Time `json:"endTime"`
-	Name                string    `json:"name"`
-	ShortForecast       string    `json:"shortForecast"`
-	OpaqueCloudCoverage OpaqueCloudCoverage
 }
 
 // API represents a client for the National Weather Service API.
@@ -150,45 +141,55 @@ func (a *API) LookupGridPoints(ctx context.Context, lat, long float64, opts ...o
 	return gr, nil
 }
 
-// Forecasts represents the forecasts for a specific grid point.
-type Forecasts struct {
+// Period represents a forecast for a specific period of time.
+type Period struct {
+	StartTime           time.Time `json:"startTime"`
+	EndTime             time.Time `json:"endTime"`
+	Name                string    `json:"name"`
+	ShortForecast       string    `json:"shortForecast"`
+	OpaqueCloudCoverage OpaqueCloudCoverage
+}
+
+// Forecast represents the forecasts for a specific grid point for a number
+// of periods.
+type Forecast struct {
 	Generated time.Time
 	Updated   time.Time
 	ValidFrom time.Time
 	ValidFor  time.Duration
-	Periods   []Forecast
+	Periods   []Period
 }
 
 // GetForecasts returns the forecasts for the specified grid point. A cache
 // keyed by grid point is used to avoid repeated lookups. The expiration of
 // cache entries defaults to the ValidTimes entry in the forecast and can be
 // overridden with the WithForecastExpiration option.
-func (a *API) GetForecasts(ctx context.Context, gp GridPoints, opts ...operations.Option) (Forecasts, error) {
+func (a *API) GetForecasts(ctx context.Context, gp GridPoints, opts ...operations.Option) (Forecast, error) {
 	if fc, ok := a.forecastCache.lookup(gp); ok {
 		return fc, nil
 	}
 	ustr := fmt.Sprintf("%s/forecasts/%s/%d,%d", a.host, gp.ID, gp.GridX, gp.GridY)
 	u, err := url.Parse(ustr)
 	if err != nil {
-		return Forecasts{}, fmt.Errorf("failed to parse URL: %v: %w", ustr, err)
+		return Forecast{}, fmt.Errorf("failed to parse URL: %v: %w", ustr, err)
 	}
 	ep := operations.NewEndpoint[forecastResponse](opts...)
 	frc, _, _, err := ep.Get(ctx, u.String())
 	if err != nil {
-		return Forecasts{}, fmt.Errorf("%v: forecast download failed: %w", u.String(), err)
+		return Forecast{}, fmt.Errorf("%v: forecast download failed: %w", u.String(), err)
 	}
 	valid, dur, err := parseValidTimes(frc.Properties.ValidTimes)
 	if err != nil {
-		return Forecasts{}, fmt.Errorf("failed to parse valid times: %q: %w", frc.Properties.ValidTimes, err)
+		return Forecast{}, fmt.Errorf("failed to parse valid times: %q: %w", frc.Properties.ValidTimes, err)
 	}
-	fc := Forecasts{
+	fc := Forecast{
 		Generated: frc.Properties.Generated,
 		Updated:   frc.Properties.Updated,
 		ValidFrom: valid,
 		ValidFor:  dur,
-		Periods:   make([]Forecast, len(frc.Properties.Periods)),
+		Periods:   make([]Period, len(frc.Properties.Periods)),
 	}
-	fc.Periods = make([]Forecast, len(frc.Properties.Periods))
+	fc.Periods = make([]Period, len(frc.Properties.Periods))
 	copy(fc.Periods, frc.Properties.Periods)
 	for i, p := range fc.Periods {
 		fc.Periods[i].OpaqueCloudCoverage = CloudOpacityFromShortForecast(p.ShortForecast)
@@ -215,13 +216,13 @@ func parseValidTimes(val string) (time.Time, time.Duration, error) {
 
 // PeriodFor returns the forecast for the specified time. The returned bool
 // is false if there is no forecast for the specified time.
-func (fc Forecasts) PeriodFor(when time.Time) (Forecast, bool) {
+func (fc Forecast) PeriodFor(when time.Time) (Period, bool) {
 	for _, f := range fc.Periods {
 		if !f.StartTime.After(when) && f.EndTime.After(when) {
 			return f, true
 		}
 	}
-	return Forecast{}, false
+	return Period{}, false
 }
 
 // CloudOpacityFromShortForecast returns the cloud opacity based on the short

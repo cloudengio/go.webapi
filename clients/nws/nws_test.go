@@ -24,7 +24,7 @@ func TestLookup(t *testing.T) {
 		lat, long  float64
 		gp         nws.GridPoints
 		opts       []nws.Option
-		pointCalls int64
+		pointCalls int
 	}{
 		{39.7456, -97.0892,
 			nws.GridPoints{"TOP", 32, 81},
@@ -65,7 +65,7 @@ func TestForecasts(t *testing.T) {
 	for _, tc := range []struct {
 		gp            nws.GridPoints
 		opts          []nws.Option
-		forecastCalls int64
+		forecastCalls int
 	}{
 		{nws.GridPoints{"TOP", 32, 81}, nil, 1},
 		{nws.GridPoints{"TOP", 32, 81},
@@ -146,7 +146,7 @@ func TestPeriodLookup(t *testing.T) {
 		t.Fatalf("failed to get forecasts: %v", err)
 	}
 
-	if got, want := srv.ForecastCalls(), int64(1); got != want {
+	if got, want := srv.ForecastCalls(), 1; got != want {
 		t.Errorf("got %v, want %v", got, want)
 	}
 

@@ -26,8 +26,8 @@ var cannedData embed.FS
 type NWSMockServer struct {
 	mu            sync.Mutex
 	srv           *httptest.Server
-	lookupCalls   int64
-	forecastCalls int64
+	lookupCalls   int
+	forecastCalls int
 	validTimes    string
 }
 
@@ -35,13 +35,13 @@ func NewMockServer() *NWSMockServer {
 	return &NWSMockServer{}
 }
 
-func (ms *NWSMockServer) LookupCalls() int64 {
+func (ms *NWSMockServer) LookupCalls() int {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 	return ms.lookupCalls
 }
 
-func (ms *NWSMockServer) ForecastCalls() int64 {
+func (ms *NWSMockServer) ForecastCalls() int {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 	return ms.forecastCalls
