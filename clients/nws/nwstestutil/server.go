@@ -92,8 +92,10 @@ func (ms *NWSMockServer) Run() string {
 		if strings.Contains(r.URL.Path, "forecasts") {
 			ms.forecastCalls++
 			data, err := cannedData.ReadFile("forecasts.json")
-			buf := validTimesRE.ReplaceAll(data, []byte(ms.validTimes))
-			ms.writeResponse(w, err, buf)
+			if len(ms.validTimes) > 0 {
+				data = validTimesRE.ReplaceAll(data, []byte(ms.validTimes))
+			}
+			ms.writeResponse(w, err, data)
 			return
 		}
 		http.Error(w, r.URL.Path, http.StatusNotFound)
