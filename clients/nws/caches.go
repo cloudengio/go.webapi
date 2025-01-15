@@ -55,7 +55,7 @@ func (gpc *gridPointsCache) add(lat, long float64, id string, x, y int) {
 
 type forecastEntry struct {
 	gp        GridPoints
-	forecasts Forecasts
+	forecasts Forecast
 }
 
 type forecastCache struct {
@@ -71,7 +71,7 @@ func newForecastCache(expiration time.Duration) *forecastCache {
 	}
 }
 
-func (fc *forecastCache) lookup(gp GridPoints) (Forecasts, bool) {
+func (fc *forecastCache) lookup(gp GridPoints) (Forecast, bool) {
 	fc.mu.Lock()
 	defer fc.mu.Unlock()
 	for e := range fc.entries.Forward() {
@@ -81,15 +81,15 @@ func (fc *forecastCache) lookup(gp GridPoints) (Forecasts, bool) {
 				exp = min(e.forecasts.ValidFor, fc.forecastExpiration)
 			}
 			if time.Now().After(e.forecasts.ValidFrom.Add(exp)) {
-				return Forecasts{}, false
+				return Forecast{}, false
 			}
 			return e.forecasts, true
 		}
 	}
-	return Forecasts{}, false
+	return Forecast{}, false
 }
 
-func (fc *forecastCache) add(gp GridPoints, forecasts Forecasts) {
+func (fc *forecastCache) add(gp GridPoints, forecasts Forecast) {
 	fc.mu.Lock()
 	defer fc.mu.Unlock()
 	fc.entries.Append(forecastEntry{gp: gp, forecasts: forecasts})

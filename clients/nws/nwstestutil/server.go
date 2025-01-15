@@ -26,8 +26,8 @@ var cannedData embed.FS
 type NWSMockServer struct {
 	mu            sync.Mutex
 	srv           *httptest.Server
-	lookupCalls   int64
-	forecastCalls int64
+	lookupCalls   int
+	forecastCalls int
 	validTimes    string
 }
 
@@ -35,13 +35,13 @@ func NewMockServer() *NWSMockServer {
 	return &NWSMockServer{}
 }
 
-func (ms *NWSMockServer) LookupCalls() int64 {
+func (ms *NWSMockServer) LookupCalls() int {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 	return ms.lookupCalls
 }
 
-func (ms *NWSMockServer) ForecastCalls() int64 {
+func (ms *NWSMockServer) ForecastCalls() int {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 	return ms.forecastCalls
@@ -92,8 +92,10 @@ func (ms *NWSMockServer) Run() string {
 		if strings.Contains(r.URL.Path, "forecasts") {
 			ms.forecastCalls++
 			data, err := cannedData.ReadFile("forecasts.json")
-			buf := validTimesRE.ReplaceAll(data, []byte(ms.validTimes))
-			ms.writeResponse(w, err, buf)
+			if len(ms.validTimes) > 0 {
+				data = validTimesRE.ReplaceAll(data, []byte(ms.validTimes))
+			}
+			ms.writeResponse(w, err, data)
 			return
 		}
 		http.Error(w, r.URL.Path, http.StatusNotFound)
