@@ -6,12 +6,9 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     uses: cloudengio/.github/.github/workflows/go-test-multimod.yml@main
-    with:
-      go-versions: |
-        [
-          "1.23.x"
-        ]
-      os-version: windows-latest
