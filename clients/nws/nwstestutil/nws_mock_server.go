@@ -20,7 +20,7 @@ import (
 	"cloudeng.io/webapi/webapitestutil"
 )
 
-//go:embed forecasts.json gridpoint.json
+//go:embed forecast.json gridpoint.json
 var cannedData embed.FS
 
 type NWSMockServer struct {
@@ -83,15 +83,15 @@ func (ms *NWSMockServer) Run() string {
 		ms.mu.Lock()
 		defer ms.mu.Unlock()
 
-		if strings.Contains(r.URL.Path, "points") {
+		if strings.Contains(r.URL.Path, "/points/") {
 			ms.lookupCalls++
 			data, err := cannedData.ReadFile("gridpoint.json")
 			ms.writeResponse(w, err, data)
 			return
 		}
-		if strings.Contains(r.URL.Path, "forecasts") {
+		if strings.Contains(r.URL.Path, "/forecast") {
 			ms.forecastCalls++
-			data, err := cannedData.ReadFile("forecasts.json")
+			data, err := cannedData.ReadFile("forecast.json")
 			if len(ms.validTimes) > 0 {
 				data = validTimesRE.ReplaceAll(data, []byte(ms.validTimes))
 			}

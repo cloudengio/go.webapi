@@ -29,6 +29,22 @@ const (
 	Cloudy                                         // 7/8 to 8/8
 )
 
+func (o OpaqueCloudCoverage) String() string {
+	switch o {
+	case ClearSunny:
+		return "clear/sunny"
+	case MostlyClearSunny:
+		return "mostly clear/sunny"
+	case PartlyCloudySunny:
+		return "partly cloudy/sunny"
+	case MostlyCloudy:
+		return "mostly cloudy"
+	case Cloudy:
+		return "cloudy"
+	}
+	return "unknown"
+}
+
 const (
 	APIHost = "https://api.weather.gov"
 )
@@ -168,7 +184,7 @@ func (a *API) GetForecasts(ctx context.Context, gp GridPoints, opts ...operation
 	if fc, ok := a.forecastCache.lookup(gp); ok {
 		return fc, nil
 	}
-	ustr := fmt.Sprintf("%s/forecasts/%s/%d,%d", a.host, gp.ID, gp.GridX, gp.GridY)
+	ustr := fmt.Sprintf("%s/gridpoints/%s/%d,%d/forecast", a.host, gp.ID, gp.GridX, gp.GridY)
 	u, err := url.Parse(ustr)
 	if err != nil {
 		return Forecast{}, fmt.Errorf("failed to parse URL: %v: %w", ustr, err)
