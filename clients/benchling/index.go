@@ -7,7 +7,6 @@ package benchling
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 	"time"
@@ -15,6 +14,7 @@ import (
 	"cloudeng.io/file/content"
 	"cloudeng.io/file/content/stores"
 	"cloudeng.io/file/filewalk"
+	"cloudeng.io/logging/ctxlog"
 	"cloudeng.io/path"
 	"cloudeng.io/webapi/clients/benchling/benchlingsdk"
 	"cloudeng.io/webapi/operations"
@@ -49,9 +49,9 @@ func (di *DocumentIndexer) Index(ctx context.Context) error {
 	return di.index(ctx)
 }
 
-func (di *DocumentIndexer) readFile(_ context.Context, prefix, name string, ctype content.Type, buf []byte, err error) error {
+func (di *DocumentIndexer) readFile(ctx context.Context, prefix, name string, ctype content.Type, buf []byte, err error) error {
 	if err != nil {
-		log.Printf("benchling indexder: read %v: error: %v\n", di.fs.Join(prefix, name), err)
+		ctxlog.Error(ctx, "benchling indexder: read", "prefix", prefix, "name", name, "error", err)
 		return err
 	}
 	switch ctype {
@@ -106,7 +106,7 @@ func (di *DocumentIndexer) populate(ctx context.Context, prefix string, contents
 		nFolders := len(di.folders)
 		nProjects := len(di.projects)
 		total := nUsers + nEntries + nFolders + nProjects
-		log.Printf("benchling indexder: %v total read: %v (users: %v, entries %v, folders %v, projects %v): read %v", prefix, total, nUsers, nEntries, nFolders, nProjects, time.Since(start))
+		ctxlog.Info(ctx, "benchling indexder: total read", "prefix", prefix, "total", total, "users", nUsers, "entries", nEntries, "folders", nFolders, "projects", nProjects, "read", time.Since(start))
 	}()
 
 	names := make([]string, len(contents))
@@ -133,14 +133,14 @@ func handleSimpleNotePart(note benchlingsdk.EntryNotePart) (string, bool, error)
 	return "", false, nil
 }
 
-func (di *DocumentIndexer) dayText(entry *benchlingsdk.Entry) string {
+func (di *DocumentIndexer) dayText(ctx context.Context, entry *benchlingsdk.Entry) string {
 	var notes strings.Builder
 	if entry.Days != nil {
 		for _, dayEntry := range *entry.Days {
 			for _, n := range *dayEntry.Notes {
 				sn, handled, err := handleSimpleNotePart(n)
 				if err != nil {
-					log.Printf("benchling indexer: EntryDay_Notes_Item: %#v: %v", n, err)
+					ctxlog.Error(ctx, "benchling indexer: EntryDay_Notes_Item", "error", err)
 					continue
 				}
 				if handled {
@@ -150,7 +150,7 @@ func (di *DocumentIndexer) dayText(entry *benchlingsdk.Entry) string {
 				}
 				note, err := n.ValueByDiscriminator()
 				if err != nil {
-					log.Printf("benchling indexer: EntryDay_Notes_Item: %#v: %v", n, err)
+					ctxlog.Error(ctx, "benchling indexer: EntryDay_Notes_Item", "error", err)
 					continue
 				}
 				switch v := note.(type) {
@@ -181,7 +181,7 @@ func (di *DocumentIndexer) index(ctx context.Context) error {
 	join := di.fs.Join
 	store := stores.New(di.fs, di.concurrency)
 	defer store.Finish(ctx) //nolint:errcheck
-	log.Printf("benchling indexer: %v entries\n", len(di.entries))
+	ctxlog.Info(ctx, "benchling indexer", "entries", len(di.entries))
 	n := 0
 	last := time.Now()
 	for _, entry := range di.entries {
@@ -191,7 +191,7 @@ func (di *DocumentIndexer) index(ctx context.Context) error {
 			Project: di.projects["folder:"+*entry.FolderId],
 			Users:   make(map[string]benchlingsdk.User),
 		}
-		doc.DayNotes = di.dayText(&entry)
+		doc.DayNotes = di.dayText(ctx, &entry)
 		doc.Parents = di.parents(*entry.FolderId, nil)
 		di.addUsers(&doc, entry.Authors)
 		di.addUsers(&doc, entry.AssignedReviewers)
@@ -199,7 +199,7 @@ func (di *DocumentIndexer) index(ctx context.Context) error {
 			v := di.users["user:"+*entry.Creator.Id]
 			doc.Users[*entry.Creator.Id] = v
 			if v.Name == nil {
-				log.Printf("failed to find user: %v\n", *entry.Creator.Id)
+				ctxlog.Error(ctx, "benchling indexer: failed to find user", "id", *entry.Creator.Id)
 			}
 		}
 		obj := content.Object[Document, struct{}]{
@@ -211,15 +211,15 @@ func (di *DocumentIndexer) index(ctx context.Context) error {
 		prefix, suffix := di.sharder.Assign(fmt.Sprintf("%v", id))
 		prefix = join(di.downloads, prefix)
 		if err := obj.Store(ctx, store, prefix, suffix, content.JSONObjectEncoding, content.GOBObjectEncoding); err != nil {
-			log.Printf("benchling indexer: failed to write user: %v as %v %v: %v\n", id, prefix, suffix, err)
+			ctxlog.Error(ctx, "benchling indexer: failed to write user", "id", id, "prefix", prefix, "suffix", suffix, "error", err)
 		}
 		n++
 		if n%100 == 0 {
-			log.Printf("benchling indexer: written %v/%v: %v\n", n, len(di.entries), time.Since(last))
+			ctxlog.Info(ctx, "benchling indexer: written", "n", n, "total", len(di.entries), "took", time.Since(last))
 			last = time.Now()
 		}
 	}
-	log.Printf("benchling indexer: written %v/%v: %v\n", n, len(di.entries), time.Since(last))
+	ctxlog.Info(ctx, "benchling indexer: written", "n", n, "total", len(di.entries), "took", time.Since(last))
 	return store.Finish(ctx)
 }
 

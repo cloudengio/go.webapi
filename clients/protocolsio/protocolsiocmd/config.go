@@ -10,7 +10,6 @@ package protocolsiocmd
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/url"
 	"strconv"
 	"sync"
@@ -19,6 +18,7 @@ import (
 	"cloudeng.io/file/content"
 	"cloudeng.io/file/content/stores"
 	"cloudeng.io/file/filewalk"
+	"cloudeng.io/logging/ctxlog"
 	"cloudeng.io/webapi/clients/protocolsio"
 	"cloudeng.io/webapi/clients/protocolsio/protocolsiosdk"
 	"cloudeng.io/webapi/operations"
@@ -56,7 +56,7 @@ func createVersionMap(ctx context.Context, fs operations.FS, concurrency int, do
 	store := stores.New(fs, concurrency)
 	err := filewalk.ContentsOnly(ctx, fs, downloads, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
 		if err != nil {
-			log.Printf("%v: %v", fs.Join(prefix), err)
+			ctxlog.Error(ctx, "protocols.io: error", "prefix", prefix, "err", err)
 		}
 		names := make([]string, len(contents))
 		for i, c := range contents {

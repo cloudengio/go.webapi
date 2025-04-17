@@ -6,11 +6,12 @@ package benchling
 
 import (
 	"context"
-	"log"
 	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
+
+	"cloudeng.io/logging/ctxlog"
 )
 
 // Backoff implements a backoff strategy that first looks for the
@@ -44,10 +45,10 @@ func (bb *Backoff) Wait(ctx context.Context, resp *http.Response) (bool, error) 
 	delay := bb.nextDelay
 	secs := int64(0)
 	if resp == nil {
-		log.Printf("benchling.Backoff.Wait: response is nil")
+		ctxlog.Info(ctx, "benchling.Backoff.Wait: response is nil")
 	}
 	if resp != nil && resp.Header == nil {
-		log.Printf("benchling.Backoff.Wait: response header is nil: %v", resp)
+		ctxlog.Info(ctx, "benchling.Backoff.Wait: response header is nil", "response", resp)
 	}
 	if resp != nil && resp.Header != nil {
 		remaining := resp.Header.Get("x-rate-limit-reset")
@@ -56,7 +57,7 @@ func (bb *Backoff) Wait(ctx context.Context, resp *http.Response) (bool, error) 
 			delay = time.Second * time.Duration(secs)
 			// Add some jitter.
 			delay += time.Second * time.Duration(bb.rnd.Intn(bb.retries+1))
-			log.Printf("waiting %v for the current rate limit period to end", delay)
+			ctxlog.Info(ctx, "benchling.Backoff.Wait: waiting", "delay", delay)
 		}
 	}
 	select {

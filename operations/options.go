@@ -5,8 +5,6 @@
 package operations
 
 import (
-	"log/slog"
-
 	"cloudeng.io/net/ratecontrol"
 )
 
@@ -20,7 +18,6 @@ type options struct {
 	auth               Auth
 	unmarshal          Unmarshal
 	encoding           Encoding
-	logger             *slog.Logger
 }
 
 // WithRateController sets the rate controller to use to enforce rate
@@ -36,13 +33,6 @@ func WithRateController(rc *ratecontrol.Controller, statusCodes ...int) Option {
 func WithAuth(a Auth) Option {
 	return func(o *options) {
 		o.auth = a
-	}
-}
-
-// WithLogger specifies the logger to use when making requests.
-func WithLogger(l *slog.Logger) Option {
-	return func(o *options) {
-		o.logger = l
 	}
 }
 
