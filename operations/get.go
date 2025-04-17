@@ -10,7 +10,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -18,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"cloudeng.io/logging/ctxlog"
 	"cloudeng.io/net/ratecontrol"
 )
 
@@ -82,7 +82,7 @@ func (ep *Endpoint[T]) isBackoffCode(code int) bool {
 	return false
 }
 
-func (ep *Endpoint[T]) isErrorRetryable(req *http.Request, err error)() bool {
+func (ep *Endpoint[T]) isErrorRetryable(req *http.Request, err error) (string, bool) {
 	if errors.Is(err, context.DeadlineExceeded) {
 		return "context.DeadlineExceeded", true
 	}
@@ -101,15 +101,14 @@ func (ep *Endpoint[T]) isErrorRetryable(req *http.Request, err error)() bool {
 func (ep *Endpoint[T]) isErrorRetryableAndLog(ctx context.Context, req *http.Request, err error) bool {
 	msg, retryable := ep.isErrorRetryable(req, err)
 	grp := slog.Group("req", "url", req.URL, "err", err, "retryable", retryable)
-	ctxlog.Info(ctx, slog.LevelInfo, msg, grp)
+	ctxlog.Info(ctx, msg, grp)
 	return retryable
 }
 
-func (ep *Endpoint[T]) logBackoff(ctx context.Context, msg string, req *http.Request, retries int, took time.Duration,	done bool, err error) {
+func (ep *Endpoint[T]) logBackoff(ctx context.Context, msg string, req *http.Request, retries int, took time.Duration, done bool, err error) {
 	grp := slog.Group("req", "url", req.URL, "retries", retries, "took", took, "done", done, "err", err)
 	ctxlog.Info(ctx, msg, grp)
 }
-
 
 func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *http.Response, []byte, error) {
 	var result T
