@@ -82,7 +82,7 @@ func (ep *Endpoint[T]) isBackoffCode(code int) bool {
 	return false
 }
 
-func (ep *Endpoint[T]) isErrorRetryable(req *http.Request, err error) (string, bool) {
+func (ep *Endpoint[T]) isErrorRetryable(err error) (string, bool) {
 	if errors.Is(err, context.DeadlineExceeded) {
 		return "context.DeadlineExceeded", true
 	}
@@ -99,7 +99,7 @@ func (ep *Endpoint[T]) isErrorRetryable(req *http.Request, err error) (string, b
 }
 
 func (ep *Endpoint[T]) isErrorRetryableAndLog(ctx context.Context, req *http.Request, err error) bool {
-	msg, retryable := ep.isErrorRetryable(req, err)
+	msg, retryable := ep.isErrorRetryable(err)
 	grp := slog.Group("req", "url", req.URL, "err", err, "retryable", retryable)
 	ctxlog.Info(ctx, msg, grp)
 	return retryable
