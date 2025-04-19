@@ -9,12 +9,12 @@ package benchlingcmd
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"cloudeng.io/errors"
 	"cloudeng.io/file/content"
 	"cloudeng.io/file/content/stores"
+	"cloudeng.io/logging/ctxlog"
 	"cloudeng.io/path"
 	"cloudeng.io/sync/errgroup"
 	"cloudeng.io/webapi/clients/benchling"
@@ -56,7 +56,7 @@ func (c *Command) Crawl(ctx context.Context, _ CrawlFlags, entities ...string) e
 	if err != nil {
 		return err
 	}
-	log.Printf("benchling: checkpoint: user date: %v, entry date: %v", state.UsersDate, state.EntriesDate)
+	ctxlog.Info(ctx, "benchling: checkpoint", "user date", state.UsersDate, "entry date", state.EntriesDate)
 
 	ch := make(chan any, 100)
 
@@ -71,7 +71,7 @@ func (c *Command) Crawl(ctx context.Context, _ CrawlFlags, entities ...string) e
 		entity := entity
 		entityGroup.Go(func() error {
 			err := c.crawlEntity(ctx, state, entity, ch, opts)
-			log.Printf("benchling: completed crawl of %v: %v", entity, err)
+			ctxlog.Info(ctx, "benchling: completed crawl of", "entity", entity, "err", err)
 			return err
 		})
 	}
@@ -87,7 +87,7 @@ func (c *Command) crawlSaver(ctx context.Context, state Checkpoint, downloadsPat
 	var nUsers, nEntries, nFolders, nProjects int
 	var written int64
 	defer func() {
-		log.Printf("benchling: total written: %v (users: %v, entries %v, folders %v, projects %v)", written, nUsers, nEntries, nFolders, nProjects)
+		ctxlog.Info(ctx, "benchling: total written", "written", written, "users", nUsers, "entries", nEntries, "folders", nFolders, "projects", nProjects)
 	}()
 	concurrency := c.state.Config.Cache.Concurrency
 	for {
@@ -114,7 +114,7 @@ func (c *Command) crawlSaver(ctx context.Context, state Checkpoint, downloadsPat
 			state.EntriesDate = *(v.Entries[len(v.Entries)-1].ModifiedAt)
 			state.UsersDate = time.Now().Format(time.RFC3339)
 			if err := saveCheckpoint(ctx, c.state.Checkpoint, state); err != nil {
-				log.Printf("benchling: failed to save checkpoint: %v", err)
+				ctxlog.Error(ctx, "benchling: failed to save checkpoint", "err", err)
 				return err
 			}
 		case benchling.Folders:
@@ -125,7 +125,7 @@ func (c *Command) crawlSaver(ctx context.Context, state Checkpoint, downloadsPat
 			err = save(ctx, c.state.Store, downloadsPath, concurrency, sharder, v.Projects)
 		}
 		total := nUsers + nEntries + nFolders + nProjects
-		log.Printf("benchling: written: %v (users: %v, entries %v, folders %v, projects %v) crawl: %v, save: %v", total, nUsers, nEntries, nFolders, nProjects, saveStart.Sub(start), time.Since(saveStart))
+		ctxlog.Info(ctx, "benchling: written", "total", total, "users", nUsers, "entries", nEntries, "folders", nFolders, "projects", nProjects, "crawl", saveStart.Sub(start), "save", time.Since(saveStart))
 		if err != nil {
 			return err
 		}

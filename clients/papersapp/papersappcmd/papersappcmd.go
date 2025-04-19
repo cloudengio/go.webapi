@@ -9,13 +9,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/url"
 	"sync"
 
 	"cloudeng.io/file/content"
 	"cloudeng.io/file/content/stores"
 	"cloudeng.io/file/filewalk"
+	"cloudeng.io/logging/ctxlog"
 	"cloudeng.io/path"
 	"cloudeng.io/webapi/clients/papersapp"
 	"cloudeng.io/webapi/clients/papersapp/papersappsdk"
@@ -74,7 +74,7 @@ func (c *Command) Crawl(ctx context.Context, _ *CrawlFlags) error {
 	if err := collectionsCache.Finish(ctx); err != nil {
 		return err
 	}
-	log.Printf("papersapp: crawled %v collections\n", len(collections))
+	ctxlog.Info(ctx, "papersapp: crawled", "collections", len(collections))
 
 	for _, col := range collections {
 		if !col.Shared {
@@ -109,7 +109,7 @@ func (cc *crawlCollection) run(ctx context.Context) error {
 	store := stores.New(cc.fs, cc.config.Cache.Concurrency)
 	defer func() {
 		store.Finish(ctx) //nolint:errcheck
-		log.Printf("papersapp: total written: %v: %v\n", written, cc.collection.Name)
+		ctxlog.Info(ctx, "papersapp: total written", "written", written, "collection", cc.collection.Name)
 	}()
 
 	join := cc.fs.Join
@@ -144,11 +144,11 @@ func (cc *crawlCollection) run(ctx context.Context) error {
 			}
 			written++
 			if written%100 == 0 {
-				log.Printf("papersapp: written: %v\n", written)
+				ctxlog.Info(ctx, "papersapp: written", "written", written)
 			}
 		}
 	}
-	log.Printf("papersapp: %v: % 8v (%v): done\n", cc.collection.ID, dl, cc.collection.Name)
+	ctxlog.Info(ctx, "papersapp: done", "collection", cc.collection.ID, "dl", dl, "collection", cc.collection.Name)
 	if err := sc.Err(); err != nil {
 		return err
 	}
@@ -181,14 +181,14 @@ func scanDownloaded(ctx context.Context, fs content.FS, concurrency int, gzipWri
 			if err := obj.Decode(buf); err != nil {
 				return err
 			}
-			log.Printf("papersapp: collection: %v: %v\n", obj.Value.ID, obj.Value.Name)
+			ctxlog.Info(ctx, "papersapp: collection", "id", obj.Value.ID, "name", obj.Value.Name)
 		case papersapp.ItemType:
 			var obj content.Object[papersapp.Item, operations.Response]
 			if err := obj.Decode(buf); err != nil {
 				return err
 			}
 			item := obj.Value
-			log.Printf("papersapp: item: %v: %v: %v\n", item.Item.ItemType, item.Item.ID, item.Collection.Name)
+			ctxlog.Info(ctx, "papersapp: item", "item type", item.Item.ItemType, "id", item.Item.ID, "collection", item.Collection.Name)
 			if gzipWriter != nil {
 				buf, err := json.Marshal(item)
 				if err != nil {

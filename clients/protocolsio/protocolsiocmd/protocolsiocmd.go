@@ -9,7 +9,6 @@ package protocolsiocmd
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"sync"
 	"text/template"
@@ -20,6 +19,7 @@ import (
 	"cloudeng.io/file/content"
 	"cloudeng.io/file/content/stores"
 	"cloudeng.io/file/filewalk"
+	"cloudeng.io/logging/ctxlog"
 	"cloudeng.io/path"
 	"cloudeng.io/webapi/clients/protocolsio/protocolsiosdk"
 	"cloudeng.io/webapi/operations"
@@ -94,13 +94,13 @@ func handleCrawledObject(ctx context.Context,
 	store := stores.New(fs, 0)
 	for _, obj := range objs {
 		if obj.Response.Current != 0 && obj.Response.Total != 0 {
-			log.Printf("protocols.io: progress: %v/%v\n", obj.Response.Current, obj.Response.Total)
+			ctxlog.Info(ctx, "protocols.io: progress", "current", obj.Response.Current, "total", obj.Response.Total)
 		}
 		if obj.Value.Protocol.ID == 0 {
 			// Protocol is up-to-date on disk.
 			return nil
 		}
-		log.Printf("protocols.io: protocol ID: %v\n", obj.Value.Protocol.ID)
+		ctxlog.Info(ctx, "protocols.io: protocol ID", "id", obj.Value.Protocol.ID)
 		if !save {
 			return nil
 		}
@@ -114,9 +114,9 @@ func handleCrawledObject(ctx context.Context,
 		if state := obj.Response.Checkpoint; len(state) > 0 {
 			name, err := chk.Checkpoint(ctx, "", state)
 			if err != nil {
-				log.Printf("protocols.io: failed to save checkpoint: %v: %v\n", name, err)
+				ctxlog.Error(ctx, "protocols.io: failed to save checkpoint", "name", name, "err", err)
 			} else {
-				log.Printf("protocols.io: checkpoint: %v\n", name)
+				ctxlog.Info(ctx, "protocols.io: checkpoint", "name", name)
 			}
 		}
 	}
@@ -150,7 +150,7 @@ func (c *Command) ScanDownloaded(ctx context.Context, fv *ScanFlags) error {
 	var mu sync.Mutex
 	err = filewalk.ContentsOnly(ctx, c.state.Store, downloadPath, func(ctx context.Context, prefix string, contents []filewalk.Entry, err error) error {
 		if err != nil {
-			log.Printf("protocols.io: error: %v: %v", prefix, err)
+			ctxlog.Error(ctx, "protocols.io: error", "prefix", prefix, "err", err)
 		}
 		names := make([]string, len(contents))
 		for i, c := range contents {

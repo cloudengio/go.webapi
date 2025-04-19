@@ -10,7 +10,6 @@ import (
 	"context"
 	"fmt"
 	"html/template"
-	"log"
 	"os"
 	"strings"
 	"sync"
@@ -20,6 +19,7 @@ import (
 	"cloudeng.io/file/content"
 	"cloudeng.io/file/content/stores"
 	"cloudeng.io/file/filewalk"
+	"cloudeng.io/logging/ctxlog"
 	"cloudeng.io/path"
 	"cloudeng.io/webapi/clients/biorxiv"
 	util "cloudeng.io/webapi/clients/biorxiv/internal"
@@ -81,7 +81,7 @@ func (c *Command) Crawl(ctx context.Context, flags CrawlFlags) error {
 	}
 	crawlState.sync(flags.Restart, time.Time(c.state.Config.Service.StartDate), time.Time(c.state.Config.Service.EndDate))
 
-	log.Printf("biorxiv: starting crawl from %v to %v, cursor: %v\n", crawlState.From, crawlState.To, crawlState.Cursor)
+	ctxlog.Info(ctx, "biorxiv: starting crawl", "from", crawlState.From, "to", crawlState.To, "cursor", crawlState.Cursor)
 
 	errCh := make(chan error)
 	ch := make(chan biorxiv.Response, 10)
@@ -93,7 +93,7 @@ func (c *Command) Crawl(ctx context.Context, flags CrawlFlags) error {
 	sc := biorxiv.NewScanner(c.state.Config.Service.ServiceURL, crawlState.From, crawlState.To, crawlState.Cursor, opts...)
 	for sc.Scan(ctx) {
 		resp := sc.Response()
-		log.Printf("biorxiv: crawled %v preprints\n", len(resp.Collection))
+		ctxlog.Info(ctx, "biorxiv: crawled", "preprints", len(resp.Collection))
 		ch <- resp
 	}
 	close(ch)
@@ -117,7 +117,7 @@ func (c *Command) crawlSaver(ctx context.Context, ch <-chan biorxiv.Response, cs
 	written := 0
 	join := fs.Join
 	defer func() {
-		log.Printf("biorxiv: total written: %v\n", written)
+		ctxlog.Info(ctx, "biorxiv: total written", "preprints", written)
 	}()
 	for {
 		var resp biorxiv.Response
@@ -152,7 +152,7 @@ func (c *Command) crawlSaver(ctx context.Context, ch <-chan biorxiv.Response, cs
 			}
 			written++
 			if written%100 == 0 {
-				log.Printf("biorxiv: written: %v\n", written)
+				ctxlog.Info(ctx, "biorxiv: written", "preprints", written)
 			}
 		}
 		cursor, err := util.AsInt64(msg.Cursor)

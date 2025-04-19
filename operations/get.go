@@ -11,12 +11,13 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"strings"
 	"time"
 
+	"cloudeng.io/logging/ctxlog"
 	"cloudeng.io/net/ratecontrol"
 )
 
@@ -81,24 +82,32 @@ func (ep *Endpoint[T]) isBackoffCode(code int) bool {
 	return false
 }
 
-func isErrorRetryable(req *http.Request, err error) bool {
+func (ep *Endpoint[T]) isErrorRetryable(err error) (string, bool) {
 	if errors.Is(err, context.DeadlineExceeded) {
-		log.Printf("%v: context.DeadlineExceeded", req.URL)
-		return true
+		return "context.DeadlineExceeded", true
 	}
 	if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
-		log.Printf("%v: timeout: %v", req.URL, err)
-		return true
+		return "timeout", true
 	}
 	if strings.HasSuffix(err.Error(), ": connection reset by peer") {
-		log.Printf("%v: connection reset: %v", req.URL, err)
-		return true
+		return "connection reset by peer", true
 	}
 	if strings.Contains(err.Error(), "TLS handshake") {
-		log.Printf("%v: TLS handshake: %v", req.URL, err)
-		return true
+		return "TLS handshake", true
 	}
-	return false
+	return "cannot retry", false
+}
+
+func (ep *Endpoint[T]) isErrorRetryableAndLog(ctx context.Context, req *http.Request, err error) bool {
+	msg, retryable := ep.isErrorRetryable(err)
+	grp := slog.Group("req", "url", req.URL, "err", err, "retryable", retryable)
+	ctxlog.Info(ctx, msg, grp)
+	return retryable
+}
+
+func (ep *Endpoint[T]) logBackoff(ctx context.Context, msg string, req *http.Request, retries int, took time.Duration, done bool, err error) {
+	grp := slog.Group("req", "url", req.URL, "retries", retries, "took", took, "done", done, "err", err)
+	ctxlog.Info(ctx, msg, grp)
 }
 
 func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *http.Response, []byte, error) {
@@ -125,22 +134,22 @@ func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *
 		}
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
-			if !isErrorRetryable(req, err) {
-				log.Printf("%v: cannot retry error: %v", req.URL, err)
+			if !ep.isErrorRetryableAndLog(ctx, req, err) {
 				return result, nil, nil, handleError(err, "", 0, retries)
 			}
 			if done, _ := backoff.Wait(ctx, nil); done {
-				log.Printf("%v: network backoff giving up getting type: %T, %v retries took %v %v", req.URL, result, retries, time.Since(start), err)
+				ep.logBackoff(ctx, "network backoff giving up", req, retries, time.Since(start), true, err)
 				return result, nil, nil, handleError(err, "", 0, retries)
 			}
-			log.Printf("%v network back off getting type: %T, retries: %v: %v", req, result, retries, err)
+			ep.logBackoff(ctx, "network backoff", req, retries, time.Since(start), false, err)
 			continue
 		}
 		if ep.isBackoffCode(resp.StatusCode) {
 			if done, _ := backoff.Wait(ctx, resp); done {
-				log.Printf("%v: application backoff giving up getting type: %T, %v retries took %v %v", req.URL, result, retries, time.Since(start), err)
+				ep.logBackoff(ctx, "application backoff giving up", req, retries, time.Since(start), true, err)
 				return result, nil, nil, handleError(err, resp.Status, resp.StatusCode, retries)
 			}
+			ep.logBackoff(ctx, "application backoff", req, retries, time.Since(start), false, err)
 			continue
 		}
 		if resp.StatusCode == http.StatusOK {
