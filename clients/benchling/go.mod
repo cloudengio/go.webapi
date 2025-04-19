@@ -1,6 +1,8 @@
 module cloudeng.io/webapi/clients/benchling
 
-go 1.24.2
+go 1.23.3
+
+toolchain go1.24.2
 
 require (
 	cloudeng.io/errors v0.0.10
