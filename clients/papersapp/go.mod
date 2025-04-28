@@ -5,10 +5,10 @@ go 1.23.3
 toolchain go1.24.2
 
 require (
-	cloudeng.io/file v0.0.0-20250417183712-58bca6dba505
-	cloudeng.io/logging v0.0.0-20250417183712-58bca6dba505
+	cloudeng.io/file v0.0.0-20250428004842-3ae3ab52e2d8
+	cloudeng.io/logging v0.0.0-20250428004842-3ae3ab52e2d8
 	cloudeng.io/path v0.0.9
-	cloudeng.io/webapi/operations v0.0.0-20250116040431-a16229cf0935
+	cloudeng.io/webapi/operations v0.0.0-20250419215804-ce6a0b356c82
 	github.com/go-openapi/errors v0.22.1
 	github.com/go-openapi/strfmt v0.23.0
 	github.com/go-openapi/swag v0.23.1
@@ -17,8 +17,8 @@ require (
 
 require (
 	cloudeng.io/errors v0.0.10 // indirect
-	cloudeng.io/net v0.0.0-20250417183712-58bca6dba505 // indirect
-	cloudeng.io/os v0.0.0-20250417183712-58bca6dba505 // indirect
+	cloudeng.io/net v0.0.0-20250428004842-3ae3ab52e2d8 // indirect
+	cloudeng.io/os v0.0.0-20250428004842-3ae3ab52e2d8 // indirect
 	cloudeng.io/sync v0.0.8 // indirect
 	cloudeng.io/text v0.0.11 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
