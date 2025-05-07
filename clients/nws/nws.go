@@ -254,7 +254,7 @@ func CloudOpacityFromShortForecast(forecast string) OpaqueCloudCoverage {
 		return PartlyCloudySunny
 	case strings.HasPrefix(forecast, "mostly cloudy"):
 		return MostlyCloudy
-	case strings.HasPrefix(forecast, "cloudy"):
+	case strings.HasPrefix(forecast, "cloudy") || strings.Contains(forecast, "rain"):
 		return Cloudy
 	}
 	return UnknownOpaqueCloudCoverage
