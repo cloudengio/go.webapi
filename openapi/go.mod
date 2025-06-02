@@ -6,7 +6,7 @@ toolchain go1.24.2
 
 require (
 	cloudeng.io/text v0.0.11
-	github.com/getkin/kin-openapi v0.131.0
+	github.com/getkin/kin-openapi v0.132.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

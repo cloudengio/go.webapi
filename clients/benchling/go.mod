@@ -6,20 +6,20 @@ toolchain go1.24.2
 
 require (
 	cloudeng.io/errors v0.0.10
-	cloudeng.io/file v0.0.0-20250428004842-3ae3ab52e2d8
-	cloudeng.io/logging v0.0.0-20250428004842-3ae3ab52e2d8
-	cloudeng.io/net v0.0.0-20250428004842-3ae3ab52e2d8
+	cloudeng.io/file v0.0.0-20250602170608-242ecde40803
+	cloudeng.io/logging v0.0.0-20250602170608-242ecde40803
+	cloudeng.io/net v0.0.0-20250602170608-242ecde40803
 	cloudeng.io/path v0.0.9
 	cloudeng.io/sync v0.0.8
-	cloudeng.io/webapi/operations v0.0.0-20250419215804-ce6a0b356c82
-	github.com/getkin/kin-openapi v0.131.0
-	github.com/labstack/echo/v4 v4.13.3
+	cloudeng.io/webapi/operations v0.0.0-20250428214600-1bf039e55dba
+	github.com/getkin/kin-openapi v0.132.0
+	github.com/labstack/echo/v4 v4.13.4
 	github.com/oapi-codegen/runtime v1.1.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	cloudeng.io/os v0.0.0-20250428004842-3ae3ab52e2d8 // indirect
+	cloudeng.io/os v0.0.0-20250602170608-242ecde40803 // indirect
 	cloudeng.io/text v0.0.11 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/go-openapi/jsonpointer v0.21.1 // indirect
@@ -37,9 +37,9 @@ require (
 	github.com/ugorji/go/codec v1.2.12 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
-	golang.org/x/crypto v0.37.0 // indirect
-	golang.org/x/net v0.39.0 // indirect
-	golang.org/x/sys v0.32.0 // indirect
-	golang.org/x/text v0.24.0 // indirect
+	golang.org/x/crypto v0.38.0 // indirect
+	golang.org/x/net v0.40.0 // indirect
+	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/text v0.25.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

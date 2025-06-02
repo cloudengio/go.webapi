@@ -5,15 +5,15 @@ go 1.23.0
 toolchain go1.24.2
 
 require (
-	cloudeng.io/cmdutil v0.0.0-20250428004842-3ae3ab52e2d8
+	cloudeng.io/cmdutil v0.0.0-20250602170608-242ecde40803
 	cloudeng.io/errors v0.0.10
-	cloudeng.io/webapi/openapi v0.0.0-20250419215804-ce6a0b356c82
-	github.com/getkin/kin-openapi v0.131.0
+	cloudeng.io/webapi/openapi v0.0.0-20250428214600-1bf039e55dba
+	github.com/getkin/kin-openapi v0.132.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	cloudeng.io/file v0.0.0-20250428004842-3ae3ab52e2d8 // indirect
+	cloudeng.io/file v0.0.0-20250602170608-242ecde40803 // indirect
 	cloudeng.io/text v0.0.11 // indirect
 	github.com/go-openapi/jsonpointer v0.21.1 // indirect
 	github.com/go-openapi/swag v0.23.1 // indirect
