@@ -2,177 +2,107 @@
 // Use of this source code is governed by the Apache-2.0
 // license that can be found in the LICENSE file.
 
+// Package apitokens provides types and functions for managing API tokens
+// and is built on top of the cmdutil/keys package and its InmemoryKeyStore.
 package apitokens
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"maps"
-	"slices"
-	"strings"
-	"sync"
+	"os"
 
-	"gopkg.in/yaml.v2"
+	"cloudeng.io/cmdutil/keys"
+	"golang.org/x/oauth2"
 )
 
-type tokenKey int
-
-var tokenKeyVal tokenKey
-
-type tokenStore struct {
-	sync.Mutex
-	tokens map[string][]byte
-}
-
-// ContextWithTokens returns a new context that contains the provided
-// named tokens in addition to any existing tokens. The tokens are typically
-// encoded as JSON or YAML.
-//
-// Deprecated: use ContextWithToken instead.
-func ContextWithTokens(ctx context.Context, name string, tokens []byte) context.Context {
-	store := &tokenStore{
-		tokens: map[string][]byte{name: tokens},
-	}
-	if ostore, ok := ctx.Value(tokenKeyVal).(*tokenStore); ok {
-		ostore.Lock()
-		defer ostore.Unlock()
-		for k, v := range ostore.tokens {
-			store.tokens[k] = v
-		}
-	}
-	store.tokens[name] = tokens
-	return context.WithValue(ctx, tokenKeyVal, store)
-}
-
-// TokensFromContext returns the tokens for the specified name, if any,
-// that are stored in the context.
-//
-// Deprecated: use TokenFromContext instead.
-func TokensFromContext(ctx context.Context, name string) ([]byte, bool) {
-	if store, ok := ctx.Value(tokenKeyVal).(*tokenStore); ok {
-		store.Lock()
-		defer store.Unlock()
-		t, ok := store.tokens[name]
-		return t, ok
-	}
-	return nil, false
-}
-
-// ParseTokensYAML parses the tokens stored in the context for the specified
-// name as YAML. It will return false if there are no tokens stored, true
-// otherwise and an error if the unmarshal fails.
-//
-// Deprecated: use TokenFromContext instead.
-func ParseTokensYAML(ctx context.Context, name string, cfg any) (bool, error) {
-	tokens, ok := TokensFromContext(ctx, name)
-	if !ok {
-		return false, nil
-	}
-	return true, yaml.Unmarshal(tokens, cfg)
-}
-
-// ParseTokensJSON parses the tokens stored in the context for the specified
-// name as JSON. It will return false if there are no tokens stored, true
-// otherwise and an error if the unmarshal fails.
-//
-// Deprecated: use TokenFromContext instead.
-func ParseTokensJSON(ctx context.Context, name string, cfg any) (bool, error) {
-	tokens, ok := TokensFromContext(ctx, name)
-	if !ok {
-		return false, nil
-	}
-	return true, json.Unmarshal(tokens, cfg)
-}
-
 // T represents a token that can be used to authenticate with an API.
-// Tokens are typically of the form scheme://value where scheme is used
-// to identify the reader that should be used to read the value.
 type T struct {
-	Scheme string
-	Path   string
-	value  []byte
+	ID    string
+	value string
 }
 
 // String returns a string representation of the token with the value
 // redacted.
 func (t T) String() string {
-	return fmt.Sprintf("%v://****", t.Scheme)
+	return fmt.Sprintf("%v://****", t.ID)
 }
 
 // Token returns the value of the token.
-func (t *T) Token() []byte {
+func (t *T) Token() string {
 	return t.value
-}
-
-// Read read's the token value using the supplied registry of Readers.
-func (t *T) Read(ctx context.Context, registry *Readers) error {
-	reader, ok := registry.Lookup(t.Scheme)
-	if !ok {
-		return fmt.Errorf("no reader for scheme: %v, expected one of: %v", t.Scheme, registry.Schemes())
-	}
-	val, err := reader.ReadFileCtx(ctx, t.Path)
-	if err != nil {
-		return err
-	}
-	t.value = val
-	return nil
-}
-
-// Clone creates a copy of a Token that does not share any state with the original.
-func (t *T) Clone() T {
-	return T{
-		Scheme: t.Scheme,
-		Path:   t.Path,
-		value:  slices.Clone(t.value),
-	}
-}
-
-// New creates a token from the supplied text. If the text does not
-// contain a scheme, the entire text is used as the value of the token
-// and the scheme is the empty string. It is left to the caller to
-// determine the appropriate interpretation of the value.
-func New(text string) *T {
-	idx := strings.Index(text, "://")
-	if idx < 0 {
-		return &T{Path: text, value: []byte(text)}
-	}
-	return &T{Scheme: text[:idx], Path: text[idx+3:]}
-}
-
-type tokenCtxKey int
-
-var tokenCtxKeyVal tokenCtxKey
-
-type tokenCtxStore struct {
-	sync.Mutex
-	tokens map[string]T
 }
 
 // ContextWithToken returns a new context that contains the provided
 // named token in addition to any existing tokens.
 func ContextWithToken(ctx context.Context, name string, token *T) context.Context {
-	store := &tokenCtxStore{}
-	if ostore, ok := ctx.Value(tokenCtxKeyVal).(*tokenCtxStore); ok {
-		ostore.Lock()
-		defer ostore.Unlock()
-		store.tokens = maps.Clone(ostore.tokens)
+	ims, ok := keys.KeyStoreFromContext(ctx)
+	if !ok {
+		ims = keys.NewInmemoryKeyStore()
+		ctx = keys.ContextWithKeyStore(ctx, ims)
 	}
-	if store.tokens == nil {
-		store.tokens = make(map[string]T)
-	}
-	store.tokens[name] = token.Clone()
-	return context.WithValue(ctx, tokenCtxKeyVal, store)
+	ims.AddKey(keys.KeyInfo{ID: name, Token: string(token.value)})
+	return ctx
 }
 
 // TokenFromContext returns the token for the specified name, if any,
 // that are stored in the context.
 func TokenFromContext(ctx context.Context, name string) (T, bool) {
-	if store, ok := ctx.Value(tokenCtxKeyVal).(*tokenCtxStore); ok {
-		store.Lock()
-		defer store.Unlock()
-		t, ok := store.tokens[name]
-		return t, ok
+	ki, ok := keys.KeyInfoFromContextForID(ctx, name)
+	if !ok {
+		return T{}, false
 	}
-	return T{}, false
+	return T{ID: ki.ID, value: ki.Token}, true
+}
+
+// TokenFromContextExpand returns the token for the specified name, if any,
+// that are stored in the context. The token value will be expanded using
+// ExpandEnv.
+func TokenFromContextExpand(ctx context.Context, name string, mapping func(string) string) (T, bool) {
+	ki, ok := keys.KeyInfoFromContextForID(ctx, name)
+	if !ok {
+		return T{}, false
+	}
+	return T{ID: ki.ID, value: ExpandEnv(ki.Token, mapping)}, true
+}
+
+// ContextWithOauth returns a new context that contains the provided
+// named oauth2.TokenSource in addition to any existing TokenSources.
+func ContextWithOAuth(ctx context.Context, name string, source oauth2.TokenSource) context.Context {
+	if source == nil {
+		return ctx // No-op if source is nil
+	}
+	ims, ok := keys.KeyStoreFromContext(ctx)
+	if !ok {
+		ims = keys.NewInmemoryKeyStore()
+		ctx = keys.ContextWithKeyStore(ctx, ims)
+	}
+	ims.AddKey(keys.KeyInfo{ID: name, Extra: source})
+	return ctx
+}
+
+// OAuthFromContext returns the TokenSource for the specified name, if any,
+// that are stored in the context.
+func OAuthFromContext(ctx context.Context, name string) oauth2.TokenSource {
+	ki, ok := keys.KeyInfoFromContextForID(ctx, name)
+	if !ok {
+		return nil
+	}
+	if source, ok := ki.Extra.(oauth2.TokenSource); ok {
+		return source
+	}
+	return nil
+}
+
+// ExpandEnv expands environment variables in the input string s using
+// the provided mapping function. If mapping is nil, os.Getenv is used.
+func ExpandEnv(s string, mapping func(string) string) string {
+	if mapping == nil {
+		mapping = os.Getenv
+	}
+	return os.Expand(s, mapping)
+}
+
+// New creates a new token with the specified ID and value.
+func New(id, value string) *T {
+	return &T{ID: id, value: value}
 }
