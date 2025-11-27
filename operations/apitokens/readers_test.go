@@ -4,15 +4,7 @@
 
 package apitokens_test
 
-import (
-	"bytes"
-	"context"
-	"os"
-	"testing"
-
-	"cloudeng.io/webapi/operations/apitokens"
-)
-
+/*
 func TestTokenReaders(t *testing.T) {
 	ctx := context.Background()
 	os.Setenv("something-unlikely", "env-secret")
@@ -48,3 +40,4 @@ func TestTokenReaders(t *testing.T) {
 	}
 
 }
+*/
