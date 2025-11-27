@@ -6,6 +6,7 @@ package benchling
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -38,7 +39,12 @@ func (bb *Backoff) Retries() int {
 }
 
 // Wait implements Backoff.
-func (bb *Backoff) Wait(ctx context.Context, resp *http.Response) (bool, error) {
+func (bb *Backoff) Wait(ctx context.Context, r any) (bool, error) {
+	resp, ok := r.(*http.Response)
+	if !ok {
+		ctxlog.Error(ctx, "benchling.Backoff.Wait: expected *http.Response, got %T", r)
+		return true, fmt.Errorf("expected *http.Response, got %T", r)
+	}
 	if bb.retries >= bb.steps {
 		return true, nil
 	}
