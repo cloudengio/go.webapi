@@ -8,6 +8,13 @@ Package apitokens provides types and functions for managing API tokens and
 is built on top of the cmdutil/keys package and its InmemoryKeyStore.
 
 ## Functions
+### Func ClearToken
+```go
+func ClearToken(token []byte)
+```
+ClearToken overwrites the contents of the provided token byte slice with
+zeros.
+
 ### Func ContextWithKey
 ```go
 func ContextWithKey(ctx context.Context, ki keys.Info) context.Context
@@ -29,12 +36,57 @@ func KeyFromContext(ctx context.Context, id string) (keys.Info, bool)
 KeyFromContext retrieves the key.Info for the specified id from the context.
 It wraps keys.KeyInfoFromContextForID.
 
+### Func NewErrNotFound
+```go
+func NewErrNotFound(keyID, service string) error
+```
+NewErrNotFound creates a new Error indicating that the specified token was
+not found. Errors.Is(err, fs.ErrNotExist) can be used to check for this
+condition.
+
 ### Func OAuthFromContext
 ```go
 func OAuthFromContext(ctx context.Context, id string) oauth2.TokenSource
 ```
 OAuthFromContext returns the TokenSource for the specified name, if any,
 that are stored in the context.
+
+### Func TokenFromContext
+```go
+func TokenFromContext(ctx context.Context, id string) (*keys.Token, bool)
+```
+TokenFromContext retrieves the token for the specified id from the context.
+It returns the token as a *keys.Token and a boolean indicating whether the
+token was found.
+
+
+
+## Types
+### Type Error
+```go
+type Error struct {
+	KeyID   string
+	Service string
+	Err     error
+}
+```
+Error represents an error related to API tokens.
+
+### Methods
+
+```go
+func (e Error) Error() string
+```
+Error implements the error interface.
+
+
+```go
+func (e Error) Unwrap() error
+```
+Unwrap supports error wrapping by returning the underlying error.
+
+
+
 
 
 
