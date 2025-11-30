@@ -6,6 +6,8 @@ package apitokens_test
 
 import (
 	"context"
+	"errors"
+	"io/fs"
 	"testing"
 
 	"cloudeng.io/cmdutil/keys"
@@ -79,5 +81,47 @@ func TestOAuthContext(t *testing.T) {
 	}
 	if ki.User != "u1" {
 		t.Errorf("got %v, want u1", ki.User)
+	}
+}
+
+func TestTokenFromContext(t *testing.T) {
+	ctx := context.Background()
+	k1 := keys.NewInfo("k1", "u1", []byte("t1"), nil)
+	ctx = apitokens.ContextWithKey(ctx, k1)
+
+	tok, ok := apitokens.TokenFromContext(ctx, "k1")
+	if !ok {
+		t.Fatal("expected key k1 to be present")
+	}
+	if got, want := string(tok.Value()), "t1"; got != want {
+		t.Errorf("got %v, want %v", got, want)
+	}
+
+	_, ok = apitokens.TokenFromContext(ctx, "k2")
+	if ok {
+		t.Fatal("expected key k2 to be absent")
+	}
+}
+
+func TestErrors(t *testing.T) {
+	err := apitokens.NewErrNotFound("k1", "s1")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if got, want := err.Error(), `api token error for key "k1" service "s1": token not found: file does not exist`; got != want {
+		t.Errorf("got %v, want %v", got, want)
+	}
+	if !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("expected error to be fs.ErrNotExist")
+	}
+}
+
+func TestClearToken(t *testing.T) {
+	tok := []byte("secret")
+	apitokens.ClearToken(tok)
+	for _, b := range tok {
+		if b != 0 {
+			t.Errorf("expected token to be cleared")
+		}
 	}
 }
