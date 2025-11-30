@@ -8,7 +8,6 @@ import (
 	"cloudeng.io/webapi/clients/papersapp"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
-	"cloudeng.io/webapi/operations/apitokens"
 )
 
 type Service struct {
@@ -17,10 +16,10 @@ type Service struct {
 	ListItemsPageSize int    `yaml:"list_items_page_size" cmd:"number of items in each page of results, typically 50"`
 }
 
-func OptionsForEndpoint(cfg apicrawlcmd.Crawl[Service], token *apitokens.T) ([]operations.Option, error) {
+func OptionsForEndpoint(cfg apicrawlcmd.Crawl[Service]) ([]operations.Option, error) {
 	opts := []operations.Option{}
-	if tv := token.Token(); len(tv) > 0 {
-		opts = append(opts, operations.WithAuth(papersapp.NewAPIToken(string(tv), cfg.Service.RefreshTokenURL)))
+	if len(cfg.KeyID) > 0 {
+		opts = append(opts, operations.WithAuth(papersapp.NewAPIToken(cfg.KeyID, cfg.Service.RefreshTokenURL)))
 	}
 	rc, err := cfg.RateControl.NewRateController()
 	if err != nil {

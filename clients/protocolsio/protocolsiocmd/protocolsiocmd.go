@@ -68,7 +68,7 @@ func (c *Command) Crawl(ctx context.Context, fv *CrawlFlags) error {
 
 	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.state.Config.Cache.ShardingPrefixLen))
 
-	crawler, err := newProtocolCrawler(ctx, c.state.Config, c.state.Store, downloadPath, c.state.Checkpoint, fv, c.state.Token)
+	crawler, err := newProtocolCrawler(ctx, c.state.Config, c.state.Store, downloadPath, c.state.Checkpoint, fv)
 	if err != nil {
 		return err
 	}
@@ -124,7 +124,7 @@ func handleCrawledObject(ctx context.Context,
 }
 
 func (c *Command) Get(ctx context.Context, _ *GetFlags, args []string) error {
-	opts, err := OptionsForEndpoint(c.state.Config, c.state.Token)
+	opts, err := OptionsForEndpoint(c.state.Config)
 	if err != nil {
 		return err
 	}

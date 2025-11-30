@@ -14,6 +14,7 @@ import (
 	"cloudeng.io/file/content"
 	"cloudeng.io/webapi/clients/protocolsio/protocolsiosdk"
 	"cloudeng.io/webapi/operations"
+	"cloudeng.io/webapi/operations/apitokens"
 )
 
 const ContentType = "protocols.io/protocol"
@@ -86,11 +87,17 @@ func (f *fetcher) Fetch(ctx context.Context, page protocolsiosdk.ListProtocolsV3
 // PublicBearerToken is an implementation of operations.Authorizer for
 // a protocols.io public bearer token.
 type PublicBearerToken struct {
-	Token string
+	KeyID string
 }
 
-func (pbt PublicBearerToken) WithAuthorization(_ context.Context, req *http.Request) error {
-	req.Header.Add("Authorization", "Bearer "+pbt.Token)
+// WithAuthorization implements operations.Authorizer.
+func (pbt PublicBearerToken) WithAuthorization(ctx context.Context, req *http.Request) error {
+	token, ok := apitokens.TokenFromContext(ctx, pbt.KeyID)
+	if !ok {
+		return apitokens.NewErrNotFound(pbt.KeyID, "protocols.io public bearer token")
+	}
+	defer token.Clear()
+	req.Header.Add("Authorization", "Bearer "+string(token.Value()))
 	return nil
 }
 

@@ -23,7 +23,6 @@ import (
 	"cloudeng.io/webapi/clients/protocolsio/protocolsiosdk"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
-	"cloudeng.io/webapi/operations/apitokens"
 )
 
 // Service represents the protocols.io specific confiugaration options.
@@ -81,7 +80,7 @@ func createVersionMap(ctx context.Context, fs operations.FS, concurrency int, do
 
 // newProtocolCrawler creates a new instance of operations.Crawler
 // that can be used to crawl/download protocols on protocols.io.
-func newProtocolCrawler(ctx context.Context, cfg apicrawlcmd.Crawl[Service], fs operations.FS, downloadsPath string, op checkpoint.Operation, fv *CrawlFlags, token *apitokens.T) (*operations.Crawler[protocolsiosdk.ListProtocolsV3, protocolsiosdk.ProtocolPayload], error) {
+func newProtocolCrawler(ctx context.Context, cfg apicrawlcmd.Crawl[Service], fs operations.FS, downloadsPath string, op checkpoint.Operation, fv *CrawlFlags) (*operations.Crawler[protocolsiosdk.ListProtocolsV3, protocolsiosdk.ProtocolPayload], error) {
 
 	cp, err := latestCheckpoint(ctx, op)
 	if err != nil {
@@ -119,7 +118,7 @@ func newProtocolCrawler(ctx context.Context, cfg apicrawlcmd.Crawl[Service], fs 
 	}
 
 	// General endpoint options.
-	opts, err := OptionsForEndpoint(cfg, token)
+	opts, err := OptionsForEndpoint(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -130,10 +129,10 @@ func newProtocolCrawler(ctx context.Context, cfg apicrawlcmd.Crawl[Service], fs 
 
 }
 
-func OptionsForEndpoint(cfg apicrawlcmd.Crawl[Service], token *apitokens.T) ([]operations.Option, error) {
+func OptionsForEndpoint(cfg apicrawlcmd.Crawl[Service]) ([]operations.Option, error) {
 	opts := []operations.Option{}
-	if tv := token.Token(); len(tv) > 0 {
-		opts = append(opts, operations.WithAuth(protocolsio.PublicBearerToken{Token: string(tv)}))
+	if len(cfg.KeyID) > 0 {
+		opts = append(opts, operations.WithAuth(protocolsio.PublicBearerToken{KeyID: cfg.KeyID}))
 	}
 	rc, err := cfg.RateControl.NewRateController()
 	if err != nil {

@@ -42,7 +42,7 @@ func NewCommand(ctx context.Context, config apicrawlcmd.Crawl[yaml.Node], resour
 }
 
 func (c *Command) Crawl(ctx context.Context, _ CrawlFlags, entities ...string) error {
-	opts, err := OptionsForEndpoint(c.state.Config, c.state.Token)
+	opts, err := OptionsForEndpoint(c.state.Config)
 	if err != nil {
 		return err
 	}
