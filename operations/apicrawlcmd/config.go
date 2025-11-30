@@ -12,7 +12,6 @@ import (
 	"cloudeng.io/file/checkpoint"
 	"cloudeng.io/file/crawl/crawlcmd"
 	"cloudeng.io/webapi/operations"
-	"cloudeng.io/webapi/operations/apitokens"
 	"gopkg.in/yaml.v3"
 )
 
@@ -42,10 +41,6 @@ func ParseCrawlConfig[T any](cfg Crawl[yaml.Node], service *Crawl[T]) error {
 
 // Resources represents the resources typically required to perform an API crawl.
 type Resources struct {
-	// Token contains all authentication tokens/credentials required to access the
-	// API being crawled.
-	Token *apitokens.T
-
 	NewOperationsFS func(ctx context.Context, cfg crawlcmd.CrawlCacheConfig) (operations.FS, error)
 
 	NewCheckpointOp func(ctx context.Context, cfg crawlcmd.CrawlCacheConfig) (checkpoint.Operation, error)
@@ -69,13 +64,12 @@ func (r Resources) CreateResources(ctx context.Context, cfg crawlcmd.CrawlCacheC
 
 type State[T any] struct {
 	Config     Crawl[T]
-	Token      *apitokens.T
 	Store      operations.FS
 	Checkpoint checkpoint.Operation
 }
 
 func NewState[T any](ctx context.Context, config Crawl[yaml.Node], resources Resources) (State[T], error) {
-	s := State[T]{Token: resources.Token}
+	s := State[T]{}
 	err := ParseCrawlConfig(config, &s.Config)
 	if err != nil {
 		return State[T]{}, err
