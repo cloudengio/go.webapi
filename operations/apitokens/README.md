@@ -4,29 +4,36 @@
 import cloudeng.io/webapi/operations/apitokens
 ```
 
+Package apitokens provides types and functions for managing API tokens and
+is built on top of the cmdutil/keys package and its InmemoryKeyStore.
 
 ## Functions
-### Func ContextWithTokens
+### Func ContextWithKey
 ```go
-func ContextWithTokens(ctx context.Context, name string, tokens []byte) context.Context
+func ContextWithKey(ctx context.Context, ki keys.Info) context.Context
 ```
-ContextWithTokens returns a new context that contains the provided named
-tokens in addition to any existing tokens. The tokens are typically encoded
-as JSON or YAML.
+ContextWithKey returns a new context that contains the provided named
+key.Info in addition to any existing keys. It wraps keys.ContextWithKey.
 
-### Func ParseTokensYAML
+### Func ContextWithOAuth
 ```go
-func ParseTokensYAML(ctx context.Context, name string, cfg any) (bool, error)
+func ContextWithOAuth(ctx context.Context, id, user string, source oauth2.TokenSource) context.Context
 ```
-ParseTokensYAML parses the tokens stored in the context for the specified
-name as JSON. It will return false if there are no tockens stored, true
-otherwise and an error if the unmsrshal fails.
+ContextWithOauth returns a new context that contains the provided named
+oauth2.TokenSource in addition to any existing TokenSources.
 
-### Func TokensFromContext
+### Func KeyFromContext
 ```go
-func TokensFromContext(ctx context.Context, name string) ([]byte, bool)
+func KeyFromContext(ctx context.Context, id string) (keys.Info, bool)
 ```
-TokensFromContext returns the tokens for the specified name, if any,
+KeyFromContext retrieves the key.Info for the specified id from the context.
+It wraps keys.KeyInfoFromContextForID.
+
+### Func OAuthFromContext
+```go
+func OAuthFromContext(ctx context.Context, id string) oauth2.TokenSource
+```
+OAuthFromContext returns the TokenSource for the specified name, if any,
 that are stored in the context.
 
 
