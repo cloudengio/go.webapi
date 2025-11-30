@@ -27,9 +27,9 @@ func KeyFromContext(ctx context.Context, id string) (keys.Info, bool) {
 	return keys.KeyInfoFromContextForID(ctx, id)
 }
 
-// TokenFromContext retrieves the token value for the specified id from the context.
-// It returns the token value as a string and a boolean indicating whether
-// the token was found.
+// TokenFromContext retrieves the token for the specified id from the
+// context. It returns the token as a *keys.Token and a boolean indicating
+// whether the token was found.
 func TokenFromContext(ctx context.Context, id string) (*keys.Token, bool) {
 	ki, ok := keys.KeyInfoFromContextForID(ctx, id)
 	if !ok {
@@ -72,6 +72,7 @@ func (e Error) Error() string {
 	return fmt.Sprintf("api token error for key %q service %q: %v", e.KeyID, e.Service, e.Err)
 }
 
+// Unwrap supports error wrapping by returning the underlying error.
 func (e Error) Unwrap() error {
 	return e.Err
 }

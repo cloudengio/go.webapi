@@ -55,9 +55,9 @@ that are stored in the context.
 ```go
 func TokenFromContext(ctx context.Context, id string) (*keys.Token, bool)
 ```
-TokenFromContext retrieves the token value for the specified id from the
-context. It returns the token value as a string and a boolean indicating
-whether the token was found.
+TokenFromContext retrieves the token for the specified id from the context.
+It returns the token as a *keys.Token and a boolean indicating whether the
+token was found.
 
 
 
@@ -83,6 +83,7 @@ Error implements the error interface.
 ```go
 func (e Error) Unwrap() error
 ```
+Unwrap supports error wrapping by returning the underlying error.
 
 
 
