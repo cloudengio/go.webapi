@@ -8,101 +8,41 @@ package apitokens
 
 import (
 	"context"
-	"fmt"
-	"os"
 
 	"cloudeng.io/cmdutil/keys"
 	"golang.org/x/oauth2"
 )
 
-// T represents a token that can be used to authenticate with an API.
-type T struct {
-	ID    string
-	value string
+// ContextWithKey returns a new context that contains the provided
+// named key.Info in addition to any existing keys. It wraps keys.ContextWithKey.
+func ContextWithKey(ctx context.Context, ki keys.Info) context.Context {
+	return keys.ContextWithKey(ctx, ki)
 }
 
-// String returns a string representation of the token with the value
-// redacted.
-func (t T) String() string {
-	return fmt.Sprintf("%v://****", t.ID)
-}
-
-// Token returns the value of the token.
-func (t *T) Token() string {
-	return t.value
-}
-
-// ContextWithToken returns a new context that contains the provided
-// named token in addition to any existing tokens.
-func ContextWithToken(ctx context.Context, name string, token *T) context.Context {
-	ims, ok := keys.KeyStoreFromContext(ctx)
-	if !ok {
-		ims = keys.NewInmemoryKeyStore()
-		ctx = keys.ContextWithKeyStore(ctx, ims)
-	}
-	ims.AddKey(keys.KeyInfo{ID: name, Token: string(token.value)})
-	return ctx
-}
-
-// TokenFromContext returns the token for the specified name, if any,
-// that are stored in the context.
-func TokenFromContext(ctx context.Context, name string) (T, bool) {
-	ki, ok := keys.KeyInfoFromContextForID(ctx, name)
-	if !ok {
-		return T{}, false
-	}
-	return T{ID: ki.ID, value: ki.Token}, true
-}
-
-// TokenFromContextExpand returns the token for the specified name, if any,
-// that are stored in the context. The token value will be expanded using
-// ExpandEnv.
-func TokenFromContextExpand(ctx context.Context, name string, mapping func(string) string) (T, bool) {
-	ki, ok := keys.KeyInfoFromContextForID(ctx, name)
-	if !ok {
-		return T{}, false
-	}
-	return T{ID: ki.ID, value: ExpandEnv(ki.Token, mapping)}, true
+// KeyFromContext retrieves the key.Info for the specified id from the context.
+// It wraps keys.KeyInfoFromContextForID.
+func KeyFromContext(ctx context.Context, id string) (keys.Info, bool) {
+	return keys.KeyInfoFromContextForID(ctx, id)
 }
 
 // ContextWithOauth returns a new context that contains the provided
 // named oauth2.TokenSource in addition to any existing TokenSources.
-func ContextWithOAuth(ctx context.Context, name string, source oauth2.TokenSource) context.Context {
-	if source == nil {
-		return ctx // No-op if source is nil
-	}
-	ims, ok := keys.KeyStoreFromContext(ctx)
-	if !ok {
-		ims = keys.NewInmemoryKeyStore()
-		ctx = keys.ContextWithKeyStore(ctx, ims)
-	}
-	ims.AddKey(keys.KeyInfo{ID: name, Extra: source})
-	return ctx
+func ContextWithOAuth(ctx context.Context, id, user string, source oauth2.TokenSource) context.Context {
+	ki := keys.NewInfo(id, user, nil, source)
+	return keys.ContextWithKey(ctx, ki)
 }
 
 // OAuthFromContext returns the TokenSource for the specified name, if any,
 // that are stored in the context.
-func OAuthFromContext(ctx context.Context, name string) oauth2.TokenSource {
-	ki, ok := keys.KeyInfoFromContextForID(ctx, name)
+func OAuthFromContext(ctx context.Context, id string) oauth2.TokenSource {
+	ki, ok := keys.KeyInfoFromContextForID(ctx, id)
 	if !ok {
 		return nil
 	}
-	if source, ok := ki.Extra.(oauth2.TokenSource); ok {
-		return source
+	if extra := ki.Extra(); extra != nil {
+		if source, ok := extra.(oauth2.TokenSource); ok {
+			return source
+		}
 	}
 	return nil
-}
-
-// ExpandEnv expands environment variables in the input string s using
-// the provided mapping function. If mapping is nil, os.Getenv is used.
-func ExpandEnv(s string, mapping func(string) string) string {
-	if mapping == nil {
-		mapping = os.Getenv
-	}
-	return os.Expand(s, mapping)
-}
-
-// New creates a new token with the specified ID and value.
-func New(id, value string) *T {
-	return &T{ID: id, value: value}
 }

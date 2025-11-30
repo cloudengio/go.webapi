@@ -6,100 +6,36 @@ package apitokens_test
 
 import (
 	"context"
-	"os"
 	"testing"
 
+	"cloudeng.io/cmdutil/keys"
 	"cloudeng.io/webapi/operations/apitokens"
 	"golang.org/x/oauth2"
 )
 
-func TestTokenContext(t *testing.T) {
+func TestKeyContext(t *testing.T) {
 	ctx := context.Background()
 
-	t1 := apitokens.New("id1", "v1")
-	t2 := apitokens.New("id2", "v2")
+	k1 := keys.NewInfo("k1", "u1", []byte("t1"), nil)
+	ctx = apitokens.ContextWithKey(ctx, k1)
 
-	if got, want := t1.String(), "id1://****"; got != want {
-		t.Errorf("got %v, want %v", got, want)
-	}
-
-	ctx = apitokens.ContextWithToken(ctx, "n1", t1)
-
-	tok, ok := apitokens.TokenFromContext(ctx, "n1")
+	got, ok := apitokens.KeyFromContext(ctx, "k1")
 	if !ok {
-		t.Errorf("expected token n1 to be present")
+		t.Fatal("expected key k1 to be present")
 	}
-	if got, want := tok.Token(), "v1"; got != want {
-		t.Errorf("got %v, want %v", got, want)
+	if got.ID != "k1" {
+		t.Errorf("got %v, want k1", got.ID)
 	}
-	// Note: TokenFromContext returns a T where ID is the key name used in ContextWithToken
-	if got, want := tok.ID, "n1"; got != want {
-		t.Errorf("got %v, want %v", got, want)
+	if got.User != "u1" {
+		t.Errorf("got %v, want u1", got.User)
+	}
+	if string(got.Token().Value()) != "t1" {
+		t.Errorf("got %v, want t1", string(got.Token().Value()))
 	}
 
-	tok, ok = apitokens.TokenFromContext(ctx, "n2")
+	_, ok = apitokens.KeyFromContext(ctx, "k2")
 	if ok {
-		t.Errorf("expected token n2 to be absent")
-	}
-
-	ctx = apitokens.ContextWithToken(ctx, "n2", t2)
-	tok, ok = apitokens.TokenFromContext(ctx, "n1")
-	if !ok {
-		t.Errorf("expected token n1 to be present")
-	}
-	if got, want := tok.Token(), "v1"; got != want {
-		t.Errorf("got %v, want %v", got, want)
-	}
-
-	tok, ok = apitokens.TokenFromContext(ctx, "n2")
-	if !ok {
-		t.Errorf("expected token n2 to be present")
-	}
-	if got, want := tok.Token(), "v2"; got != want {
-		t.Errorf("got %v, want %v", got, want)
-	}
-	if got, want := tok.ID, "n2"; got != want {
-		t.Errorf("got %v, want %v", got, want)
-	}
-}
-
-func TestTokenFromContextExpand(t *testing.T) {
-	ctx := context.Background()
-	t1 := apitokens.New("id1", `v1-${VAR}`)
-	ctx = apitokens.ContextWithToken(ctx, "n1", t1)
-
-	mapping := func(s string) string {
-		if s == "VAR" {
-			return "expanded"
-		}
-		return ""
-	}
-
-	tok, ok := apitokens.TokenFromContextExpand(ctx, "n1", mapping)
-	if !ok {
-		t.Errorf("expected token n1 to be present")
-	}
-	if got, want := tok.Token(), "v1-expanded"; got != want {
-		t.Errorf("got %v, want %v", got, want)
-	}
-}
-
-func TestExpandEnv(t *testing.T) {
-	os.Setenv("TEST_VAR", "value")
-	defer os.Unsetenv("TEST_VAR")
-
-	if got, want := apitokens.ExpandEnv(`test-${TEST_VAR}`, nil), "test-value"; got != want {
-		t.Errorf("got %v, want %v", got, want)
-	}
-
-	mapping := func(s string) string {
-		if s == "MY_VAR" {
-			return "my-value"
-		}
-		return ""
-	}
-	if got, want := apitokens.ExpandEnv(`test-${MY_VAR}`, mapping), "test-my-value"; got != want {
-		t.Errorf("got %v, want %v", got, want)
+		t.Fatal("expected key k2 to be absent")
 	}
 }
 
@@ -111,33 +47,37 @@ func (m *mockTokenSource) Token() (*oauth2.Token, error) {
 	return &oauth2.Token{AccessToken: m.value}, nil
 }
 
-func TestOAuthTokenSource(t *testing.T) {
+func TestOAuthContext(t *testing.T) {
 	ctx := context.Background()
 
-	ts := apitokens.OAuthFromContext(ctx, "n1")
-	if ts != nil {
-		t.Fatal("expected nil token source")
-	}
-	octx := ctx
-	ctx = apitokens.ContextWithOAuth(ctx, "n1", nil)
-	if ctx != octx {
-		t.Fatal("expected context to be unchanged when setting nil token source")
-	}
-
-	ts = apitokens.OAuthFromContext(ctx, "n1")
-	// Expect nil token source when set to nil.
-	if ts != nil {
-		t.Fatal("expected nil token source")
-	}
 	ts1 := &mockTokenSource{"ts1"}
-	ts2 := &mockTokenSource{"ts2"}
+	ctx = apitokens.ContextWithOAuth(ctx, "o1", "u1", ts1)
 
-	ctx = apitokens.ContextWithOAuth(ctx, "n1", ts1)
-	ctx = apitokens.ContextWithOAuth(ctx, "n2", ts2)
-	if got, want := apitokens.OAuthFromContext(ctx, "n1"), ts1; got != want {
-		t.Errorf("got %v, want %v", got, want)
+	got := apitokens.OAuthFromContext(ctx, "o1")
+	if got == nil {
+		t.Fatal("expected token source o1 to be present")
 	}
-	if got, want := apitokens.OAuthFromContext(ctx, "n2"), ts2; got != want {
-		t.Errorf("got %v, want %v", got, want)
+
+	// Verify we can get the token from the source
+	tok, err := got.Token()
+	if err != nil {
+		t.Fatalf("failed to get token: %v", err)
+	}
+	if tok.AccessToken != "ts1" {
+		t.Errorf("got %v, want ts1", tok.AccessToken)
+	}
+
+	got = apitokens.OAuthFromContext(ctx, "o2")
+	if got != nil {
+		t.Fatal("expected token source o2 to be absent")
+	}
+
+	// Verify underlying key info
+	ki, ok := apitokens.KeyFromContext(ctx, "o1")
+	if !ok {
+		t.Fatal("expected key info for o1")
+	}
+	if ki.User != "u1" {
+		t.Errorf("got %v, want u1", ki.User)
 	}
 }
