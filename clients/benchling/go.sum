@@ -22,10 +22,10 @@ cloudeng.io/sys v0.0.0-20251128212508-a29ef095b894 h1:1wN53rsO8ZdlcYtAkfGap1YBUk
 cloudeng.io/sys v0.0.0-20251128212508-a29ef095b894/go.mod h1:s036XnilFQX0iapupqPzSXynr+y6kF5662w2gnM496Y=
 cloudeng.io/text v0.0.13 h1:ivKGX9ssgYKrXQt+csSOA/HTmsdbxrVUnkCQyikI7ok=
 cloudeng.io/text v0.0.13/go.mod h1:6rDG6qEzGxe8ePNBz7VwSf0ps9p9ihDB/uXSFR0CJvk=
-cloudeng.io/webapi/operations v0.0.0-20251130183130-25a07e9bc981 h1:RMsaqolfyTfyERybvzG8/nCFuEICavuN5x5edo0gaiM=
-cloudeng.io/webapi/operations v0.0.0-20251130183130-25a07e9bc981/go.mod h1:gc8QYuKVBKyxAa2jvmgR8oabVCoMkAPmkMPLSVqsYHw=
-cloudeng.io/webapi/webapitestutil v0.0.0-20230204003545-f310593967e5 h1:jzjeFPX1nflSztwDt2Xv+IiqjBGkkSB6vvwb5j7fjLQ=
-cloudeng.io/webapi/webapitestutil v0.0.0-20230204003545-f310593967e5/go.mod h1:0tQ0jYj6jH3d4Jj0c2oOaB5TLbNwLu6kxQdS+2GbdbY=
+cloudeng.io/webapi/operations v0.0.0-20251130225646-0291ae2156bd h1:fNZumYTl1xdeDjS3lzTBR34YJk7LBR4NXCUfM8n4x10=
+cloudeng.io/webapi/operations v0.0.0-20251130225646-0291ae2156bd/go.mod h1:6QJzrJaEiqpNW+GdOn7AOlZkPYUaYMXCrycR58RKpwg=
+cloudeng.io/webapi/webapitestutil v0.0.0-20251130225646-0291ae2156bd h1:zY8EJ7MjyOaOH50UoLkks3zD+1YgGOhkhPUKVG/g23o=
+cloudeng.io/webapi/webapitestutil v0.0.0-20251130225646-0291ae2156bd/go.mod h1:/v4SzjtAFY/+FcVh5IyVbulzZTfHbhuqN7qtcWZmHU0=
 cloudeng.io/windows v0.0.0-20251104001519-e5e3fc20cf3e h1:Wy38fKa0y/ZEuOzZLDTBuiNcOH5GQDAbxCkhWlaL7vQ=
 cloudeng.io/windows v0.0.0-20251104001519-e5e3fc20cf3e/go.mod h1:tUOArMXLISe8OY+lHimWwdHMev5N7MwQGczQgTYZb3Y=
 github.com/RaveNoX/go-jsoncommentstrip v1.0.0/go.mod h1:78ihd09MekBnJnxpICcwzCMzGrKSKYe4AqU6PDYYpjk=
