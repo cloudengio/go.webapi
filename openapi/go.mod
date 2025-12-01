@@ -1,11 +1,9 @@
 module cloudeng.io/webapi/openapi
 
-go 1.23.0
-
-toolchain go1.24.2
+go 1.25
 
 require (
-	cloudeng.io/text v0.0.11
+	cloudeng.io/text v0.0.13
 	github.com/getkin/kin-openapi v0.132.0
 	gopkg.in/yaml.v3 v3.0.1
 )

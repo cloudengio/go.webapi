@@ -10,7 +10,6 @@ import (
 	"cloudeng.io/webapi/clients/benchling/benchlingsdk"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
-	"cloudeng.io/webapi/operations/apitokens"
 )
 
 type Service struct {
@@ -59,10 +58,10 @@ func (s Service) ListProjectsConfig() *benchlingsdk.ListProjectsParams {
 	}
 }
 
-func OptionsForEndpoint(cfg apicrawlcmd.Crawl[Service], token *apitokens.T) ([]operations.Option, error) {
+func OptionsForEndpoint(cfg apicrawlcmd.Crawl[Service]) ([]operations.Option, error) {
 	opts := []operations.Option{}
-	if tv := token.Token(); len(tv) > 0 {
-		opts = append(opts, operations.WithAuth(benchling.APIToken{Token: string(tv)}))
+	if len(cfg.KeyID) > 0 {
+		opts = append(opts, operations.WithAuth(benchling.APIToken{TokenID: cfg.KeyID}))
 	}
 	rateCfg := cfg.RateControl
 	rcopts := []ratecontrol.Option{}

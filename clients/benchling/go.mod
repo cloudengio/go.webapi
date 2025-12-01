@@ -4,12 +4,12 @@ go 1.25
 
 require (
 	cloudeng.io/errors v0.0.13-0.20251104013446-a84136171725
-	cloudeng.io/file v0.0.0-20251125212038-1e8b65a7457e
-	cloudeng.io/logging v0.0.0-20251125212038-1e8b65a7457e
-	cloudeng.io/net v0.0.0-20251125212038-1e8b65a7457e
+	cloudeng.io/file v0.0.0-20251128212508-a29ef095b894
+	cloudeng.io/logging v0.0.0-20251128212508-a29ef095b894
+	cloudeng.io/net v0.0.0-20251128212508-a29ef095b894
 	cloudeng.io/path v0.0.10-0.20251104001519-e5e3fc20cf3e
 	cloudeng.io/sync v0.0.9-0.20251104013446-a84136171725
-	cloudeng.io/webapi/operations v0.0.0-20250602221647-9393998d9574
+	cloudeng.io/webapi/operations v0.0.0-20251130225646-0291ae2156bd
 	github.com/getkin/kin-openapi v0.133.0
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/oapi-codegen/runtime v1.1.2
@@ -17,16 +17,18 @@ require (
 )
 
 require (
-	cloudeng.io/algo v0.0.0-20251125212038-1e8b65a7457e // indirect
-	cloudeng.io/os v0.0.0-20251125212038-1e8b65a7457e // indirect
-	cloudeng.io/sys v0.0.0-20251125212038-1e8b65a7457e // indirect
+	cloudeng.io/algo v0.0.0-20251128212508-a29ef095b894 // indirect
+	cloudeng.io/cmdutil v0.0.0-20251128212508-a29ef095b894 // indirect
+	cloudeng.io/os v0.0.0-20251128212508-a29ef095b894 // indirect
+	cloudeng.io/sys v0.0.0-20251128212508-a29ef095b894 // indirect
 	cloudeng.io/text v0.0.13 // indirect
+	cloudeng.io/webapi/webapitestutil v0.0.0-20251130225646-0291ae2156bd // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/go-openapi/jsonpointer v0.22.3 // indirect
-	github.com/go-openapi/swag v0.25.4 // indirect
 	github.com/go-openapi/swag/jsonname v0.25.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/mailru/easyjson v0.9.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
@@ -41,7 +43,7 @@ require (
 	github.com/woodsbury/decimal128 v1.4.0 // indirect
 	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/net v0.47.0 // indirect
+	golang.org/x/oauth2 v0.33.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
