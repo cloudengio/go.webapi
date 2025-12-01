@@ -7,6 +7,7 @@ package papersapp
 import (
 	"context"
 	"net/http"
+	"sync"
 	"time"
 
 	"cloudeng.io/webapi/clients/papersapp/papersappsdk"
@@ -21,6 +22,7 @@ type APIToken struct {
 	token        papersappsdk.Token
 	issued       time.Time
 	refreshURL   string
+	mu           sync.Mutex
 }
 
 func NewAPIToken(refreshKeyID, refreshURL string) *APIToken {
@@ -40,6 +42,9 @@ func (pbt *APIToken) WithAuthorization(ctx context.Context, req *http.Request) e
 }
 
 func (pbt *APIToken) Refresh(ctx context.Context) (papersappsdk.Token, error) {
+	// only allow one outstanding refresh at a time
+	pbt.mu.Lock()
+	defer pbt.mu.Unlock()
 	if time.Since(pbt.issued) < 50*time.Minute {
 		return pbt.token, nil
 	}
