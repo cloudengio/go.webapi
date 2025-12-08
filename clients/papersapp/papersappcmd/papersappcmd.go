@@ -53,6 +53,10 @@ func (c *Command) Crawl(ctx context.Context, _ *CrawlFlags) error {
 
 	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.state.Config.Cache.ShardingPrefixLen))
 
+	if len(c.state.Config.Service.ServiceURL) == 0 {
+		return fmt.Errorf("no service URL configured")
+	}
+
 	ctxlog.Info(ctx, "papersapp: listing collections", "service url", c.state.Config.Service.ServiceURL)
 
 	collections, err := papersapp.ListCollections(ctx, c.state.Config.Service.ServiceURL, opts...)
