@@ -14,6 +14,7 @@ import (
 
 const apiCrawlSpec = `
 api1:
+  key_id: my-api-key
   cache:
     checkpoint: path/to/checkpoint
     sharding_prefix_len: 1
@@ -58,6 +59,9 @@ func TestAPICrawlConfig(t *testing.T) {
 		t.Errorf("got %v, want %v", got, want)
 	}
 
+	if got, want := a1.KeyID, "my-api-key"; got != want {
+		t.Errorf("got %v, want %v", got, want)
+	}
 	var a2 apicrawlcmd.Crawl[api2]
 	if err := apicrawlcmd.ParseCrawlConfig(crawls["api2"], &a2); err != nil {
 		t.Fatalf("err: %v", err)
@@ -70,4 +74,5 @@ func TestAPICrawlConfig(t *testing.T) {
 	if got, want := a2.Service.Else, 2; got != want {
 		t.Errorf("got %v, want %v", got, want)
 	}
+
 }

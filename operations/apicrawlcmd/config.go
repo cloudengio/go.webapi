@@ -34,6 +34,7 @@ type Crawls map[string]Crawl[yaml.Node]
 func ParseCrawlConfig[T any](cfg Crawl[yaml.Node], service *Crawl[T]) error {
 	service.RateControl = cfg.RateControl
 	service.Cache = cfg.Cache
+	service.KeyID = cfg.KeyID
 	if err := cfg.Service.Decode(&service.Service); err != nil {
 		return err
 	}
