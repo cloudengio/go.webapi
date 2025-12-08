@@ -71,7 +71,11 @@ func (c *Command) Crawl(ctx context.Context, _ CrawlFlags, entities ...string) e
 		entity := entity
 		entityGroup.Go(func() error {
 			err := c.crawlEntity(ctx, state, entity, ch, opts)
-			ctxlog.Info(ctx, "benchling: completed crawl of", "entity", entity, "err", err)
+			if err != nil {
+				ctxlog.Info(ctx, "benchling: completed crawl of", "entity", entity, "err", err)
+			} else {
+				ctxlog.Debug(ctx, "benchling: completed crawl of", "entity", entity)
+			}
 			return err
 		})
 	}
@@ -177,6 +181,9 @@ type crawler[ScannerT benchling.Scanners, ParamsT benchling.Params] struct {
 }
 
 func (c *crawler[ScannerT, ParamsT]) run(ctx context.Context, ch chan<- any, opts []operations.Option) error {
+	if len(c.serviceURL) == 0 {
+		return fmt.Errorf("no service URL configured")
+	}
 	sc := benchling.NewScanner[ScannerT](ctx, c.serviceURL, c.params, opts...)
 	for sc.Scan(ctx) {
 		u := sc.Response()

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"cloudeng.io/file/content"
+	"cloudeng.io/logging/ctxlog"
 )
 
 // Response contains metadata for the result of an operation and is used for
@@ -107,6 +108,7 @@ func RunCrawl[ScanT, EndpointT any](ctx context.Context, crawler *Crawler[ScanT,
 		errCh <- crawler.Run(ctx, ch)
 	}()
 
+	logger := ctxlog.Logger(ctx)
 	for {
 		select {
 		case <-ctx.Done():
@@ -117,6 +119,7 @@ func RunCrawl[ScanT, EndpointT any](ctx context.Context, crawler *Crawler[ScanT,
 			if !ok {
 				return <-errCh
 			}
+			logger.Debug("handling crawled objects", "count", len(objs))
 			if err := handler(ctx, objs); err != nil {
 				return err
 			}

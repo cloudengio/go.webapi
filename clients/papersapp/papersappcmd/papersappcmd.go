@@ -53,6 +53,8 @@ func (c *Command) Crawl(ctx context.Context, _ *CrawlFlags) error {
 
 	sharder := path.NewSharder(path.WithSHA1PrefixLength(c.state.Config.Cache.ShardingPrefixLen))
 
+	ctxlog.Info(ctx, "papersapp: listing collections", "service url", c.state.Config.Service.ServiceURL)
+
 	collections, err := papersapp.ListCollections(ctx, c.state.Config.Service.ServiceURL, opts...)
 	if err != nil {
 		return err
