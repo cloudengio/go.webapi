@@ -76,6 +76,9 @@ func TestOAuthContext(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected token source o2 to be absent")
 	}
+	if got != nil {
+		t.Fatal("expected token source o2 to be absent")
+	}
 
 	// Verify underlying key info
 	ki, ok := apitokens.KeyFromContext(ctx, "o1")
