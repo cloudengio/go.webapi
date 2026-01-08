@@ -1,5 +1,5 @@
-cloudeng.io/algo v0.0.0-20260108054113-6b0ece4b9fa3 h1:ySfrAPmxwYEZuPWtSEm/UIcEDEdbdCN76ZMjJNbattA=
-cloudeng.io/algo v0.0.0-20260108054113-6b0ece4b9fa3/go.mod h1:UZ8vyc4kEQUKOdaj5K0KfFZjUbSguHKBTEkhzA17zmw=
+cloudeng.io/algo v0.0.0-20260108221821-c297f12474b8 h1:+YtnSPrXu7AQ+xidRmRmMzhz+Wj6Pk2GKptzJGaeq+w=
+cloudeng.io/algo v0.0.0-20260108221821-c297f12474b8/go.mod h1:UZ8vyc4kEQUKOdaj5K0KfFZjUbSguHKBTEkhzA17zmw=
 cloudeng.io/cmdutil v0.0.0-20260108221821-c297f12474b8 h1:EhhmS2OxX91FdFKBtAb0NwmwwT8ify82h+bcFDidp9o=
 cloudeng.io/cmdutil v0.0.0-20260108221821-c297f12474b8/go.mod h1:wwS0R+LLbj/YrAOB7ae4HHGA18olmggBlf/rPs/f2UM=
 cloudeng.io/debug v0.0.0-20251104042927-f7e1e5e3ef21 h1:8X8fYjZHc+kayF+OuT1dCJw1/W/8sNybcHEKSYmK8TY=
@@ -22,13 +22,12 @@ cloudeng.io/sys v0.0.0-20260108054113-6b0ece4b9fa3 h1:VXm70ZMfCsIJ6chiLdJou+Ekye
 cloudeng.io/sys v0.0.0-20260108054113-6b0ece4b9fa3/go.mod h1:uYoxAmkWot8hXRb/H6nxrM8Fbhoq5Kzv957WWVpti0o=
 cloudeng.io/text v0.0.13 h1:ivKGX9ssgYKrXQt+csSOA/HTmsdbxrVUnkCQyikI7ok=
 cloudeng.io/text v0.0.13/go.mod h1:6rDG6qEzGxe8ePNBz7VwSf0ps9p9ihDB/uXSFR0CJvk=
-cloudeng.io/webapi/operations v0.0.0-20251208164608-acc885628e1d h1:gpgzgpzKNgo82QN9UIirH82jU97LJxq+vCFOdRW6poE=
-cloudeng.io/webapi/operations v0.0.0-20251208164608-acc885628e1d/go.mod h1:6QJzrJaEiqpNW+GdOn7AOlZkPYUaYMXCrycR58RKpwg=
-cloudeng.io/webapi/webapitestutil v0.0.0-20251130225646-0291ae2156bd h1:zY8EJ7MjyOaOH50UoLkks3zD+1YgGOhkhPUKVG/g23o=
-cloudeng.io/webapi/webapitestutil v0.0.0-20251130225646-0291ae2156bd/go.mod h1:/v4SzjtAFY/+FcVh5IyVbulzZTfHbhuqN7qtcWZmHU0=
+cloudeng.io/webapi/operations v0.0.0-20260108223722-702b7fae5336 h1:2zCSnoQ4ue6jicDCtOZimjCiGgPISpRYHjFSpfFse6g=
+cloudeng.io/webapi/operations v0.0.0-20260108223722-702b7fae5336/go.mod h1:pmbEpZDpyltfT75otXh1d6ubtvV/i5So4NM5qEATQLA=
+cloudeng.io/webapi/webapitestutil v0.0.0-20260108223722-702b7fae5336 h1:EkHAqC5xT0yHG7wD3vN+pMGdTjjLvSN2CPqrAJGgVds=
+cloudeng.io/webapi/webapitestutil v0.0.0-20260108223722-702b7fae5336/go.mod h1:/v4SzjtAFY/+FcVh5IyVbulzZTfHbhuqN7qtcWZmHU0=
 cloudeng.io/windows v0.0.0-20251203211350-c30caae1cc5e h1:88FLgbskFkcsZSgh3jncYqYBg1J2eLHGzmdp74APrCQ=
 cloudeng.io/windows v0.0.0-20251203211350-c30caae1cc5e/go.mod h1:tUOArMXLISe8OY+lHimWwdHMev5N7MwQGczQgTYZb3Y=
-github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
 github.com/kr/pretty v0.3.1/go.mod h1:hoEshYVHaxMs3cyo3Yncou5ZscifuDolrwPKZanG3xk=
 github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=

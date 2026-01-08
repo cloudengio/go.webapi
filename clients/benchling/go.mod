@@ -9,7 +9,7 @@ require (
 	cloudeng.io/net v0.0.0-20260108192015-3dc1bcfdd4c2
 	cloudeng.io/path v0.0.10-0.20251104042927-f7e1e5e3ef21
 	cloudeng.io/sync v0.0.9-0.20251104042927-f7e1e5e3ef21
-	cloudeng.io/webapi/operations v0.0.0-20251208164608-acc885628e1d
+	cloudeng.io/webapi/operations v0.0.0-20260108223722-702b7fae5336
 	github.com/getkin/kin-openapi v0.133.0
 	github.com/labstack/echo/v4 v4.15.0
 	github.com/oapi-codegen/runtime v1.1.2
@@ -17,17 +17,17 @@ require (
 )
 
 require (
+	cloudeng.io/algo v0.0.0-20260108221821-c297f12474b8 // indirect
 	cloudeng.io/cmdutil v0.0.0-20260108221821-c297f12474b8 // indirect
 	cloudeng.io/os v0.0.0-20260108192015-3dc1bcfdd4c2 // indirect
 	cloudeng.io/text v0.0.13 // indirect
-	cloudeng.io/webapi/webapitestutil v0.0.0-20251130225646-0291ae2156bd // indirect
+	cloudeng.io/webapi/webapitestutil v0.0.0-20260108223722-702b7fae5336 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/go-openapi/jsonpointer v0.22.4 // indirect
 	github.com/go-openapi/swag/jsonname v0.25.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/mailru/easyjson v0.9.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect

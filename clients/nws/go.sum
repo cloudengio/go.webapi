@@ -16,10 +16,10 @@ cloudeng.io/sync v0.0.9-0.20251104042927-f7e1e5e3ef21 h1:euZCs56b25in7dFfFScc5nl
 cloudeng.io/sync v0.0.9-0.20251104042927-f7e1e5e3ef21/go.mod h1:bPp7qbb4lSaOsQEAsGX7NCvyKAgekc4/Vxd2yYeyVM0=
 cloudeng.io/sys v0.0.0-20260108054113-6b0ece4b9fa3 h1:VXm70ZMfCsIJ6chiLdJou+EkyefAOvL3kg8FKv1ClBs=
 cloudeng.io/sys v0.0.0-20260108054113-6b0ece4b9fa3/go.mod h1:uYoxAmkWot8hXRb/H6nxrM8Fbhoq5Kzv957WWVpti0o=
-cloudeng.io/webapi/operations v0.0.0-20251208164608-acc885628e1d h1:gpgzgpzKNgo82QN9UIirH82jU97LJxq+vCFOdRW6poE=
-cloudeng.io/webapi/operations v0.0.0-20251208164608-acc885628e1d/go.mod h1:6QJzrJaEiqpNW+GdOn7AOlZkPYUaYMXCrycR58RKpwg=
-cloudeng.io/webapi/webapitestutil v0.0.0-20251208164608-acc885628e1d h1:9kyM4moP1mJjZ2Xyz8o0Ojm34u3vE0JqoxsVF5uWk+0=
-cloudeng.io/webapi/webapitestutil v0.0.0-20251208164608-acc885628e1d/go.mod h1:/v4SzjtAFY/+FcVh5IyVbulzZTfHbhuqN7qtcWZmHU0=
+cloudeng.io/webapi/operations v0.0.0-20260108223722-702b7fae5336 h1:2zCSnoQ4ue6jicDCtOZimjCiGgPISpRYHjFSpfFse6g=
+cloudeng.io/webapi/operations v0.0.0-20260108223722-702b7fae5336/go.mod h1:pmbEpZDpyltfT75otXh1d6ubtvV/i5So4NM5qEATQLA=
+cloudeng.io/webapi/webapitestutil v0.0.0-20260108223722-702b7fae5336 h1:EkHAqC5xT0yHG7wD3vN+pMGdTjjLvSN2CPqrAJGgVds=
+cloudeng.io/webapi/webapitestutil v0.0.0-20260108223722-702b7fae5336/go.mod h1:/v4SzjtAFY/+FcVh5IyVbulzZTfHbhuqN7qtcWZmHU0=
 cloudeng.io/windows v0.0.0-20251203211350-c30caae1cc5e h1:88FLgbskFkcsZSgh3jncYqYBg1J2eLHGzmdp74APrCQ=
 cloudeng.io/windows v0.0.0-20251203211350-c30caae1cc5e/go.mod h1:tUOArMXLISe8OY+lHimWwdHMev5N7MwQGczQgTYZb3Y=
 golang.org/x/sys v0.40.0 h1:DBZZqJ2Rkml6QMQsZywtnjnnGvHza6BTfYFWY9kjEWQ=

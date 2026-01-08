@@ -5,8 +5,8 @@ go 1.25
 require (
 	cloudeng.io/algo v0.0.0-20260108221821-c297f12474b8
 	cloudeng.io/datetime v0.0.0-20260108221821-c297f12474b8
-	cloudeng.io/webapi/operations v0.0.0-20251208164608-acc885628e1d
-	cloudeng.io/webapi/webapitestutil v0.0.0-20251208164608-acc885628e1d
+	cloudeng.io/webapi/operations v0.0.0-20260108223722-702b7fae5336
+	cloudeng.io/webapi/webapitestutil v0.0.0-20260108223722-702b7fae5336
 )
 
 require (
