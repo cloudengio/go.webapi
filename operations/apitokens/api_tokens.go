@@ -48,16 +48,16 @@ func ContextWithOAuth(ctx context.Context, id, user string, source oauth2.TokenS
 
 // OAuthFromContext returns the TokenSource for the specified name, if any,
 // that are stored in the context.
-func OAuthFromContext(ctx context.Context, id string) oauth2.TokenSource {
+func OAuthFromContext(ctx context.Context, id string) (oauth2.TokenSource, error) {
 	ki, ok := keys.KeyInfoFromContextForID(ctx, id)
 	if !ok {
-		return nil
+		return nil, fmt.Errorf("oauthFromContext: key %q not found", id)
 	}
 	var source oauth2.TokenSource
 	if err := ki.UnmarshalExtra(&source); err != nil {
-		return nil
+		return nil, fmt.Errorf("oauthFromContext: failed to unmarshal oauth2.TokenSource: %v", err)
 	}
-	return source
+	return source, nil
 }
 
 // Error represents an error related to API tokens.

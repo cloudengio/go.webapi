@@ -55,7 +55,10 @@ func TestOAuthContext(t *testing.T) {
 	ts1 := &mockTokenSource{"ts1"}
 	ctx = apitokens.ContextWithOAuth(ctx, "o1", "u1", ts1)
 
-	got := apitokens.OAuthFromContext(ctx, "o1")
+	got, err := apitokens.OAuthFromContext(ctx, "o1")
+	if err != nil {
+		t.Fatalf("failed to get token source: %v", err)
+	}
 	if got == nil {
 		t.Fatal("expected token source o1 to be present")
 	}
@@ -69,8 +72,8 @@ func TestOAuthContext(t *testing.T) {
 		t.Errorf("got %v, want ts1", tok.AccessToken)
 	}
 
-	got = apitokens.OAuthFromContext(ctx, "o2")
-	if got != nil {
+	got, err = apitokens.OAuthFromContext(ctx, "o2")
+	if err == nil {
 		t.Fatal("expected token source o2 to be absent")
 	}
 
