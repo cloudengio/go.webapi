@@ -4,7 +4,7 @@ go 1.25.5
 
 require (
 	cloudeng.io/algo v0.0.0-20260114060639-052fa943c25b
-	cloudeng.io/datetime v0.0.0-20260114060639-052fa943c25b
+	cloudeng.io/datetime v0.0.0-20260118175335-f191a42253cc
 	cloudeng.io/webapi/operations v0.0.0-20260108225621-fc15d1afa620
 	cloudeng.io/webapi/webapitestutil v0.0.0-20260108225621-fc15d1afa620
 )
