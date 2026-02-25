@@ -68,7 +68,6 @@ func (c *Command) Crawl(ctx context.Context, _ CrawlFlags, entities ...string) e
 
 	var entityGroup errgroup.T
 	for _, entity := range entities {
-		entity := entity
 		entityGroup.Go(func() error {
 			err := c.crawlEntity(ctx, state, entity, ch, opts)
 			if err != nil {

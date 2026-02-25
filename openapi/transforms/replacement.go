@@ -6,6 +6,7 @@ package transforms
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 
 	"cloudeng.io/text/linewrap"
@@ -73,9 +74,7 @@ func (t *replacementTransformer) visitor(path []string, parent, _ any) (bool, er
 		}
 		pmap := jsonMap(parent)
 		pmap[path[len(path)-1]] = nil
-		for k, v := range repl.replacement {
-			pmap[k] = v
-		}
+		maps.Copy(pmap, repl.replacement)
 		if err := marshalMap(pmap, parent); err != nil {
 			return false, err
 		}

@@ -52,13 +52,13 @@ type ProtocolPayload struct {
 }
 
 type Pagination struct {
-	CurrentPage  int64       `json:"current_page"`
-	TotalPages   int64       `json:"total_pages"`
-	TotalResults int64       `json:"total_results"`
-	NextPage     string      `json:"next_page"`
-	PrevPage     interface{} `json:"prev_page"`
-	PageSize     int64       `json:"page_size"`
-	First        int64       `json:"first"`
-	Last         int64       `json:"last"`
-	ChangedOn    interface{} `json:"changed_on"`
+	CurrentPage  int64  `json:"current_page"`
+	TotalPages   int64  `json:"total_pages"`
+	TotalResults int64  `json:"total_results"`
+	NextPage     string `json:"next_page"`
+	PrevPage     any    `json:"prev_page"`
+	PageSize     int64  `json:"page_size"`
+	First        int64  `json:"first"`
+	Last         int64  `json:"last"`
+	ChangedOn    any    `json:"changed_on"`
 }

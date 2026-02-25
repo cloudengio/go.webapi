@@ -70,7 +70,7 @@ func TestRequestRate(t *testing.T) {
 		ratecontrol.WithRequestsPerTick(time.Millisecond*100, 1))
 	client := operations.NewEndpoint[int](operations.WithRateController(rc, http.StatusTooManyRequests))
 	nTimestamps := 5
-	for i := 0; i < nTimestamps; i++ {
+	for i := range nTimestamps {
 		n, _, _, err := client.Get(ctx, srv.URL)
 		if err != nil {
 			t.Fatal(err)

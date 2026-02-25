@@ -45,7 +45,7 @@ func (sr Replacement) ReplaceAllString(input string) string {
 func NewReplacement(s string) (Replacement, error) {
 	var sr Replacement
 	var parts []string
-	for _, p := range strings.Split(s, "/") {
+	for p := range strings.SplitSeq(s, "/") {
 		if len(p) > 0 {
 			parts = append(parts, p)
 		}

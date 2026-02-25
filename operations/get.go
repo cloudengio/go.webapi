@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -74,12 +75,7 @@ func (ep *Endpoint[T]) get(ctx context.Context, req *http.Request) (T, []byte, E
 }
 
 func (ep *Endpoint[T]) isBackoffCode(code int) bool {
-	for _, bc := range ep.backoffStatusCodes {
-		if code == bc {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ep.backoffStatusCodes, code)
 }
 
 func (ep *Endpoint[T]) isErrorRetryable(err error) (string, bool) {

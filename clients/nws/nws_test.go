@@ -38,7 +38,7 @@ func TestLookup(t *testing.T) {
 		api := nws.NewAPI(tc.opts...)
 		api.SetHost(url)
 
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			gp, err := api.LookupGridPoints(ctx, tc.lat, tc.long)
 			if err != nil {
 				t.Fatalf("failed to get grid points: %v", err)
@@ -75,7 +75,7 @@ func TestForecasts(t *testing.T) {
 		api := nws.NewAPI(tc.opts...)
 		api.SetHost(url)
 
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			fc, err := api.GetForecasts(ctx, tc.gp)
 			if err != nil {
 				t.Fatalf("failed to get forecasts: %v", err)

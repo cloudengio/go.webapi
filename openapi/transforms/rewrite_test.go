@@ -57,7 +57,7 @@ func asYAML(t *testing.T, v any) string {
 func trimIndent(indent int, s string) string {
 	spaces := strings.Repeat(" ", indent)
 	out := strings.Builder{}
-	for _, l := range strings.Split(s, "\n") {
+	for l := range strings.SplitSeq(s, "\n") {
 		out.WriteString(strings.TrimPrefix(l, spaces))
 		out.WriteRune('\n')
 	}
