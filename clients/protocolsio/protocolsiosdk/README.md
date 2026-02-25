@@ -1,7 +1,7 @@
-# Package [cloudeng.io/webapi/protocolsio/protocolsiosdk](https://pkg.go.dev/cloudeng.io/webapi/protocolsio/protocolsiosdk?tab=doc)
+# Package [cloudeng.io/webapi/clients/protocolsio/protocolsiosdk](https://pkg.go.dev/cloudeng.io/webapi/clients/protocolsio/protocolsiosdk?tab=doc)
 
 ```go
-import cloudeng.io/webapi/protocolsio/protocolsiosdk
+import cloudeng.io/webapi/clients/protocolsio/protocolsiosdk
 ```
 
 Package protocolsiosdk provides a minimal SDK for the protocols.io API.
@@ -52,15 +52,15 @@ type ListProtocolsV3 struct {
 ### Type Pagination
 ```go
 type Pagination struct {
-	CurrentPage  int64       `json:"current_page"`
-	TotalPages   int64       `json:"total_pages"`
-	TotalResults int64       `json:"total_results"`
-	NextPage     string      `json:"next_page"`
-	PrevPage     interface{} `json:"prev_page"`
-	PageSize     int64       `json:"page_size"`
-	First        int64       `json:"first"`
-	Last         int64       `json:"last"`
-	ChangedOn    interface{} `json:"changed_on"`
+	CurrentPage  int64  `json:"current_page"`
+	TotalPages   int64  `json:"total_pages"`
+	TotalResults int64  `json:"total_results"`
+	NextPage     string `json:"next_page"`
+	PrevPage     any    `json:"prev_page"`
+	PageSize     int64  `json:"page_size"`
+	First        int64  `json:"first"`
+	Last         int64  `json:"last"`
+	ChangedOn    any    `json:"changed_on"`
 }
 ```
 

@@ -748,7 +748,7 @@ func (wn nodeWalker) additionalProperties(path []string, parent any, props opena
 	return wn.schemaRef(path, props, props.Schema)
 }
 
-func (wn nodeWalker) extensions(path []string, parent any, exts *map[string]interface{}) (ok bool, err error) {
+func (wn nodeWalker) extensions(path []string, parent any, exts *map[string]any) (ok bool, err error) {
 	if exts == nil || len(*exts) == 0 {
 		return true, nil
 	}

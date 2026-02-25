@@ -6,6 +6,7 @@ package transforms
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"cloudeng.io/text/linewrap"
@@ -85,10 +86,8 @@ func (t *discriminatorTransformer) handleRequired(dr discriminatorRule, schema *
 		return
 	}
 	discName := schema.Discriminator.PropertyName
-	for _, m := range schema.Required {
-		if m == discName {
-			return
-		}
+	if slices.Contains(schema.Required, discName) {
+		return
 	}
 	schema.Required = append(schema.Required, discName)
 }

@@ -46,7 +46,7 @@ condition.
 
 ### Func OAuthFromContext
 ```go
-func OAuthFromContext(ctx context.Context, id string) oauth2.TokenSource
+func OAuthFromContext(ctx context.Context, id string) (oauth2.TokenSource, error)
 ```
 OAuthFromContext returns the TokenSource for the specified name, if any,
 that are stored in the context.

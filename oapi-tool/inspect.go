@@ -54,7 +54,7 @@ func indent(path []string, indent int, node any) (string, error) {
 		return "", err
 	}
 	prefix := strings.Repeat(" ", len(path)*indent)
-	for _, l := range strings.Split(lines, "\n") {
+	for l := range strings.SplitSeq(lines, "\n") {
 		out.WriteString(prefix)
 		out.WriteString(l)
 		out.WriteRune('\n')

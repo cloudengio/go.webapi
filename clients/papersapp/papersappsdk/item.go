@@ -12,7 +12,7 @@ type Item struct {
 	Article *ArticleMetadata `json:"article,omitempty"`
 
 	// custom metadata
-	CustomMetadata interface{} `json:"custom_metadata,omitempty"`
+	CustomMetadata any `json:"custom_metadata,omitempty"`
 
 	// custom type
 	CustomType string `json:"custom_type,omitempty"`

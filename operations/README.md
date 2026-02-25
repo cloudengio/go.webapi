@@ -15,11 +15,6 @@ func RunCrawl[ScanT, EndpointT any](ctx context.Context, crawler *Crawler[ScanT,
 RunCrawl is a convenience function that runs a crawler and calls the
 supplied handler for each Object crawled.
 
-### Func ScanDownloaded
-```go
-func ScanDownloaded[EndpointT any](ctx context.Context, handler CrawlHandler[EndpointT]) error
-```
-
 
 
 ## Types
@@ -36,7 +31,7 @@ Auth represents an authorization mechanism.
 
 ### Type CrawlHandler
 ```go
-type CrawlHandler[EndpointT any] func(context.Context, content.Object[EndpointT, Response]) error
+type CrawlHandler[EndpointT any] func(context.Context, []content.Object[EndpointT, Response]) error
 ```
 
 
@@ -71,12 +66,6 @@ Run runs the crawler. It consists of a scan loop that calls a Fetcher for
 each scan response.
 
 
-
-
-### Type DownloadHandler
-```go
-type DownloadHandler[EndpointT any] func(ctx context.Context, path string, obj content.Object[EndpointT, Response]) error
-```
 
 
 ### Type Encoding
@@ -122,11 +111,11 @@ Get invokes a GET request on this endpoint (without a body).
 
 
 ```go
-func (ep *Endpoint[T]) GetUsingRequest(ctx context.Context, req *http.Request) (T, []byte, Encoding, *http.Response, error)
+func (ep *Endpoint[T]) IssueRequest(ctx context.Context, req *http.Request) (T, []byte, Encoding, *http.Response, error)
 ```
-GetUsingRequest invokes a Get request on this endpoint using the supplied
-http.Request. The Body in the http.Response has already been read and its
-contents returned as the second return value.
+IssueRequest invokes an arbitrary request on this endpoint using the
+supplied http.Request. The Body in the http.Response has already been read
+and its contents returned as the second return value.
 
 
 
@@ -148,6 +137,17 @@ func (err *Error) Error() string
 ```
 
 
+
+
+### Type FS
+```go
+type FS interface {
+	content.FS
+	filewalk.FS
+}
+```
+FS defines a filesystem interface to be broadly used by webapi packages and
+clients. It is defined in operations for convenience.
 
 
 ### Type Fetcher
@@ -280,6 +280,12 @@ Body returns the body for the current page.
 func (sc *Scanner[T]) Err() error
 ```
 Err returns the first error encountered during scanning.
+
+
+```go
+func (sc *Scanner[T]) HTTPResponse() *http.Response
+```
+HTTPResponse returns the response for the current page.
 
 
 ```go

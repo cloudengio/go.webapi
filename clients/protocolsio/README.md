@@ -1,7 +1,7 @@
-# Package [cloudeng.io/webapi/protocolsio](https://pkg.go.dev/cloudeng.io/webapi/protocolsio?tab=doc)
+# Package [cloudeng.io/webapi/clients/protocolsio](https://pkg.go.dev/cloudeng.io/webapi/clients/protocolsio?tab=doc)
 
 ```go
-import cloudeng.io/webapi/protocolsio
+import cloudeng.io/webapi/clients/protocolsio
 ```
 
 
@@ -24,7 +24,7 @@ NewFetcher returns an instance of operations.Fetcher for protocols.io
 
 ### Func NewPaginator
 ```go
-func NewPaginator(ctx context.Context, cp Checkpoint, opts PaginatorOptions) (operations.Paginator[protocolsiosdk.ListProtocolsV3], error)
+func NewPaginator(_ context.Context, cp Checkpoint, opts PaginatorOptions) (operations.Paginator[protocolsiosdk.ListProtocolsV3], error)
 ```
 NewPaginator returns an instance of operations.Paginator for protocols.io
 'GetList' operation.
@@ -81,7 +81,7 @@ type PaginatorOptions struct {
 ### Type PublicBearerToken
 ```go
 type PublicBearerToken struct {
-	Token string
+	KeyID string
 }
 ```
 PublicBearerToken is an implementation of operations.Authorizer for a
@@ -92,6 +92,7 @@ protocols.io public bearer token.
 ```go
 func (pbt PublicBearerToken) WithAuthorization(ctx context.Context, req *http.Request) error
 ```
+WithAuthorization implements operations.Authorizer.
 
 
 
