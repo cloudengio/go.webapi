@@ -1,6 +1,6 @@
 module cloudeng.io/webapi/clients/papersapp
 
-go 1.25.5
+go 1.26
 
 require (
 	cloudeng.io/file v0.0.0-20260225012014-415f78789833

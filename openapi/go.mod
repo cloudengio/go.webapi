@@ -1,6 +1,6 @@
 module cloudeng.io/webapi/openapi
 
-go 1.25.5
+go 1.26
 
 require (
 	cloudeng.io/text v0.0.15

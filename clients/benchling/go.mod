@@ -1,6 +1,6 @@
 module cloudeng.io/webapi/clients/benchling
 
-go 1.25.5
+go 1.26
 
 require (
 	cloudeng.io/errors v0.0.14-0.20260118175335-f191a42253cc

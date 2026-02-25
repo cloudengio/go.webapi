@@ -1,6 +1,6 @@
 module cloudeng.io/webapi/operations
 
-go 1.25.5
+go 1.26
 
 require cloudeng.io/webapi/webapitestutil v0.0.0-20251130225646-0291ae2156bd
 
