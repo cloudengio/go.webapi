@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -145,6 +146,26 @@ func appendPerPage(u string, perPage int) string {
 	return u + sep + "per_page=" + strconv.Itoa(perPage)
 }
 
+// appendQueryParam appends key=value to u if value is non-empty.
+func appendQueryParam(u, key, value string) string {
+	if value == "" {
+		return u
+	}
+	sep := "?"
+	if strings.Contains(u, "?") {
+		sep = "&"
+	}
+	return u + sep + key + "=" + url.QueryEscape(value)
+}
+
+// RunsFilter holds optional server-side filter parameters for listing workflow runs.
+type RunsFilter struct {
+	Actor  string
+	Branch string
+	Event  string
+	Status string
+}
+
 // linkPaginator implements operations.Paginator[T] using GitHub's Link header.
 type linkPaginator[T any] struct {
 	initialURL string
@@ -165,12 +186,15 @@ func (p *linkPaginator[T]) Next(ctx context.Context, _ T, r *http.Response) (*ht
 }
 
 // NewRunsScanner returns an operations.Scanner that iterates over workflow runs
-// for the specified owner and repo, one page at a time. Additional query
-// parameters (branch, status, event, actor, etc.) can be appended to the URL
-// by the caller before passing it to the scanner; alternatively pass them via
-// the opts slice using a custom paginator.
-func NewRunsScanner(owner, repo string, perPage int, opts ...operations.Option) *operations.Scanner[WorkflowRunsResponse] {
+// for the specified owner and repo, one page at a time. Non-empty fields in
+// filter are sent as query parameters so the GitHub API performs server-side
+// filtering before any results are returned.
+func NewRunsScanner(owner, repo string, perPage int, filter RunsFilter, opts ...operations.Option) *operations.Scanner[WorkflowRunsResponse] {
 	u := fmt.Sprintf("%s/repos/%s/%s/actions/runs", APIHost, owner, repo)
+	u = appendQueryParam(u, "actor", filter.Actor)
+	u = appendQueryParam(u, "branch", filter.Branch)
+	u = appendQueryParam(u, "event", filter.Event)
+	u = appendQueryParam(u, "status", filter.Status)
 	return operations.NewScanner(
 		&linkPaginator[WorkflowRunsResponse]{initialURL: u, perPage: perPage}, opts...)
 }

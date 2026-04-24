@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"cloudeng.io/webapi/clients/github"
 	"cloudeng.io/webapi/operations"
@@ -99,36 +100,29 @@ func (c *Command) ListRuns(ctx context.Context, fv *ListRunsFlags) error {
 		return err
 	}
 	svc := c.cfg().Service
-	scanner := github.NewRunsScanner(svc.Owner, svc.Repo, c.perPage(fv.PageSize), opts...)
+	filter := github.RunsFilter{
+		Actor:  fv.Actor,
+		Branch: fv.Branch,
+		Event:  fv.Event,
+		Status: fv.Status,
+	}
+	scanner := github.NewRunsScanner(svc.Owner, svc.Repo, c.perPage(fv.PageSize), filter, opts...)
 	for scanner.Scan(ctx) {
 		page := scanner.Response()
 		for _, run := range page.WorkflowRuns {
-			if !matchesRunFilter(run, fv) {
-				continue
-			}
 			fmt.Printf("%d\t%s\t%s\t%s\t%s\t%s\t%s\n",
 				run.ID, run.Name, run.HeadBranch, run.Event,
-				run.Status, run.Conclusion, run.CreatedAt.Format("2006-01-02T15:04:05Z"))
+				run.Status, run.Conclusion, ft(run.CreatedAt))
 		}
 	}
 	return scanner.Err()
 }
 
-// matchesRunFilter returns true if run satisfies all non-empty filter fields.
-func matchesRunFilter(run github.WorkflowRun, fv *ListRunsFlags) bool {
-	if fv.Branch != "" && run.HeadBranch != fv.Branch {
-		return false
+func ft(t *time.Time) string {
+	if t != nil {
+		return t.Format("2006-01-02T15:04:05Z")
 	}
-	if fv.Status != "" && run.Status != fv.Status {
-		return false
-	}
-	if fv.Event != "" && run.Event != fv.Event {
-		return false
-	}
-	if fv.Actor != "" && run.Actor.Login != fv.Actor {
-		return false
-	}
-	return true
+	return "N/A"
 }
 
 // GetJob retrieves the job for each job ID supplied as an argument and prints
