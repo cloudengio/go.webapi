@@ -50,9 +50,9 @@ type WorkflowRun struct {
 	WorkflowName string     `json:"workflow_name"`
 	URL          string     `json:"url"`
 	HTMLURL      string     `json:"html_url"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
-	RunStartedAt time.Time  `json:"run_started_at"`
+	CreatedAt    *time.Time `json:"created_at"`
+	UpdatedAt    *time.Time `json:"updated_at"`
+	RunStartedAt *time.Time `json:"run_started_at"`
 	Event        string     `json:"event"`
 	Actor        Actor      `json:"actor"`
 	HeadCommit   HeadCommit `json:"head_commit"`
@@ -66,30 +66,30 @@ type WorkflowRunsResponse struct {
 
 // Step represents a single step within a GitHub Actions job.
 type Step struct {
-	Name        string    `json:"name"`
-	Status      string    `json:"status"`
-	Conclusion  string    `json:"conclusion"`
-	Number      int       `json:"number"`
-	StartedAt   time.Time `json:"started_at"`
-	CompletedAt time.Time `json:"completed_at"`
+	Name        string     `json:"name"`
+	Status      string     `json:"status"`
+	Conclusion  string     `json:"conclusion"`
+	Number      int        `json:"number"`
+	StartedAt   *time.Time `json:"started_at"`
+	CompletedAt *time.Time `json:"completed_at"`
 }
 
 // Job represents a single GitHub Actions job within a workflow run.
 type Job struct {
-	ID              int64     `json:"id"`
-	RunID           int64     `json:"run_id"`
-	Name            string    `json:"name"`
-	Status          string    `json:"status"`
-	Conclusion      string    `json:"conclusion"`
-	StartedAt       time.Time `json:"started_at"`
-	CompletedAt     time.Time `json:"completed_at"`
-	HTMLURL         string    `json:"html_url"`
-	Steps           []Step    `json:"steps"`
-	RunnerName      string    `json:"runner_name"`
-	RunnerGroupName string    `json:"runner_group_name"`
-	WorkflowName    string    `json:"workflow_name"`
-	HeadBranch      string    `json:"head_branch"`
-	HeadSHA         string    `json:"head_sha"`
+	ID              int64      `json:"id"`
+	RunID           int64      `json:"run_id"`
+	Name            string     `json:"name"`
+	Status          string     `json:"status"`
+	Conclusion      string     `json:"conclusion"`
+	StartedAt       *time.Time `json:"started_at"`
+	CompletedAt     *time.Time `json:"completed_at"`
+	HTMLURL         string     `json:"html_url"`
+	Steps           []Step     `json:"steps"`
+	RunnerName      string     `json:"runner_name"`
+	RunnerGroupName string     `json:"runner_group_name"`
+	WorkflowName    string     `json:"workflow_name"`
+	HeadBranch      string     `json:"head_branch"`
+	HeadSHA         string     `json:"head_sha"`
 }
 
 // JobsResponse is the response from the list jobs for a workflow run endpoint.
@@ -145,61 +145,22 @@ func appendPerPage(u string, perPage int) string {
 	return u + sep + "per_page=" + strconv.Itoa(perPage)
 }
 
-// runsLinkPaginator implements operations.Paginator[WorkflowRunsResponse] using
-// GitHub's Link header pagination.
-type runsLinkPaginator struct {
+// linkPaginator implements operations.Paginator[T] using GitHub's Link header.
+type linkPaginator[T any] struct {
 	initialURL string
 	perPage    int
 }
 
-func (p *runsLinkPaginator) Next(_ context.Context, _ WorkflowRunsResponse, r *http.Response) (*http.Request, bool, error) {
+func (p *linkPaginator[T]) Next(ctx context.Context, _ T, r *http.Response) (*http.Request, bool, error) {
 	if r == nil {
-		req, err := http.NewRequest("GET", appendPerPage(p.initialURL, p.perPage), nil)
+		req, err := http.NewRequestWithContext(ctx, "GET", appendPerPage(p.initialURL, p.perPage), nil)
 		return req, false, err
 	}
 	next := parseLinkHeader(r.Header.Get("Link"))
 	if next == "" {
 		return nil, true, nil
 	}
-	req, err := http.NewRequest("GET", next, nil)
-	return req, false, err
-}
-
-// jobsLinkPaginator implements operations.Paginator[JobsResponse].
-type jobsLinkPaginator struct {
-	initialURL string
-	perPage    int
-}
-
-func (p *jobsLinkPaginator) Next(_ context.Context, _ JobsResponse, r *http.Response) (*http.Request, bool, error) {
-	if r == nil {
-		req, err := http.NewRequest("GET", appendPerPage(p.initialURL, p.perPage), nil)
-		return req, false, err
-	}
-	next := parseLinkHeader(r.Header.Get("Link"))
-	if next == "" {
-		return nil, true, nil
-	}
-	req, err := http.NewRequest("GET", next, nil)
-	return req, false, err
-}
-
-// runnersLinkPaginator implements operations.Paginator[RunnersResponse].
-type runnersLinkPaginator struct {
-	initialURL string
-	perPage    int
-}
-
-func (p *runnersLinkPaginator) Next(_ context.Context, _ RunnersResponse, r *http.Response) (*http.Request, bool, error) {
-	if r == nil {
-		req, err := http.NewRequest("GET", appendPerPage(p.initialURL, p.perPage), nil)
-		return req, false, err
-	}
-	next := parseLinkHeader(r.Header.Get("Link"))
-	if next == "" {
-		return nil, true, nil
-	}
-	req, err := http.NewRequest("GET", next, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", next, nil)
 	return req, false, err
 }
 
@@ -210,8 +171,8 @@ func (p *runnersLinkPaginator) Next(_ context.Context, _ RunnersResponse, r *htt
 // the opts slice using a custom paginator.
 func NewRunsScanner(owner, repo string, perPage int, opts ...operations.Option) *operations.Scanner[WorkflowRunsResponse] {
 	u := fmt.Sprintf("%s/repos/%s/%s/actions/runs", APIHost, owner, repo)
-	return operations.NewScanner[WorkflowRunsResponse](
-		&runsLinkPaginator{initialURL: u, perPage: perPage}, opts...)
+	return operations.NewScanner(
+		&linkPaginator[WorkflowRunsResponse]{initialURL: u, perPage: perPage}, opts...)
 }
 
 // NewJobsScanner returns an operations.Scanner that iterates over jobs for the
@@ -222,14 +183,14 @@ func NewJobsScanner(owner, repo string, runID int64, filter string, perPage int,
 	if filter != "" {
 		u = u + "?filter=" + filter
 	}
-	return operations.NewScanner[JobsResponse](
-		&jobsLinkPaginator{initialURL: u, perPage: perPage}, opts...)
+	return operations.NewScanner(
+		&linkPaginator[JobsResponse]{initialURL: u, perPage: perPage}, opts...)
 }
 
 // NewRunnersScanner returns an operations.Scanner that iterates over self-hosted
 // runners registered for the specified owner and repo.
 func NewRunnersScanner(owner, repo string, perPage int, opts ...operations.Option) *operations.Scanner[RunnersResponse] {
 	u := fmt.Sprintf("%s/repos/%s/%s/actions/runners", APIHost, owner, repo)
-	return operations.NewScanner[RunnersResponse](
-		&runnersLinkPaginator{initialURL: u, perPage: perPage}, opts...)
+	return operations.NewScanner(
+		&linkPaginator[RunnersResponse]{initialURL: u, perPage: perPage}, opts...)
 }

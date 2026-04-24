@@ -23,7 +23,10 @@ type Command struct {
 // NewCommand returns a new Command for GitHub Actions API commands.
 func NewCommand(ctx context.Context, config apicrawlcmd.Crawl[yaml.Node], resources apicrawlcmd.Resources) (*Command, error) {
 	state, err := apicrawlcmd.NewState[Service](ctx, config, resources)
-	return &Command{state: state}, err
+	if err != nil {
+		return nil, err
+	}
+	return &Command{state: state}, nil
 }
 
 // GetRunFlags are the flags for the GetRun command.
