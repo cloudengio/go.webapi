@@ -7,6 +7,7 @@ package githubcmd
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -80,7 +81,9 @@ func (c *Command) GetRun(ctx context.Context, _ *GetRunFlags, args []string) err
 	ep := operations.NewEndpoint[github.WorkflowRun](opts...)
 	svc := c.cfg().Service
 	for _, id := range args {
-		u := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%s", github.APIHost, svc.Owner, svc.Repo, id)
+		u := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%s",
+			github.APIHost,
+			url.PathEscape(svc.Owner), url.PathEscape(svc.Repo), url.PathEscape(id))
 		run, _, _, err := ep.Get(ctx, u)
 		if err != nil {
 			return fmt.Errorf("get run %s: %w", id, err)
@@ -135,7 +138,9 @@ func (c *Command) GetJob(ctx context.Context, _ *GetJobFlags, args []string) err
 	ep := operations.NewEndpoint[github.Job](opts...)
 	svc := c.cfg().Service
 	for _, id := range args {
-		u := fmt.Sprintf("%s/repos/%s/%s/actions/jobs/%s", github.APIHost, svc.Owner, svc.Repo, id)
+		u := fmt.Sprintf("%s/repos/%s/%s/actions/jobs/%s",
+			github.APIHost,
+			url.PathEscape(svc.Owner), url.PathEscape(svc.Repo), url.PathEscape(id))
 		job, _, _, err := ep.Get(ctx, u)
 		if err != nil {
 			return fmt.Errorf("get job %s: %w", id, err)

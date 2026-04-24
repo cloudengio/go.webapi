@@ -190,7 +190,9 @@ func (p *linkPaginator[T]) Next(ctx context.Context, _ T, r *http.Response) (*ht
 // filter are sent as query parameters so the GitHub API performs server-side
 // filtering before any results are returned.
 func NewRunsScanner(owner, repo string, perPage int, filter RunsFilter, opts ...operations.Option) *operations.Scanner[WorkflowRunsResponse] {
-	u := fmt.Sprintf("%s/repos/%s/%s/actions/runs", APIHost, owner, repo)
+	u := fmt.Sprintf("%s/repos/%s/%s/actions/runs",
+		APIHost,
+		url.PathEscape(owner), url.PathEscape(repo))
 	u = appendQueryParam(u, "actor", filter.Actor)
 	u = appendQueryParam(u, "branch", filter.Branch)
 	u = appendQueryParam(u, "event", filter.Event)
