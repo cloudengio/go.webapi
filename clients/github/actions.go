@@ -205,7 +205,9 @@ func NewRunsScanner(owner, repo string, perPage int, filter RunsFilter, opts ...
 // specified workflow run. filter may be "latest" (the default) or "all" to
 // include jobs from all prior run attempts.
 func NewJobsScanner(owner, repo string, runID int64, filter string, perPage int, opts ...operations.Option) *operations.Scanner[JobsResponse] {
-	u := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs", APIHost, owner, repo, runID)
+	u := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs",
+		APIHost,
+		url.PathEscape(owner), url.PathEscape(repo), runID)
 	if filter != "" {
 		u = u + "?filter=" + filter
 	}
@@ -216,7 +218,8 @@ func NewJobsScanner(owner, repo string, runID int64, filter string, perPage int,
 // NewRunnersScanner returns an operations.Scanner that iterates over self-hosted
 // runners registered for the specified owner and repo.
 func NewRunnersScanner(owner, repo string, perPage int, opts ...operations.Option) *operations.Scanner[RunnersResponse] {
-	u := fmt.Sprintf("%s/repos/%s/%s/actions/runners", APIHost, owner, repo)
+	u := fmt.Sprintf("%s/repos/%s/%s/actions/runners", APIHost,
+		url.PathEscape(owner), url.PathEscape(repo))
 	return operations.NewScanner(
 		&linkPaginator[RunnersResponse]{initialURL: u, perPage: perPage}, opts...)
 }
