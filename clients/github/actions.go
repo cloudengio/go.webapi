@@ -18,6 +18,7 @@ import (
 	"cloudeng.io/webapi/operations"
 )
 
+
 const APIHost = "https://api.github.com"
 
 // Actor represents a GitHub user or app that triggered a workflow run.
@@ -232,29 +233,27 @@ type RegistrationToken struct {
 }
 
 // CreateRegistrationToken requests a new runner registration token for the
-// given owner/repo. Auth must be set on ctx via the same mechanism used by
-// the other functions in this package (e.g. apitokens.ContextWithKey).
-func CreateRegistrationToken(ctx context.Context, owner, repo string, auth operations.Auth) (RegistrationToken, error) {
+// given owner/repo. Options (including WithAuth) follow the same pattern as
+// NewRunsScanner, NewRunnersScanner, and the other functions in this package.
+func CreateRegistrationToken(ctx context.Context, owner, repo string, opts ...operations.Option) (RegistrationToken, error) {
 	u := fmt.Sprintf("%s/repos/%s/%s/actions/runners/registration-token",
 		APIHost, url.PathEscape(owner), url.PathEscape(repo))
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, nil)
 	if err != nil {
 		return RegistrationToken{}, err
 	}
-	if err := auth.WithAuthorization(ctx, req); err != nil {
-		return RegistrationToken{}, err
+	ep := operations.NewEndpoint[RegistrationToken](opts...)
+	tok, body, _, _, err := ep.IssueRequest(ctx, req)
+	if err == nil {
+		return tok, nil
 	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return RegistrationToken{}, err
+	// GitHub returns 201 Created for this endpoint; IssueRequest treats any
+	// non-200 status as an error but still returns the pre-read body bytes.
+	if opErr, ok := err.(*operations.Error); ok && opErr.StatusCode == http.StatusCreated {
+		if jsonErr := json.Unmarshal(body, &tok); jsonErr != nil {
+			return RegistrationToken{}, jsonErr
+		}
+		return tok, nil
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusCreated {
-		return RegistrationToken{}, fmt.Errorf("github api error: %s", resp.Status)
-	}
-	var tok RegistrationToken
-	if err := json.NewDecoder(resp.Body).Decode(&tok); err != nil {
-		return RegistrationToken{}, err
-	}
-	return tok, nil
+	return RegistrationToken{}, err
 }

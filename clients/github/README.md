@@ -136,11 +136,11 @@ endpoint.
 ### Functions
 
 ```go
-func CreateRegistrationToken(ctx context.Context, owner, repo string, auth operations.Auth) (RegistrationToken, error)
+func CreateRegistrationToken(ctx context.Context, owner, repo string, opts ...operations.Option) (RegistrationToken, error)
 ```
 CreateRegistrationToken requests a new runner registration token for the
-given owner/repo. Auth must be set on ctx via the same mechanism used by the
-other functions in this package (e.g. apitokens.ContextWithKey).
+given owner/repo. Options (including WithAuth) follow the same pattern as
+NewRunsScanner, NewRunnersScanner, and the other functions in this package.
 
 
 
