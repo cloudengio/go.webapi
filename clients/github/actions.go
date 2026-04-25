@@ -6,6 +6,7 @@ package github
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -222,4 +223,38 @@ func NewRunnersScanner(owner, repo string, perPage int, opts ...operations.Optio
 		url.PathEscape(owner), url.PathEscape(repo))
 	return operations.NewScanner(
 		&linkPaginator[RunnersResponse]{initialURL: u, perPage: perPage}, opts...)
+}
+
+// RegistrationToken is the response from the runner registration-token endpoint.
+type RegistrationToken struct {
+	Token     string    `json:"token"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+// CreateRegistrationToken requests a new runner registration token for the
+// given owner/repo. Auth must be set on ctx via the same mechanism used by
+// the other functions in this package (e.g. apitokens.ContextWithKey).
+func CreateRegistrationToken(ctx context.Context, owner, repo string, auth operations.Auth) (RegistrationToken, error) {
+	u := fmt.Sprintf("%s/repos/%s/%s/actions/runners/registration-token",
+		APIHost, url.PathEscape(owner), url.PathEscape(repo))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, nil)
+	if err != nil {
+		return RegistrationToken{}, err
+	}
+	if err := auth.WithAuthorization(ctx, req); err != nil {
+		return RegistrationToken{}, err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return RegistrationToken{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		return RegistrationToken{}, fmt.Errorf("github api error: %s", resp.Status)
+	}
+	var tok RegistrationToken
+	if err := json.NewDecoder(resp.Body).Decode(&tok); err != nil {
+		return RegistrationToken{}, err
+	}
+	return tok, nil
 }
