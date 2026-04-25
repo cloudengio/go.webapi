@@ -18,7 +18,6 @@ import (
 	"cloudeng.io/webapi/operations"
 )
 
-
 const APIHost = "https://api.github.com"
 
 // Actor represents a GitHub user or app that triggered a workflow run.
