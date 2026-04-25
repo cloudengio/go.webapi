@@ -6,6 +6,7 @@ package github
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -222,4 +223,36 @@ func NewRunnersScanner(owner, repo string, perPage int, opts ...operations.Optio
 		url.PathEscape(owner), url.PathEscape(repo))
 	return operations.NewScanner(
 		&linkPaginator[RunnersResponse]{initialURL: u, perPage: perPage}, opts...)
+}
+
+// RegistrationToken is the response from the runner registration-token endpoint.
+type RegistrationToken struct {
+	Token     string    `json:"token"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+// CreateRegistrationToken requests a new runner registration token for the
+// given owner/repo. Options (including WithAuth) follow the same pattern as
+// NewRunsScanner, NewRunnersScanner, and the other functions in this package.
+func CreateRegistrationToken(ctx context.Context, owner, repo string, opts ...operations.Option) (RegistrationToken, error) {
+	u := fmt.Sprintf("%s/repos/%s/%s/actions/runners/registration-token",
+		APIHost, url.PathEscape(owner), url.PathEscape(repo))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, nil)
+	if err != nil {
+		return RegistrationToken{}, err
+	}
+	ep := operations.NewEndpoint[RegistrationToken](opts...)
+	tok, body, _, _, err := ep.IssueRequest(ctx, req)
+	if err == nil {
+		return tok, nil
+	}
+	// GitHub returns 201 Created for this endpoint; IssueRequest treats any
+	// non-200 status as an error but still returns the pre-read body bytes.
+	if opErr, ok := err.(*operations.Error); ok && opErr.StatusCode == http.StatusCreated {
+		if jsonErr := json.Unmarshal(body, &tok); jsonErr != nil {
+			return RegistrationToken{}, jsonErr
+		}
+		return tok, nil
+	}
+	return RegistrationToken{}, err
 }
