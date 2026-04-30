@@ -38,6 +38,7 @@ type Endpoint[T any] struct {
 // NewEndpoint returns a new endpoint for the specified type.
 func NewEndpoint[T any](opts ...Option) *Endpoint[T] {
 	ep := &Endpoint[T]{}
+	ep.options.logger = slog.New(slog.DiscardHandler)
 	for _, fn := range opts {
 		fn(&ep.options)
 	}
@@ -107,6 +108,7 @@ func (ep *Endpoint[T]) logBackoff(ctx context.Context, msg string, req *http.Req
 }
 
 func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *http.Response, []byte, error) {
+	ep.logger.Info("starting request", "method", req.Method, "url", req.URL)
 	var result T
 	if err := ep.rateController.Wait(ctx); err != nil {
 		return result, nil, nil, err

@@ -177,6 +177,13 @@ WithAuth specifies the instance of Auth to use when making requests.
 
 
 ```go
+func WithLogger(logger *slog.Logger) Option
+```
+WithLogger specifies the logger to use for logging request and response
+information. If not specified, no logging is performed.
+
+
+```go
 func WithRateController(rc *ratecontrol.Controller, statusCodes ...int) Option
 ```
 WithRateController sets the rate controller to use to enforce rate control

@@ -4,8 +4,9 @@
 import cloudeng.io/webapi/operations/apitokens
 ```
 
-Package apitokens provides types and functions for managing API tokens and
-is built on top of the cmdutil/keys package and its InmemoryKeyStore.
+Package apitokens provides types and functions for managing API tokens
+and is built on top of the cloudeng.io/cmdutil/keys package and its
+InmemoryKeyStore.
 
 ## Functions
 ### Func ClearToken
