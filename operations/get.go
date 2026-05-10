@@ -48,6 +48,9 @@ func NewEndpoint[T any](opts ...Option) *Endpoint[T] {
 		ep.unmarshal = json.Unmarshal
 		ep.encoding = JSONEncoding
 	}
+	if ep.logger == nil {
+		ep.logger = slog.New(slog.DiscardHandler)
+	}
 	return ep
 }
 
@@ -107,6 +110,7 @@ func (ep *Endpoint[T]) logBackoff(ctx context.Context, msg string, req *http.Req
 }
 
 func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *http.Response, []byte, error) {
+	ep.logger.Info("starting request", "method", req.Method, "url", req.URL.Redacted())
 	var result T
 	if err := ep.rateController.Wait(ctx); err != nil {
 		return result, nil, nil, err
@@ -149,6 +153,7 @@ func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *
 			continue
 		}
 		if resp.StatusCode == http.StatusOK {
+			ep.logger.Info("request successful", "method", req.Method, "url", req.URL.Redacted())
 			return ep.handleResponse(resp, retries)
 		}
 		return ep.handleErrorResponse(resp, retries)

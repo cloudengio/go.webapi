@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 // Package apitokens provides types and functions for managing API tokens
-// and is built on top of the cmdutil/keys package and its InmemoryKeyStore.
+// and is built on top of the cloudeng.io/cmdutil/keys package and its InmemoryKeyStore.
 package apitokens
 
 import (
