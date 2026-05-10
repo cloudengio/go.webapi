@@ -18,7 +18,6 @@ require (
 
 require (
 	cloudeng.io/cmdutil v0.0.0-20260509153218-f5051f2d778f // indirect
-	cloudeng.io/net v0.0.0-20260429224919-852e7bcd9791 // indirect
 	cloudeng.io/os v0.0.0-20260509153218-f5051f2d778f // indirect
 	cloudeng.io/text v0.0.16-0.20260312171538-61fcde6ce278 // indirect
 	cloudeng.io/webapi/webapitestutil v0.0.0-20260108223722-702b7fae5336 // indirect
@@ -47,3 +46,5 @@ require (
 	golang.org/x/sys v0.44.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 )
+
+replace cloudeng.io/webapi/operations => ../../operations

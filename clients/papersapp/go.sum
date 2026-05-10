@@ -10,8 +10,6 @@ cloudeng.io/file v0.0.0-20260509153218-f5051f2d778f h1:HvZEvVwZL/hDlImDHty878mUZ
 cloudeng.io/file v0.0.0-20260509153218-f5051f2d778f/go.mod h1:sKC33j1aAw0uUNi/thRC4GiB9OyHGRhIDFBtp/YWXXc=
 cloudeng.io/logging v0.0.0-20260509153218-f5051f2d778f h1:VyERIlrWXpYGn1SvueXtkFV4pjlMzkpRY8TTf1LjHEM=
 cloudeng.io/logging v0.0.0-20260509153218-f5051f2d778f/go.mod h1:1srNtLRpQsIoLck/p/JmvR/QfwfPbDO/65orqtdh1N0=
-cloudeng.io/net v0.0.0-20260429224919-852e7bcd9791 h1:df8you8bmtVq1bojKH96tzDdJv66q1rPzkvYCkbhxMw=
-cloudeng.io/net v0.0.0-20260429224919-852e7bcd9791/go.mod h1:LyHUWuU4UWRgfUjdpd9AeRa6sDD52Gu8oxNMC0x/1vE=
 cloudeng.io/os v0.0.0-20260509153218-f5051f2d778f h1:JAZGvGfLgWBilOQSWluew46w7z4h9CBk/46Hlu3rclM=
 cloudeng.io/os v0.0.0-20260509153218-f5051f2d778f/go.mod h1:u5maFhk+M6hHf8fbPCbEdb9+luZ+oNubFYAPRE0mWeA=
 cloudeng.io/path v0.0.10-0.20260312171538-61fcde6ce278 h1:REi7wHqzb//83YtX5gkhLdUzlzNuReVHyTpBeuRmJ2A=
@@ -22,8 +20,6 @@ cloudeng.io/sys v0.0.0-20260507011012-5e35122ac3e3 h1:bQHVR6K9EDf6nzgTUYFM4A3dDs
 cloudeng.io/sys v0.0.0-20260507011012-5e35122ac3e3/go.mod h1:UEWQcNmT9r/4YoVIOjn1fhGl1JnHhymcTOEMCpWdw4Y=
 cloudeng.io/text v0.0.16-0.20260312171538-61fcde6ce278 h1:pGH7HR6EiZ7mceD00OY2vdKSqvIUYt+1F/b3G63O6uo=
 cloudeng.io/text v0.0.16-0.20260312171538-61fcde6ce278/go.mod h1:bZd+iMNGHuFhRwk30Ife7WW56IZAMnAqApeEt4KEc0c=
-cloudeng.io/webapi/operations v0.0.0-20260510204434-243224b8f05a h1:uvxXASkCgZKoJcX0vuy6gF47KuZy1mXFjeD/l18gijM=
-cloudeng.io/webapi/operations v0.0.0-20260510204434-243224b8f05a/go.mod h1:C/WDEekGwzwAo7H65123MVCKPCGqSVhBXF62y1OFBnQ=
 cloudeng.io/webapi/webapitestutil v0.0.0-20260108223722-702b7fae5336 h1:EkHAqC5xT0yHG7wD3vN+pMGdTjjLvSN2CPqrAJGgVds=
 cloudeng.io/webapi/webapitestutil v0.0.0-20260108223722-702b7fae5336/go.mod h1:/v4SzjtAFY/+FcVh5IyVbulzZTfHbhuqN7qtcWZmHU0=
 cloudeng.io/windows v0.0.0-20251203211350-c30caae1cc5e h1:88FLgbskFkcsZSgh3jncYqYBg1J2eLHGzmdp74APrCQ=
