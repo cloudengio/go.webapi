@@ -41,6 +41,7 @@ func ObjectID[ObjectT Objects](obj ObjectT) string
 ### Type APIToken
 ```go
 type APIToken struct {
+	UserID  string
 	TokenID string
 }
 ```

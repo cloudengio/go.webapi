@@ -5,6 +5,7 @@
 package github
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -255,4 +256,60 @@ func CreateRegistrationToken(ctx context.Context, owner, repo string, opts ...op
 		return tok, nil
 	}
 	return RegistrationToken{}, err
+}
+
+// WebhookConfig holds the delivery configuration for a repository webhook.
+type WebhookConfig struct {
+	URL         string `json:"url"`
+	ContentType string `json:"content_type,omitempty"`
+	Secret      string `json:"secret,omitempty"`
+	InsecureSSL string `json:"insecure_ssl,omitempty"`
+}
+
+// CreateWebhookRequest is the request body for creating a repository webhook.
+type CreateWebhookRequest struct {
+	Name   string        `json:"name"`
+	Active bool          `json:"active"`
+	Events []string      `json:"events"`
+	Config WebhookConfig `json:"config"`
+}
+
+// Webhook is the response from the create/get repository webhook endpoints.
+type Webhook struct {
+	ID        int64         `json:"id"`
+	Name      string        `json:"name"`
+	Active    bool          `json:"active"`
+	Events    []string      `json:"events"`
+	Config    WebhookConfig `json:"config"`
+	CreatedAt *time.Time    `json:"created_at"`
+	UpdatedAt *time.Time    `json:"updated_at"`
+}
+
+// CreateWebhook creates a new webhook for the given owner/repo. The Name field
+// in the request must be "web" for HTTP webhooks. GitHub returns 201 Created
+// on success.
+func CreateWebhook(ctx context.Context, owner, repo string, request CreateWebhookRequest, opts ...operations.Option) (Webhook, error) {
+	u := fmt.Sprintf("%s/repos/%s/%s/hooks",
+		APIHost, url.PathEscape(owner), url.PathEscape(repo))
+	body, err := json.Marshal(request)
+	if err != nil {
+		return Webhook{}, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, bytes.NewReader(body))
+	if err != nil {
+		return Webhook{}, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	ep := operations.NewEndpoint[Webhook](opts...)
+	hook, respBody, _, _, err := ep.IssueRequest(ctx, req)
+	if err == nil {
+		return hook, nil
+	}
+	if opErr, ok := err.(*operations.Error); ok && opErr.StatusCode == http.StatusCreated {
+		if jsonErr := json.Unmarshal(respBody, &hook); jsonErr != nil {
+			return Webhook{}, jsonErr
+		}
+		return hook, nil
+	}
+	return Webhook{}, err
 }

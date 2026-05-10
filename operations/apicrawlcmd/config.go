@@ -22,6 +22,7 @@ import (
 type Crawl[T any] struct {
 	RateControl crawlcmd.RateControl      `yaml:",inline"`
 	Cache       crawlcmd.CrawlCacheConfig `yaml:"cache"`
+	UserID      string                    `yaml:"user_id" cmd:"identifier of the user whose API key should be used for this crawl"`
 	KeyID       string                    `yaml:"key_id" cmd:"identifier of the API key to use for this crawl"`
 	Service     T                         `yaml:"service_config" cmd:"service specific configuration"`
 }
@@ -34,6 +35,7 @@ type Crawls map[string]Crawl[yaml.Node]
 func ParseCrawlConfig[T any](cfg Crawl[yaml.Node], service *Crawl[T]) error {
 	service.RateControl = cfg.RateControl
 	service.Cache = cfg.Cache
+	service.UserID = cfg.UserID
 	service.KeyID = cfg.KeyID
 	if err := cfg.Service.Decode(&service.Service); err != nil {
 		return err

@@ -32,7 +32,7 @@ oauth2.TokenSource in addition to any existing TokenSources.
 
 ### Func KeyFromContext
 ```go
-func KeyFromContext(ctx context.Context, id string) (keys.Info, bool)
+func KeyFromContext(ctx context.Context, user, id string) (keys.Info, bool)
 ```
 KeyFromContext retrieves the key.Info for the specified id from the context.
 It wraps keys.KeyInfoFromContextForID.
@@ -47,14 +47,14 @@ condition.
 
 ### Func OAuthFromContext
 ```go
-func OAuthFromContext(ctx context.Context, id string) (oauth2.TokenSource, error)
+func OAuthFromContext(ctx context.Context, user, id string) (oauth2.TokenSource, error)
 ```
 OAuthFromContext returns the TokenSource for the specified name, if any,
 that are stored in the context.
 
 ### Func TokenFromContext
 ```go
-func TokenFromContext(ctx context.Context, id string) (*keys.Token, bool)
+func TokenFromContext(ctx context.Context, user, id string) (*keys.Token, bool)
 ```
 TokenFromContext retrieves the token for the specified id from the context.
 It returns the token as a *keys.Token and a boolean indicating whether the

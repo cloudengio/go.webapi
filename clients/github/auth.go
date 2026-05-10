@@ -17,13 +17,14 @@ import (
 // and GitHub Apps installation tokens. The token is retrieved from the context
 // via the apitokens package using the configured KeyID.
 type BearerToken struct {
-	KeyID string
+	KeyUser string
+	KeyID   string
 }
 
 // WithAuthorization implements operations.Auth. It sets the Authorization
 // header and the required GitHub API headers on the request.
 func (bt BearerToken) WithAuthorization(ctx context.Context, req *http.Request) error {
-	token, ok := apitokens.TokenFromContext(ctx, bt.KeyID)
+	token, ok := apitokens.TokenFromContext(ctx, bt.KeyUser, bt.KeyID)
 	if !ok {
 		return apitokens.NewErrNotFound(bt.KeyID, "github bearer token")
 	}

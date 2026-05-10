@@ -21,7 +21,7 @@ func TestKeyContext(t *testing.T) {
 	k1 := keys.NewInfo("k1", "u1", []byte("t1"))
 	ctx = apitokens.ContextWithKey(ctx, k1)
 
-	got, ok := apitokens.KeyFromContext(ctx, "k1")
+	got, ok := apitokens.KeyFromContext(ctx, "u1", "k1")
 	if !ok {
 		t.Fatal("expected key k1 to be present")
 	}
@@ -35,7 +35,7 @@ func TestKeyContext(t *testing.T) {
 		t.Errorf("got %v, want t1", string(got.Token().Value()))
 	}
 
-	_, ok = apitokens.KeyFromContext(ctx, "k2")
+	_, ok = apitokens.KeyFromContext(ctx, "u1", "k2")
 	if ok {
 		t.Fatal("expected key k2 to be absent")
 	}
@@ -55,7 +55,7 @@ func TestOAuthContext(t *testing.T) {
 	ts1 := &mockTokenSource{"ts1"}
 	ctx = apitokens.ContextWithOAuth(ctx, "o1", "u1", ts1)
 
-	got, err := apitokens.OAuthFromContext(ctx, "o1")
+	got, err := apitokens.OAuthFromContext(ctx, "u1", "o1")
 	if err != nil {
 		t.Fatalf("failed to get token source: %v", err)
 	}
@@ -72,7 +72,7 @@ func TestOAuthContext(t *testing.T) {
 		t.Errorf("got %v, want ts1", tok.AccessToken)
 	}
 
-	got, err = apitokens.OAuthFromContext(ctx, "o2")
+	got, err = apitokens.OAuthFromContext(ctx, "u1", "o2")
 	if err == nil {
 		t.Fatal("expected token source o2 to be absent")
 	}
@@ -81,7 +81,7 @@ func TestOAuthContext(t *testing.T) {
 	}
 
 	// Verify underlying key info
-	ki, ok := apitokens.KeyFromContext(ctx, "o1")
+	ki, ok := apitokens.KeyFromContext(ctx, "u1", "o1")
 	if !ok {
 		t.Fatal("expected key info for o1")
 	}
@@ -95,7 +95,7 @@ func TestTokenFromContext(t *testing.T) {
 	k1 := keys.NewInfo("k1", "u1", []byte("t1"))
 	ctx = apitokens.ContextWithKey(ctx, k1)
 
-	tok, ok := apitokens.TokenFromContext(ctx, "k1")
+	tok, ok := apitokens.TokenFromContext(ctx, "u1", "k1")
 	if !ok {
 		t.Fatal("expected key k1 to be present")
 	}
@@ -103,7 +103,7 @@ func TestTokenFromContext(t *testing.T) {
 		t.Errorf("got %v, want %v", got, want)
 	}
 
-	_, ok = apitokens.TokenFromContext(ctx, "k2")
+	_, ok = apitokens.TokenFromContext(ctx, "u1", "k2")
 	if ok {
 		t.Fatal("expected key k2 to be absent")
 	}

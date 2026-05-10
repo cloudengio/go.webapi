@@ -38,6 +38,13 @@ NewCommand returns a new Command for GitHub Actions API commands.
 ### Methods
 
 ```go
+func (c *Command) CreateWebhook(ctx context.Context, fv *CreateWebhookFlags) error
+```
+CreateWebhook creates a new HTTP webhook for the configured owner/repo and
+prints the resulting webhook ID, URL, active state, and events to stdout.
+
+
+```go
 func (c *Command) GetJob(ctx context.Context, _ *GetJobFlags, args []string) error
 ```
 GetJob retrieves the job for each job ID supplied as an argument and prints
@@ -73,6 +80,19 @@ each run to stdout. Runs are retrieved using the scanner/paginator pattern
 and optional filters can be applied via ListRunsFlags.
 
 
+
+
+### Type CreateWebhookFlags
+```go
+type CreateWebhookFlags struct {
+	URL         string `subcmd:"url,,'webhook delivery URL (required)'"`
+	ContentType string `subcmd:"content-type,json,'payload content type: json or form'"`
+	Secret      string `subcmd:"secret,,'webhook secret for HMAC signature verification'"`
+	Events      string `subcmd:"events,push,'comma-separated list of events to trigger on'"`
+	Inactive    bool   `subcmd:"inactive,,'create the webhook in an inactive state'"`
+}
+```
+CreateWebhookFlags are the flags for the CreateWebhook command.
 
 
 ### Type GetJobFlags

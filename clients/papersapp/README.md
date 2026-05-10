@@ -41,7 +41,7 @@ token.
 ### Functions
 
 ```go
-func NewAPIToken(refreshKeyID, refreshURL string) *APIToken
+func NewAPIToken(refreshUserID, refreshKeyID, refreshURL string) *APIToken
 ```
 
 

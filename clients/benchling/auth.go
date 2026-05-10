@@ -16,12 +16,13 @@ import (
 // APIToken is an implementation of operations.Authorizer for
 // a benchling API token.
 type APIToken struct {
+	UserID  string
 	TokenID string
 }
 
 // WithAuthorization implements operations.Authorizer.
 func (pbt APIToken) WithAuthorization(ctx context.Context, req *http.Request) error {
-	token, ok := apitokens.TokenFromContext(ctx, pbt.TokenID)
+	token, ok := apitokens.TokenFromContext(ctx, pbt.UserID, pbt.TokenID)
 	if !ok {
 		return apitokens.NewErrNotFound(pbt.TokenID, "benchling api token")
 	}
