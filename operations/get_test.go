@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"cloudeng.io/net/ratecontrol"
+	"cloudeng.io/algo/ratecontrol"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/webapitestutil"
 )
@@ -100,7 +100,7 @@ func TestBackoff(t *testing.T) {
 	srv := webapitestutil.NewServer(handler)
 	defer srv.Close()
 
-	rc := ratecontrol.New(ratecontrol.WithExponentialBackoff(time.Millisecond, 2))
+	rc := ratecontrol.New(ratecontrol.WithExponentialBackoff(time.Millisecond, 2, true))
 	client := operations.NewEndpoint[int](operations.WithRateController(rc, http.StatusTooManyRequests))
 	n, _, _, err := client.Get(ctx, srv.URL)
 	if err != nil {
@@ -168,7 +168,7 @@ func TestTimeout(t *testing.T) {
 	srv := webapitestutil.NewServer(handler)
 	defer srv.Close()
 
-	rc := ratecontrol.New(ratecontrol.WithExponentialBackoff(time.Millisecond, 10))
+	rc := ratecontrol.New(ratecontrol.WithExponentialBackoff(time.Millisecond, 10, false))
 	client := operations.NewEndpoint[example](operations.WithRateController(rc, http.StatusTooManyRequests))
 
 	_, _, _, err := client.Get(ctx, srv.URL)

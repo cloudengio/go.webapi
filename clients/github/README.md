@@ -58,7 +58,8 @@ Actor represents a GitHub user or app that triggered a workflow run.
 ### Type BearerToken
 ```go
 type BearerToken struct {
-	KeyID string
+	KeyUser string
+	KeyID   string
 }
 ```
 BearerToken implements operations.Auth for GitHub personal access tokens and
@@ -74,6 +75,18 @@ WithAuthorization implements operations.Auth. It sets the Authorization
 header and the required GitHub API headers on the request.
 
 
+
+
+### Type CreateWebhookRequest
+```go
+type CreateWebhookRequest struct {
+	Name   string        `json:"name"`
+	Active bool          `json:"active"`
+	Events []string      `json:"events"`
+	Config WebhookConfig `json:"config"`
+}
+```
+CreateWebhookRequest is the request body for creating a repository webhook.
 
 
 ### Type HeadCommit
@@ -121,6 +134,50 @@ type JobsResponse struct {
 }
 ```
 JobsResponse is the response from the list jobs for a workflow run endpoint.
+
+
+### Type Meta
+```go
+type Meta struct {
+	VerifiablePasswordAuthentication bool               `json:"verifiable_password_authentication"`
+	SSHKeyFingerprints               SSHKeyFingerprints `json:"ssh_key_fingerprints"`
+	SSHKeys                          []string           `json:"ssh_keys"`
+	Hooks                            []string           `json:"hooks"`
+	Web                              []string           `json:"web"`
+	API                              []string           `json:"api"`
+	Git                              []string           `json:"git"`
+	Packages                         []string           `json:"packages"`
+	Pages                            []string           `json:"pages"`
+	Importer                         []string           `json:"importer"`
+	Actions                          []string           `json:"actions"`
+	Dependabot                       []string           `json:"dependabot"`
+	Domains                          MetaDomains        `json:"domains"`
+}
+```
+Meta is the response from the GET /meta endpoint. IP ranges are in CIDR
+notation.
+
+### Functions
+
+```go
+func GetMeta(ctx context.Context, opts ...operations.Option) (Meta, error)
+```
+GetMeta returns GitHub's meta information including IP ranges used by GitHub
+services and SSH host key fingerprints.
+
+
+
+
+### Type MetaDomains
+```go
+type MetaDomains struct {
+	Website    []string `json:"website"`
+	Codespaces []string `json:"codespaces"`
+	Copilot    []string `json:"copilot"`
+	Packages   []string `json:"packages"`
+}
+```
+MetaDomains holds the domain names used by various GitHub services.
 
 
 ### Type RegistrationToken
@@ -193,6 +250,19 @@ RunsFilter holds optional server-side filter parameters for listing workflow
 runs.
 
 
+### Type SSHKeyFingerprints
+```go
+type SSHKeyFingerprints struct {
+	SHA256RSA     string `json:"SHA256_RSA"`
+	SHA256DSA     string `json:"SHA256_DSA"`
+	SHA256ECDSA   string `json:"SHA256_ECDSA"`
+	SHA256ED25519 string `json:"SHA256_ED25519"`
+}
+```
+SSHKeyFingerprints holds the SHA256 fingerprints for each of GitHub's host
+keys.
+
+
 ### Type Step
 ```go
 type Step struct {
@@ -205,6 +275,44 @@ type Step struct {
 }
 ```
 Step represents a single step within a GitHub Actions job.
+
+
+### Type Webhook
+```go
+type Webhook struct {
+	ID        int64         `json:"id"`
+	Name      string        `json:"name"`
+	Active    bool          `json:"active"`
+	Events    []string      `json:"events"`
+	Config    WebhookConfig `json:"config"`
+	CreatedAt *time.Time    `json:"created_at"`
+	UpdatedAt *time.Time    `json:"updated_at"`
+}
+```
+Webhook is the response from the create/get repository webhook endpoints.
+
+### Functions
+
+```go
+func CreateWebhook(ctx context.Context, owner, repo string, request CreateWebhookRequest, opts ...operations.Option) (Webhook, error)
+```
+CreateWebhook creates a new webhook for the given owner/repo. The Name field
+in the request must be "web" for HTTP webhooks. GitHub returns 201 Created
+on success.
+
+
+
+
+### Type WebhookConfig
+```go
+type WebhookConfig struct {
+	URL         string `json:"url"`
+	ContentType string `json:"content_type,omitempty"`
+	Secret      string `json:"secret,omitempty"`
+	InsecureSSL string `json:"insecure_ssl,omitempty"`
+}
+```
+WebhookConfig holds the delivery configuration for a repository webhook.
 
 
 ### Type WorkflowRun

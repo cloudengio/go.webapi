@@ -87,12 +87,13 @@ func (f *fetcher) Fetch(ctx context.Context, page protocolsiosdk.ListProtocolsV3
 // PublicBearerToken is an implementation of operations.Authorizer for
 // a protocols.io public bearer token.
 type PublicBearerToken struct {
-	KeyID string
+	UserID string
+	KeyID  string
 }
 
 // WithAuthorization implements operations.Authorizer.
 func (pbt PublicBearerToken) WithAuthorization(ctx context.Context, req *http.Request) error {
-	token, ok := apitokens.TokenFromContext(ctx, pbt.KeyID)
+	token, ok := apitokens.TokenFromContext(ctx, pbt.UserID, pbt.KeyID)
 	if !ok {
 		return apitokens.NewErrNotFound(pbt.KeyID, "protocols.io public bearer token")
 	}

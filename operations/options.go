@@ -7,7 +7,7 @@ package operations
 import (
 	"log/slog"
 
-	"cloudeng.io/net/ratecontrol"
+	"cloudeng.io/algo/ratecontrol"
 )
 
 // Option represents an option that can be used when creating

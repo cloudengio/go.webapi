@@ -170,6 +170,46 @@ func (c *Command) ListJobs(ctx context.Context, fv *ListJobsFlags, runID int64) 
 	return scanner.Err()
 }
 
+// CreateWebhookFlags are the flags for the CreateWebhook command.
+type CreateWebhookFlags struct {
+	URL         string `subcmd:"url,,'webhook delivery URL (required)'"`
+	ContentType string `subcmd:"content-type,json,'payload content type: json or form'"`
+	Secret      string `subcmd:"secret,,'webhook secret for HMAC signature verification'"`
+	Events      string `subcmd:"events,push,'comma-separated list of events to trigger on'"`
+	Inactive    bool   `subcmd:"inactive,,'create the webhook in an inactive state'"`
+}
+
+// CreateWebhook creates a new HTTP webhook for the configured owner/repo and
+// prints the resulting webhook ID, URL, active state, and events to stdout.
+func (c *Command) CreateWebhook(ctx context.Context, fv *CreateWebhookFlags) error {
+	if fv.URL == "" {
+		return fmt.Errorf("--url is required")
+	}
+	opts, err := OptionsForEndpoint(c.cfg())
+	if err != nil {
+		return err
+	}
+	svc := c.cfg().Service
+	events := strings.Split(fv.Events, ",")
+	request := github.CreateWebhookRequest{
+		Name:   "web",
+		Active: !fv.Inactive,
+		Events: events,
+		Config: github.WebhookConfig{
+			URL:         fv.URL,
+			ContentType: fv.ContentType,
+			Secret:      fv.Secret,
+		},
+	}
+	hook, err := github.CreateWebhook(ctx, svc.Owner, svc.Repo, request, opts...)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%d\t%s\tactive=%v\t%s\n",
+		hook.ID, hook.Config.URL, hook.Active, strings.Join(hook.Events, ","))
+	return nil
+}
+
 // ListRunners iterates over all self-hosted runners for the configured repo
 // and prints each runner to stdout.
 func (c *Command) ListRunners(ctx context.Context, fv *ListRunnersFlags) error {

@@ -81,7 +81,8 @@ type PaginatorOptions struct {
 ### Type PublicBearerToken
 ```go
 type PublicBearerToken struct {
-	KeyID string
+	UserID string
+	KeyID  string
 }
 ```
 PublicBearerToken is an implementation of operations.Authorizer for a

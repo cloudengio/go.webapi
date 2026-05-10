@@ -19,7 +19,7 @@ type Service struct {
 func OptionsForEndpoint(cfg apicrawlcmd.Crawl[Service]) ([]operations.Option, error) {
 	opts := []operations.Option{}
 	if len(cfg.KeyID) > 0 {
-		opts = append(opts, operations.WithAuth(papersapp.NewAPIToken(cfg.KeyID, cfg.Service.RefreshTokenURL)))
+		opts = append(opts, operations.WithAuth(papersapp.NewAPIToken(cfg.UserID, cfg.KeyID, cfg.Service.RefreshTokenURL)))
 	}
 	rc, err := cfg.RateControl.NewRateController()
 	if err != nil {

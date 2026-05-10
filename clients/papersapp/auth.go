@@ -18,17 +18,19 @@ import (
 // APIToken is an implementation of operations.Authorizer for
 // a papersapp API token.
 type APIToken struct {
-	refreshKeyID string
-	token        papersappsdk.Token
-	issued       time.Time
-	refreshURL   string
-	mu           sync.Mutex
+	refreshUserID string
+	refreshKeyID  string
+	token         papersappsdk.Token
+	issued        time.Time
+	refreshURL    string
+	mu            sync.Mutex
 }
 
-func NewAPIToken(refreshKeyID, refreshURL string) *APIToken {
+func NewAPIToken(refreshUserID, refreshKeyID, refreshURL string) *APIToken {
 	return &APIToken{
-		refreshURL:   refreshURL,
-		refreshKeyID: refreshKeyID,
+		refreshUserID: refreshUserID,
+		refreshKeyID:  refreshKeyID,
+		refreshURL:    refreshURL,
 	}
 }
 
@@ -48,7 +50,7 @@ func (pbt *APIToken) Refresh(ctx context.Context) (papersappsdk.Token, error) {
 	if time.Since(pbt.issued) < 50*time.Minute {
 		return pbt.token, nil
 	}
-	refreshToken, ok := apitokens.TokenFromContext(ctx, pbt.refreshKeyID)
+	refreshToken, ok := apitokens.TokenFromContext(ctx, pbt.refreshUserID, pbt.refreshKeyID)
 	if !ok {
 		return papersappsdk.Token{}, apitokens.NewErrNotFound(pbt.refreshKeyID, pbt.refreshURL)
 	}

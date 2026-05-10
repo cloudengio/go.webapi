@@ -23,15 +23,15 @@ func ContextWithKey(ctx context.Context, ki keys.Info) context.Context {
 
 // KeyFromContext retrieves the key.Info for the specified id from the context.
 // It wraps keys.KeyInfoFromContextForID.
-func KeyFromContext(ctx context.Context, id string) (keys.Info, bool) {
-	return keys.KeyInfoFromContextForID(ctx, id)
+func KeyFromContext(ctx context.Context, user, id string) (keys.Info, bool) {
+	return keys.KeyInfoFromContextForID(ctx, user, id)
 }
 
 // TokenFromContext retrieves the token for the specified id from the
 // context. It returns the token as a *keys.Token and a boolean indicating
 // whether the token was found.
-func TokenFromContext(ctx context.Context, id string) (*keys.Token, bool) {
-	ki, ok := keys.KeyInfoFromContextForID(ctx, id)
+func TokenFromContext(ctx context.Context, user, id string) (*keys.Token, bool) {
+	ki, ok := keys.KeyInfoFromContextForID(ctx, user, id)
 	if !ok {
 		return nil, false
 	}
@@ -48,8 +48,8 @@ func ContextWithOAuth(ctx context.Context, id, user string, source oauth2.TokenS
 
 // OAuthFromContext returns the TokenSource for the specified name, if any,
 // that are stored in the context.
-func OAuthFromContext(ctx context.Context, id string) (oauth2.TokenSource, error) {
-	ki, ok := keys.KeyInfoFromContextForID(ctx, id)
+func OAuthFromContext(ctx context.Context, user, id string) (oauth2.TokenSource, error) {
+	ki, ok := keys.KeyInfoFromContextForID(ctx, user, id)
 	if !ok {
 		return nil, fmt.Errorf("oauthFromContext: key %q not found", id)
 	}

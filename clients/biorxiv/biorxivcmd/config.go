@@ -5,8 +5,8 @@
 package biorxivcmd
 
 import (
+	"cloudeng.io/algo/ratecontrol"
 	"cloudeng.io/cmdutil/cmdyaml"
-	"cloudeng.io/net/ratecontrol"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
 )
@@ -33,7 +33,7 @@ func OptionsForEndpoint(cfg apicrawlcmd.Crawl[Service]) ([]operations.Option, er
 	}
 	if rateCfg.ExponentialBackoff.InitialDelay > 0 {
 		rcopts = append(rcopts,
-			ratecontrol.WithExponentialBackoff(rateCfg.ExponentialBackoff.InitialDelay, rateCfg.ExponentialBackoff.Steps))
+			ratecontrol.WithExponentialBackoff(rateCfg.ExponentialBackoff.InitialDelay, rateCfg.ExponentialBackoff.Steps, true))
 	}
 	rc := ratecontrol.New(rcopts...)
 	opts = append(opts, operations.WithRateController(rc, cfg.RateControl.ExponentialBackoff.StatusCodes...))

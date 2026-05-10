@@ -5,7 +5,7 @@
 package benchlingcmd
 
 import (
-	"cloudeng.io/net/ratecontrol"
+	"cloudeng.io/algo/ratecontrol"
 	"cloudeng.io/webapi/clients/benchling"
 	"cloudeng.io/webapi/clients/benchling/benchlingsdk"
 	"cloudeng.io/webapi/operations"
@@ -73,7 +73,7 @@ func OptionsForEndpoint(cfg apicrawlcmd.Crawl[Service]) ([]operations.Option, er
 	}
 	if rateCfg.ExponentialBackoff.InitialDelay > 0 {
 		rcopts = append(rcopts,
-			ratecontrol.WithCustomBackoff(
+			ratecontrol.WithBackoff(
 				func() ratecontrol.Backoff {
 					return benchling.NewBackoff(rateCfg.ExponentialBackoff.InitialDelay, rateCfg.ExponentialBackoff.Steps)
 				}))

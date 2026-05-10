@@ -18,8 +18,8 @@ import (
 	"strings"
 	"time"
 
+	"cloudeng.io/algo/ratecontrol"
 	"cloudeng.io/logging/ctxlog"
-	"cloudeng.io/net/ratecontrol"
 )
 
 // Encoding represents the encoding scheme used for the response body.
