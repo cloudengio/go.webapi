@@ -38,7 +38,7 @@ type Endpoint[T any] struct {
 // NewEndpoint returns a new endpoint for the specified type.
 func NewEndpoint[T any](opts ...Option) *Endpoint[T] {
 	ep := &Endpoint[T]{}
-	ep.options.logger = slog.New(slog.DiscardHandler)
+	ep.logger = slog.New(slog.DiscardHandler)
 	for _, fn := range opts {
 		fn(&ep.options)
 	}
