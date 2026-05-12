@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -89,7 +90,7 @@ func (m *MockWebhook) repository() Repository {
 	return Repository{
 		Name:     m.repo,
 		FullName: m.owner + "/" + m.repo,
-		HTMLURL:  "https://github.com/" + m.owner + "/" + m.repo,
+		HTMLURL:  "https://github.com/" + url.PathEscape(m.owner) + "/" + url.PathEscape(m.repo),
 		Owner:    Actor{Login: m.owner},
 	}
 }
@@ -143,7 +144,7 @@ func MockJob(owner, repo string) Job {
 		HeadBranch:   "main",
 		HeadSHA:      strings.Repeat("a", 40),
 		WorkflowName: "CI",
-		HTMLURL:      fmt.Sprintf("https://github.com/%s/%s/actions/runs/1/jobs/1", owner, repo),
+		HTMLURL:      fmt.Sprintf("https://github.com/%s/%s/actions/runs/1/jobs/1", url.PathEscape(owner), url.PathEscape(repo)),
 		StartedAt:    &now,
 	}
 }
@@ -163,8 +164,8 @@ func MockRun(owner, repo string) WorkflowRun {
 		Event:        "push",
 		WorkflowID:   1,
 		WorkflowName: "CI",
-		URL:          fmt.Sprintf("%s/repos/%s/%s/actions/runs/1", APIHost, owner, repo),
-		HTMLURL:      fmt.Sprintf("https://github.com/%s/%s/actions/runs/1", owner, repo),
+		URL:          fmt.Sprintf("%s/repos/%s/%s/actions/runs/1", APIHost, url.PathEscape(owner), url.PathEscape(repo)),
+		HTMLURL:      fmt.Sprintf("https://github.com/%s/%s/actions/runs/1", url.PathEscape(owner), url.PathEscape(repo)),
 		CreatedAt:    &now,
 		Actor:        Actor{Login: owner},
 	}
