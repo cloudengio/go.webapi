@@ -41,6 +41,14 @@ runs for the specified owner and repo, one page at a time. Non-empty
 fields in filter are sent as query parameters so the GitHub API performs
 server-side filtering before any results are returned.
 
+### Func VerifyWebhookSignature
+```go
+func VerifyWebhookSignature(secret string, body []byte, signature string) bool
+```
+VerifyWebhookSignature reports whether the X-Hub-Signature-256 header value
+matches the HMAC-SHA256 of body computed with secret. This is the check a
+relay or handler performs on receipt.
+
 
 
 ## Types
@@ -125,6 +133,16 @@ type Job struct {
 ```
 Job represents a single GitHub Actions job within a workflow run.
 
+### Functions
+
+```go
+func MockJob(owner, repo string) Job
+```
+MockJob returns a Job populated with typical values for use in tests.
+Callers may overwrite any field before passing it to MockWebhook.JobRequest.
+
+
+
 
 ### Type JobsResponse
 ```go
@@ -180,6 +198,46 @@ type MetaDomains struct {
 MetaDomains holds the domain names used by various GitHub services.
 
 
+### Type MockWebhook
+```go
+type MockWebhook struct {
+	// contains filtered or unexported fields
+}
+```
+MockWebhook creates signed HTTP POST requests that mimic GitHub webhook
+deliveries. It is intended for testing webhook relays and handlers.
+
+### Functions
+
+```go
+func NewMockWebhook(owner, repo, secret string) *MockWebhook
+```
+NewMockWebhook returns a MockWebhook for the given owner/repo. secret is the
+webhook secret used to produce X-Hub-Signature-256 headers; pass an empty
+string to skip signing.
+
+
+
+### Methods
+
+```go
+func (m *MockWebhook) JobRequest(ctx context.Context, targetURL, action string, job Job) (*http.Request, error)
+```
+JobRequest returns a signed HTTP POST request to targetURL for a
+workflow_job event. action must be one of "queued", "in_progress",
+or "completed".
+
+
+```go
+func (m *MockWebhook) RunRequest(ctx context.Context, targetURL, action string, run WorkflowRun) (*http.Request, error)
+```
+RunRequest returns a signed HTTP POST request to targetURL for a
+workflow_run event. action must be one of "requested", "in_progress",
+or "completed".
+
+
+
+
 ### Type RegistrationToken
 ```go
 type RegistrationToken struct {
@@ -200,6 +258,21 @@ given owner/repo. Options (including WithAuth) follow the same pattern as
 NewRunsScanner, NewRunnersScanner, and the other functions in this package.
 
 
+
+
+### Type Repository
+```go
+type Repository struct {
+	ID       int64  `json:"id"`
+	Name     string `json:"name"`
+	FullName string `json:"full_name"`
+	HTMLURL  string `json:"html_url"`
+	Private  bool   `json:"private"`
+	Owner    Actor  `json:"owner"`
+}
+```
+Repository represents the repository information included in webhook
+payloads.
 
 
 ### Type Runner
@@ -315,6 +388,19 @@ type WebhookConfig struct {
 WebhookConfig holds the delivery configuration for a repository webhook.
 
 
+### Type WorkflowJobEvent
+```go
+type WorkflowJobEvent struct {
+	Action      string     `json:"action"`
+	WorkflowJob Job        `json:"workflow_job"`
+	Repository  Repository `json:"repository"`
+	Sender      Actor      `json:"sender"`
+}
+```
+WorkflowJobEvent is the payload delivered to a webhook for workflow_job
+events. Action is one of "queued", "in_progress", or "completed".
+
+
 ### Type WorkflowRun
 ```go
 type WorkflowRun struct {
@@ -339,6 +425,30 @@ type WorkflowRun struct {
 }
 ```
 WorkflowRun represents a single GitHub Actions workflow run.
+
+### Functions
+
+```go
+func MockRun(owner, repo string) WorkflowRun
+```
+MockRun returns a WorkflowRun populated with typical values for
+use in tests. Callers may overwrite any field before passing it to
+MockWebhook.RunRequest.
+
+
+
+
+### Type WorkflowRunEvent
+```go
+type WorkflowRunEvent struct {
+	Action      string      `json:"action"`
+	WorkflowRun WorkflowRun `json:"workflow_run"`
+	Repository  Repository  `json:"repository"`
+	Sender      Actor       `json:"sender"`
+}
+```
+WorkflowRunEvent is the payload delivered to a webhook for workflow_run
+events. Action is one of "requested", "in_progress", or "completed".
 
 
 ### Type WorkflowRunsResponse
