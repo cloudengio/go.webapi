@@ -83,6 +83,15 @@ JSONEncoding Encoding = iota
 
 
 
+### Methods
+
+```go
+func (e Encoding) ContentType() string
+```
+ContentType returns the content type associated with this encoding.
+
+
+
 
 ### Type Endpoint
 ```go
@@ -90,8 +99,12 @@ type Endpoint[T any] struct {
 	// contains filtered or unexported fields
 }
 ```
-Endpoint represents an API endpoint that whose response body is unmarshaled,
-by default using json.Unmarshal, into the specified type.
+Endpoint represents a unidirectional API endpoint that can be invoked
+using GET, POST, or PUT requests. For a GET request, the response body
+is unmarshaled into the specified type T, and for POST and PUT requests,
+the request body is of type T and the response body is not unmarshaled.
+Use PutEndpoint for operations where both the request and response bodies
+can be typed.
 
 ### Functions
 
@@ -113,7 +126,7 @@ Get invokes a GET request on this endpoint (without a body).
 ```go
 func (ep *Endpoint[T]) IssueRequest(ctx context.Context, req *http.Request) (T, []byte, Encoding, *http.Response, error)
 ```
-IssueRequest invokes an arbitrary request on this endpoint using the
+IssueRequest invokes an arbitrary GET request on this endpoint using the
 supplied http.Request. The Body in the http.Response has already been read
 and its contents returned as the second return value.
 
@@ -161,6 +174,13 @@ part of a crawl. The Fetcher extracts/decodes items to be fetched from the
 result of a Scan and then downloads each item.
 
 
+### Type Marshal
+```go
+type Marshal func(any) ([]byte, error)
+```
+Marshal represents a function that can be used to marshal a request body.
+
+
 ### Type Option
 ```go
 type Option func(o *options)
@@ -181,6 +201,11 @@ func WithLogger(logger *slog.Logger) Option
 ```
 WithLogger specifies the logger to use for logging request and response
 information. If not specified, no logging is performed.
+
+
+```go
+func WithMarshaller(marshal Marshal, e Encoding) Option
+```
 
 
 ```go
@@ -211,6 +236,49 @@ type Paginator[T any] interface {
 Paginator represents the ability to generate the next request (URL with
 optional body) given the response from the previous request. Paginators are
 typically used with Scanners to iterate over a paginated API.
+
+
+### Type PutEndpoint
+```go
+type PutEndpoint[RequestT, ResponseT any] struct {
+	// contains filtered or unexported fields
+}
+```
+PutEndpoint represents an API endpoint that supports PUT requests with a
+request body of type RequestT and a response body of type ResponseT.
+
+### Functions
+
+```go
+func NewPutEndpoint[RequestT, ResponseT any](opts ...Option) *PutEndpoint[RequestT, ResponseT]
+```
+
+
+
+### Methods
+
+```go
+func (ep *PutEndpoint[RequestT, ResponseT]) IssuePutPostRequest(ctx context.Context, req *http.Request, data RequestT) (ResponseT, []byte, Encoding, *http.Response, error)
+```
+IssuePutPostRequest invokes an arbitrary PUT or POST request on this
+endpoint using the supplied http.Request except that the Request body is
+overridden with encoding of the supplied data.
+
+
+```go
+func (ep *PutEndpoint[RequestT, ResponseT]) Post(ctx context.Context, url string, data RequestT) (ResponseT, []byte, Encoding, error)
+```
+Post invokes a POST request on this endpoint with a json encoded body of
+type RequestT.
+
+
+```go
+func (ep *PutEndpoint[RequestT, ResponseT]) Put(ctx context.Context, url string, data RequestT) (ResponseT, []byte, Encoding, error)
+```
+Put invokes a PUT request on this endpoint with a json encoded body of type
+RequestT.
+
+
 
 
 ### Type Response

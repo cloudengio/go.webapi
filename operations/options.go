@@ -5,9 +5,18 @@
 package operations
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
 	"log/slog"
+	"net"
+	"net/http"
+	"slices"
+	"strings"
+	"time"
 
 	"cloudeng.io/algo/ratecontrol"
+	"cloudeng.io/logging/ctxlog"
 )
 
 // Option represents an option that can be used when creating
@@ -20,7 +29,32 @@ type options struct {
 	auth               Auth
 	unmarshal          Unmarshal
 	encoding           Encoding
+	marshal            Marshal
+	marshal_encoding   Encoding
 	logger             *slog.Logger
+}
+
+func handleOptions(options *options, opts ...Option) {
+	for _, fn := range opts {
+		fn(options)
+	}
+	if options.rateController == nil {
+		options.rateController = ratecontrol.New()
+	}
+	if options.rateController == nil {
+		options.rateController = ratecontrol.New()
+	}
+	if options.unmarshal == nil {
+		options.unmarshal = json.Unmarshal
+		options.encoding = JSONEncoding
+	}
+	if options.marshal == nil {
+		options.marshal = json.Marshal
+		options.marshal_encoding = JSONEncoding
+	}
+	if options.logger == nil {
+		options.logger = slog.New(slog.DiscardHandler)
+	}
 }
 
 // WithRateController sets the rate controller to use to enforce rate
@@ -51,6 +85,9 @@ func WithLogger(logger *slog.Logger) Option {
 // body.
 type Unmarshal func([]byte, any) error
 
+// Marshal represents a function that can be used to marshal a request body.
+type Marshal func(any) ([]byte, error)
+
 // WithUnmarshal specifies a custom unmarshaling function to use for decoding
 // response bodies. The default is json.Unmarshal.
 func WithUnmarshal(u Unmarshal, e Encoding) Option {
@@ -58,4 +95,43 @@ func WithUnmarshal(u Unmarshal, e Encoding) Option {
 		o.unmarshal = u
 		o.encoding = e
 	}
+}
+
+func WithMarshaller(marshal Marshal, e Encoding) Option {
+	return func(o *options) {
+		o.marshal = marshal
+		o.marshal_encoding = e
+	}
+}
+
+func (o options) isBackoffCode(code int) bool {
+	return slices.Contains(o.backoffStatusCodes, code)
+}
+
+func isErrorRetryable(err error) (string, bool) {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "context.DeadlineExceeded", true
+	}
+	if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
+		return "timeout", true
+	}
+	if strings.HasSuffix(err.Error(), ": connection reset by peer") {
+		return "connection reset by peer", true
+	}
+	if strings.Contains(err.Error(), "TLS handshake") {
+		return "TLS handshake", true
+	}
+	return "cannot retry", false
+}
+
+func (o options) isErrorRetryableAndLog(ctx context.Context, req *http.Request, err error) bool {
+	msg, retryable := isErrorRetryable(err)
+	grp := slog.Group("req", "url", req.URL, "err", err, "retryable", retryable)
+	ctxlog.Info(ctx, msg, grp)
+	return retryable
+}
+
+func logBackoff(ctx context.Context, msg string, req *http.Request, retries int, took time.Duration, done bool, err error) {
+	grp := slog.Group("req", "url", req.URL, "retries", retries, "took", took, "done", done, "err", err)
+	ctxlog.Info(ctx, msg, grp)
 }
