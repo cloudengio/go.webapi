@@ -54,7 +54,7 @@ that are stored in the context.
 
 ### Func TokenFromContext
 ```go
-func TokenFromContext(ctx context.Context, user, id string) (*keys.Token, bool)
+func TokenFromContext(ctx context.Context, user, id string) (keys.Token, bool)
 ```
 TokenFromContext retrieves the token for the specified id from the context.
 It returns the token as a *keys.Token and a boolean indicating whether the
