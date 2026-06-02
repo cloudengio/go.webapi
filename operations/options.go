@@ -30,7 +30,7 @@ type options struct {
 	unmarshal          Unmarshal
 	encoding           Encoding
 	marshal            Marshal
-	marshal_encoding   Encoding
+	marshalEncoding    Encoding
 	logger             *slog.Logger
 }
 
@@ -41,16 +41,13 @@ func handleOptions(options *options, opts ...Option) {
 	if options.rateController == nil {
 		options.rateController = ratecontrol.New()
 	}
-	if options.rateController == nil {
-		options.rateController = ratecontrol.New()
-	}
 	if options.unmarshal == nil {
 		options.unmarshal = json.Unmarshal
 		options.encoding = JSONEncoding
 	}
 	if options.marshal == nil {
 		options.marshal = json.Marshal
-		options.marshal_encoding = JSONEncoding
+		options.marshalEncoding = JSONEncoding
 	}
 	if options.logger == nil {
 		options.logger = slog.New(slog.DiscardHandler)
@@ -100,7 +97,7 @@ func WithUnmarshal(u Unmarshal, e Encoding) Option {
 func WithMarshaller(marshal Marshal, e Encoding) Option {
 	return func(o *options) {
 		o.marshal = marshal
-		o.marshal_encoding = e
+		o.marshalEncoding = e
 	}
 }
 

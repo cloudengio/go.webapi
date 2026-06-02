@@ -24,12 +24,14 @@ func NewPutEndpoint[RequestT, ResponseT any](opts ...Option) *PutEndpoint[Reques
 	return ep
 }
 
-// Put invokes a PUT request on this endpoint with a json encoded body of type RequestT.
+// Put invokes a PUT request on this endpoint with a request of
+// type RequestT and a response of type ResponseT.
 func (ep *PutEndpoint[RequestT, ResponseT]) Put(ctx context.Context, url string, data RequestT) (ResponseT, []byte, Encoding, error) {
 	return ep.putPost(ctx, url, "PUT", data)
 }
 
-// Post invokes a POST request on this endpoint with a json encoded body of type RequestT.
+// Post invokes a POST request on this endpoint with a request of
+// type RequestT and a response of type ResponseT.
 func (ep *PutEndpoint[RequestT, ResponseT]) Post(ctx context.Context, url string, data RequestT) (ResponseT, []byte, Encoding, error) {
 	return ep.putPost(ctx, url, "POST", data)
 }
@@ -40,7 +42,7 @@ func (ep *PutEndpoint[RequestT, ResponseT]) putPost(ctx context.Context, url str
 	if err != nil {
 		return result, nil, ep.encoding, err
 	}
-	if err := setRequestBody(req, ep.marshal, ep.marshal_encoding, data); err != nil {
+	if err := setRequestBody(req, ep.marshal, ep.marshalEncoding, data); err != nil {
 		return result, nil, ep.encoding, err
 	}
 	result, _, body, err := issueRequest[ResponseT](ctx, ep.options, req)
@@ -58,7 +60,7 @@ func (ep *PutEndpoint[RequestT, ResponseT]) IssuePutPostRequest(ctx context.Cont
 	if req.Method != "PUT" && req.Method != "POST" {
 		return result, nil, ep.encoding, nil, errors.New("only PUT or POST methods are supported")
 	}
-	if err := setRequestBody(req, ep.marshal, ep.marshal_encoding, data); err != nil {
+	if err := setRequestBody(req, ep.marshal, ep.marshalEncoding, data); err != nil {
 		return result, nil, ep.encoding, nil, err
 	}
 	t, r, b, err := issueRequest[ResponseT](ctx, ep.options, req)
@@ -70,11 +72,10 @@ func setRequestBody[RequestT any](req *http.Request, m Marshal, e Encoding, data
 	if err != nil {
 		return err
 	}
-	req.Body = io.NopCloser(bytes.NewReader(reqBody))
 	req.ContentLength = int64(len(reqBody))
-	if err != nil {
-		return err
-	}
 	req.Header.Set("Content-Type", e.ContentType())
+	req.GetBody = func() (io.ReadCloser, error) {
+		return io.NopCloser(bytes.NewReader(reqBody)), nil
+	}
 	return nil
 }

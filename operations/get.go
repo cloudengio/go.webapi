@@ -31,10 +31,8 @@ func (e Encoding) ContentType() string {
 	}
 }
 
-// Endpoint represents a unidirectional API endpoint that can be invoked using GET,
-// POST, or PUT requests. For a GET request, the response body is unmarshaled
-// into the specified type T, and for POST and PUT requests, the request body
-// is of type T and the response body is not unmarshaled.
+// Endpoint represents an API endpoint that can be invoked using GET.
+// The response body is unmarshaled into the specified type T.
 // Use PutEndpoint for operations where both the request and response bodies
 // can be typed.
 type Endpoint[T any] struct {
@@ -102,6 +100,13 @@ func issueRequest[T any](ctx context.Context, opts options, req *http.Request) (
 			}
 			authSet = true
 		}
+		if req.GetBody != nil {
+			body, gerr := req.GetBody()
+			if gerr != nil {
+				return result, nil, nil, handleError(gerr, "", 0, retries)
+			}
+			req.Body = body
+		}
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			if !opts.isErrorRetryableAndLog(ctx, req, err) {
@@ -116,6 +121,7 @@ func issueRequest[T any](ctx context.Context, opts options, req *http.Request) (
 		}
 		if opts.isBackoffCode(resp.StatusCode) {
 			if done, _ := backoff.Wait(ctx, resp); done {
+				resp.Body.Close()
 				logBackoff(ctx, "application backoff giving up", req, retries, time.Since(start), true, err)
 				return result, nil, nil, handleError(err, resp.Status, resp.StatusCode, retries)
 			}
@@ -133,20 +139,21 @@ func issueRequest[T any](ctx context.Context, opts options, req *http.Request) (
 func handleErrorResponse[T any](resp *http.Response, steps int) (T, *http.Response, []byte, error) {
 	var result T
 	body, err := io.ReadAll(resp.Body)
+	defer resp.Body.Close()
 	if err != nil {
 		return result, resp, body, handleError(err, resp.Status, resp.StatusCode, steps)
 	}
-	resp.Body.Close()
 	return result, resp, body, handleError(err, resp.Status, resp.StatusCode, steps)
 }
 
 func handleResponse[T any](resp *http.Response, unmarshal Unmarshal, steps int) (T, *http.Response, []byte, error) {
 	var result T
 	body, err := io.ReadAll(resp.Body)
+	defer resp.Body.Close()
 	if err != nil {
 		return result, resp, body, handleError(err, resp.Status, resp.StatusCode, steps)
 	}
-	resp.Body.Close()
+
 	if len(body) > 0 {
 		err = unmarshal(body, &result)
 	}

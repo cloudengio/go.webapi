@@ -99,12 +99,9 @@ type Endpoint[T any] struct {
 	// contains filtered or unexported fields
 }
 ```
-Endpoint represents a unidirectional API endpoint that can be invoked
-using GET, POST, or PUT requests. For a GET request, the response body
-is unmarshaled into the specified type T, and for POST and PUT requests,
-the request body is of type T and the response body is not unmarshaled.
-Use PutEndpoint for operations where both the request and response bodies
-can be typed.
+Endpoint represents an API endpoint that can be invoked using GET.
+The response body is unmarshaled into the specified type T. Use PutEndpoint
+for operations where both the request and response bodies can be typed.
 
 ### Functions
 
@@ -268,15 +265,15 @@ overridden with encoding of the supplied data.
 ```go
 func (ep *PutEndpoint[RequestT, ResponseT]) Post(ctx context.Context, url string, data RequestT) (ResponseT, []byte, Encoding, error)
 ```
-Post invokes a POST request on this endpoint with a json encoded body of
-type RequestT.
+Post invokes a POST request on this endpoint with a request of type RequestT
+and a response of type ResponseT.
 
 
 ```go
 func (ep *PutEndpoint[RequestT, ResponseT]) Put(ctx context.Context, url string, data RequestT) (ResponseT, []byte, Encoding, error)
 ```
-Put invokes a PUT request on this endpoint with a json encoded body of type
-RequestT.
+Put invokes a PUT request on this endpoint with a request of type RequestT
+and a response of type ResponseT.
 
 
 

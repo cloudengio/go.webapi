@@ -90,7 +90,7 @@ func TestPutContentTypeHeader(t *testing.T) {
 		receivedMethod = r.Method
 		body, _ := io.ReadAll(r.Body)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	defer srv.Close()
 
@@ -114,7 +114,7 @@ func TestPostContentTypeHeader(t *testing.T) {
 		receivedMethod = r.Method
 		body, _ := io.ReadAll(r.Body)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	defer srv.Close()
 
@@ -138,7 +138,7 @@ func TestPutEmptyRequestType(t *testing.T) {
 		receivedBody, _ = io.ReadAll(r.Body)
 		resp := example{"response", 1}
 		body, _ := json.Marshal(resp)
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	defer srv.Close()
 
@@ -159,9 +159,9 @@ func TestPutEmptyRequestType(t *testing.T) {
 func TestPutEmptyResponseType(t *testing.T) {
 	ctx := context.Background()
 	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		io.ReadAll(r.Body)
+		_, _ = io.ReadAll(r.Body)
 		// return empty JSON object
-		w.Write([]byte("{}"))
+		_, _ = w.Write([]byte("{}"))
 	}))
 	defer srv.Close()
 
@@ -178,8 +178,8 @@ func TestPutEmptyResponseType(t *testing.T) {
 func TestPutBothEmptyTypes(t *testing.T) {
 	ctx := context.Background()
 	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		io.ReadAll(r.Body)
-		w.Write([]byte("{}"))
+		_, _ = io.ReadAll(r.Body)
+		_, _ = w.Write([]byte("{}"))
 	}))
 	defer srv.Close()
 
@@ -197,7 +197,7 @@ func TestPutPrimitiveTypes(t *testing.T) {
 	ctx := context.Background()
 	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	defer srv.Close()
 
@@ -215,7 +215,7 @@ func TestPutStringTypes(t *testing.T) {
 	ctx := context.Background()
 	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	defer srv.Close()
 
@@ -342,8 +342,8 @@ func TestIssuePutPostRequestInvalidMethod(t *testing.T) {
 func TestIssuePutPostRequestEmptyTypes(t *testing.T) {
 	ctx := context.Background()
 	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		io.ReadAll(r.Body)
-		w.Write([]byte("{}"))
+		_, _ = io.ReadAll(r.Body)
+		_, _ = w.Write([]byte("{}"))
 	}))
 	defer srv.Close()
 
@@ -367,7 +367,7 @@ func TestPutWithAuth(t *testing.T) {
 	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedHeader = r.Header.Get("something")
 		body, _ := io.ReadAll(r.Body)
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	defer srv.Close()
 
@@ -401,7 +401,7 @@ func TestPutCustomMarshaler(t *testing.T) {
 	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedBody, _ = io.ReadAll(r.Body)
 		resp, _ := json.Marshal(example{"ok", 0})
-		w.Write(resp)
+		_, _ = w.Write(resp)
 	}))
 	defer srv.Close()
 
@@ -428,7 +428,7 @@ func TestPutResponseBodyReturnedOnError(t *testing.T) {
 	errBody := []byte(`{"error":"not found"}`)
 	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write(errBody)
+		_, _ = w.Write(errBody)
 	}))
 	defer srv.Close()
 
@@ -446,7 +446,7 @@ func TestPutSliceTypes(t *testing.T) {
 	ctx := context.Background()
 	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	defer srv.Close()
 
@@ -466,7 +466,7 @@ func TestPutNilSlice(t *testing.T) {
 	var receivedBody []byte
 	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedBody, _ = io.ReadAll(r.Body)
-		w.Write([]byte("[]"))
+		_, _ = w.Write([]byte("[]"))
 	}))
 	defer srv.Close()
 
