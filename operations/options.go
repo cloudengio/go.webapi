@@ -94,7 +94,9 @@ func WithUnmarshal(u Unmarshal, e Encoding) Option {
 	}
 }
 
-func WithMarshaller(marshal Marshal, e Encoding) Option {
+// WithMarshal specifies a custom marshaling function to use for encoding
+// request bodies. The default is json.Marshal.
+func WithMarshal(marshal Marshal, e Encoding) Option {
 	return func(o *options) {
 		o.marshal = marshal
 		o.marshalEncoding = e

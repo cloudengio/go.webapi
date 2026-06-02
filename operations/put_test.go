@@ -11,8 +11,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"sync"
 	"testing"
+	"time"
 
+	"cloudeng.io/algo/ratecontrol"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/webapitestutil"
 )
@@ -406,7 +409,7 @@ func TestPutCustomMarshaler(t *testing.T) {
 	defer srv.Close()
 
 	client := operations.NewPutEndpoint[example, example](
-		operations.WithMarshaller(customMarshal, operations.JSONEncoding),
+		operations.WithMarshal(customMarshal, operations.JSONEncoding),
 	)
 	_, _, _, err := client.Put(ctx, srv.URL, example{"hello", 1})
 	if err != nil {
@@ -482,5 +485,220 @@ func TestPutNilSlice(t *testing.T) {
 	// response [] decodes to empty (non-nil) slice
 	if len(got) != 0 {
 		t.Errorf("got %v, want empty/nil slice", got)
+	}
+}
+
+// trackingBody wraps an io.ReadCloser and records whether Close was called.
+type trackingBody struct {
+	io.ReadCloser
+	mu     sync.Mutex
+	closed bool
+}
+
+func (tb *trackingBody) Close() error {
+	tb.mu.Lock()
+	tb.closed = true
+	tb.mu.Unlock()
+	return tb.ReadCloser.Close()
+}
+
+func (tb *trackingBody) isClosed() bool {
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
+	return tb.closed
+}
+
+// trackingTransport wraps every response body with a trackingBody so tests can
+// assert that all bodies were closed after each call.
+type trackingTransport struct {
+	mu       sync.Mutex
+	delegate http.RoundTripper
+	bodies   []*trackingBody
+}
+
+func (tt *trackingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	resp, err := tt.delegate.RoundTrip(req)
+	if resp != nil && resp.Body != nil {
+		tb := &trackingBody{ReadCloser: resp.Body}
+		tt.mu.Lock()
+		tt.bodies = append(tt.bodies, tb)
+		tt.mu.Unlock()
+		resp.Body = tb
+	}
+	return resp, err
+}
+
+func (tt *trackingTransport) unclosedCount() int {
+	tt.mu.Lock()
+	defer tt.mu.Unlock()
+	n := 0
+	for _, b := range tt.bodies {
+		if !b.isClosed() {
+			n++
+		}
+	}
+	return n
+}
+
+// installTrackingTransport replaces http.DefaultTransport for the duration of
+// the test and restores it via t.Cleanup.  Tests that use this must not call
+// t.Parallel() because they share global state.
+func installTrackingTransport(t *testing.T) *trackingTransport {
+	t.Helper()
+	orig := http.DefaultTransport
+	tt := &trackingTransport{delegate: orig}
+	http.DefaultTransport = tt
+	t.Cleanup(func() { http.DefaultTransport = orig })
+	return tt
+}
+
+func TestPutBodyClosedOnSuccess(t *testing.T) {
+	ctx := context.Background()
+	tr := installTrackingTransport(t)
+	srv := newBodyEchoServer(t)
+	defer srv.Close()
+
+	client := operations.NewPutEndpoint[example, example]()
+	_, _, _, err := client.Put(ctx, srv.URL, example{"x", 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := tr.unclosedCount(); n != 0 {
+		t.Errorf("%d response body/bodies not closed after successful PUT", n)
+	}
+}
+
+func TestPostBodyClosedOnSuccess(t *testing.T) {
+	ctx := context.Background()
+	tr := installTrackingTransport(t)
+	srv := newBodyEchoServer(t)
+	defer srv.Close()
+
+	client := operations.NewPutEndpoint[example, example]()
+	_, _, _, err := client.Post(ctx, srv.URL, example{"x", 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := tr.unclosedCount(); n != 0 {
+		t.Errorf("%d response body/bodies not closed after successful POST", n)
+	}
+}
+
+func TestPutBodyClosedOnErrorStatus(t *testing.T) {
+	ctx := context.Background()
+	tr := installTrackingTransport(t)
+	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	client := operations.NewPutEndpoint[example, example]()
+	_, _, _, err := client.Put(ctx, srv.URL, example{})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if n := tr.unclosedCount(); n != 0 {
+		t.Errorf("%d response body/bodies not closed after error-status PUT", n)
+	}
+}
+
+func TestPutBodyClosedOnEmptyStructSuccess(t *testing.T) {
+	ctx := context.Background()
+	tr := installTrackingTransport(t)
+	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.ReadAll(r.Body)
+		_, _ = w.Write([]byte("{}"))
+	}))
+	defer srv.Close()
+
+	client := operations.NewPutEndpoint[emptyStruct, emptyStruct]()
+	_, _, _, err := client.Put(ctx, srv.URL, emptyStruct{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := tr.unclosedCount(); n != 0 {
+		t.Errorf("%d response body/bodies not closed after empty-struct PUT", n)
+	}
+}
+
+func TestPutBodyClosedOnBackoffThenSuccess(t *testing.T) {
+	ctx := context.Background()
+	tr := installTrackingTransport(t)
+	numRetries := 2
+	srv := webapitestutil.NewServer(webapitestutil.NewRetryHandler(numRetries))
+	defer srv.Close()
+
+	rc := ratecontrol.New(ratecontrol.WithExponentialBackoff(time.Millisecond, numRetries, true))
+	client := operations.NewPutEndpoint[int, int](operations.WithRateController(rc, http.StatusTooManyRequests))
+	got, _, _, err := client.Put(ctx, srv.URL, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != numRetries {
+		t.Errorf("got %v, want %v", got, numRetries)
+	}
+	if n := tr.unclosedCount(); n != 0 {
+		t.Errorf("%d response body/bodies not closed after backoff+success PUT (%d total responses)", n, len(tr.bodies))
+	}
+}
+
+func TestPutBodyClosedOnBackoffGivingUp(t *testing.T) {
+	ctx := context.Background()
+	tr := installTrackingTransport(t)
+	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer srv.Close()
+
+	rc := ratecontrol.New(ratecontrol.WithExponentialBackoff(time.Millisecond, 3, false))
+	client := operations.NewPutEndpoint[example, example](operations.WithRateController(rc, http.StatusTooManyRequests))
+	_, _, _, err := client.Put(ctx, srv.URL, example{})
+	if err == nil {
+		t.Fatal("expected error when backoff exhausted")
+	}
+	if n := tr.unclosedCount(); n != 0 {
+		t.Errorf("%d response body/bodies not closed after backoff giving up (%d total responses)", n, len(tr.bodies))
+	}
+}
+
+func TestIssuePutPostBodyClosedOnSuccess(t *testing.T) {
+	ctx := context.Background()
+	tr := installTrackingTransport(t)
+	srv := newBodyEchoServer(t)
+	defer srv.Close()
+
+	client := operations.NewPutEndpoint[example, example]()
+	req, err := http.NewRequestWithContext(ctx, "PUT", srv.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, _, _, err = client.IssuePutPostRequest(ctx, req, example{"x", 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := tr.unclosedCount(); n != 0 {
+		t.Errorf("%d response body/bodies not closed after IssuePutPostRequest success", n)
+	}
+}
+
+func TestIssuePutPostBodyClosedOnErrorStatus(t *testing.T) {
+	ctx := context.Background()
+	tr := installTrackingTransport(t)
+	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer srv.Close()
+
+	client := operations.NewPutEndpoint[example, example]()
+	req, err := http.NewRequestWithContext(ctx, "PUT", srv.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, _, _, err = client.IssuePutPostRequest(ctx, req, example{})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if n := tr.unclosedCount(); n != 0 {
+		t.Errorf("%d response body/bodies not closed after IssuePutPostRequest error status", n)
 	}
 }

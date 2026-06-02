@@ -120,8 +120,8 @@ func issueRequest[T any](ctx context.Context, opts options, req *http.Request) (
 			continue
 		}
 		if opts.isBackoffCode(resp.StatusCode) {
+			resp.Body.Close()
 			if done, _ := backoff.Wait(ctx, resp); done {
-				resp.Body.Close()
 				logBackoff(ctx, "application backoff giving up", req, retries, time.Since(start), true, err)
 				return result, nil, nil, handleError(err, resp.Status, resp.StatusCode, retries)
 			}
@@ -140,20 +140,16 @@ func handleErrorResponse[T any](resp *http.Response, steps int) (T, *http.Respon
 	var result T
 	body, err := io.ReadAll(resp.Body)
 	defer resp.Body.Close()
-	if err != nil {
-		return result, resp, body, handleError(err, resp.Status, resp.StatusCode, steps)
-	}
 	return result, resp, body, handleError(err, resp.Status, resp.StatusCode, steps)
 }
 
 func handleResponse[T any](resp *http.Response, unmarshal Unmarshal, steps int) (T, *http.Response, []byte, error) {
 	var result T
-	body, err := io.ReadAll(resp.Body)
 	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return result, resp, body, handleError(err, resp.Status, resp.StatusCode, steps)
 	}
-
 	if len(body) > 0 {
 		err = unmarshal(body, &result)
 	}

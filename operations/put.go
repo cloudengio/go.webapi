@@ -73,6 +73,9 @@ func setRequestBody[RequestT any](req *http.Request, m Marshal, e Encoding, data
 		return err
 	}
 	req.ContentLength = int64(len(reqBody))
+	if req.Header == nil {
+		req.Header = make(http.Header)
+	}
 	req.Header.Set("Content-Type", e.ContentType())
 	req.GetBody = func() (io.ReadCloser, error) {
 		return io.NopCloser(bytes.NewReader(reqBody)), nil
