@@ -8,7 +8,6 @@ package operations
 
 import (
 	"context"
-	"errors"
 	"io"
 	"net/http"
 	"time"
@@ -56,14 +55,10 @@ func (ep *Endpoint[T]) Get(ctx context.Context, url string) (T, []byte, Encoding
 	return ep.get(ctx, req)
 }
 
-// IssueRequest invokes an arbitrary GET request on this endpoint using the
+// IssueRequest invokes an arbitrary request on this endpoint using the
 // supplied http.Request. The Body in the http.Response has already been
 // read and its contents returned as the second return value.
 func (ep *Endpoint[T]) IssueRequest(ctx context.Context, req *http.Request) (T, []byte, Encoding, *http.Response, error) {
-	if req.Method != "GET" {
-		var result T
-		return result, nil, ep.encoding, nil, errors.New("only GET method is supported")
-	}
 	t, r, b, err := ep.getWithResp(ctx, req)
 	return t, b, ep.encoding, r, err
 }

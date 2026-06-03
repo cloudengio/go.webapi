@@ -123,7 +123,7 @@ Get invokes a GET request on this endpoint (without a body).
 ```go
 func (ep *Endpoint[T]) IssueRequest(ctx context.Context, req *http.Request) (T, []byte, Encoding, *http.Response, error)
 ```
-IssueRequest invokes an arbitrary GET request on this endpoint using the
+IssueRequest invokes an arbitrary request on this endpoint using the
 supplied http.Request. The Body in the http.Response has already been read
 and its contents returned as the second return value.
 
@@ -201,8 +201,10 @@ information. If not specified, no logging is performed.
 
 
 ```go
-func WithMarshaller(marshal Marshal, e Encoding) Option
+func WithMarshal(marshal Marshal, e Encoding) Option
 ```
+WithMarshal specifies a custom marshaling function to use for encoding
+request bodies. The default is json.Marshal.
 
 
 ```go
@@ -255,11 +257,11 @@ func NewPutEndpoint[RequestT, ResponseT any](opts ...Option) *PutEndpoint[Reques
 ### Methods
 
 ```go
-func (ep *PutEndpoint[RequestT, ResponseT]) IssuePutPostRequest(ctx context.Context, req *http.Request, data RequestT) (ResponseT, []byte, Encoding, *http.Response, error)
+func (ep *PutEndpoint[RequestT, ResponseT]) IssueRequest(ctx context.Context, req *http.Request, data RequestT) (ResponseT, []byte, Encoding, *http.Response, error)
 ```
-IssuePutPostRequest invokes an arbitrary PUT or POST request on this
-endpoint using the supplied http.Request except that the Request body is
-overridden with encoding of the supplied data.
+IssueRequest invokes an arbitrary request on this endpoint using the
+supplied http.Request except that the Request body is overridden with
+encoding of the supplied data.
 
 
 ```go

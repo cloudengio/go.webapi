@@ -285,7 +285,7 @@ func TestIssuePutPostRequestPut(t *testing.T) {
 		t.Fatal(err)
 	}
 	data := example{"issue", 5}
-	got, body, enc, resp, err := client.IssuePutPostRequest(ctx, req, data)
+	got, body, enc, resp, err := client.IssueRequest(ctx, req, data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -315,30 +315,12 @@ func TestIssuePutPostRequestPost(t *testing.T) {
 		t.Fatal(err)
 	}
 	data := example{"post-issue", 10}
-	got, _, _, _, err := client.IssuePutPostRequest(ctx, req, data)
+	got, _, _, _, err := client.IssueRequest(ctx, req, data)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(got, data) {
 		t.Errorf("got %v, want %v", got, data)
-	}
-}
-
-func TestIssuePutPostRequestInvalidMethod(t *testing.T) {
-	ctx := context.Background()
-	srv := newBodyEchoServer(t)
-	defer srv.Close()
-
-	client := operations.NewPutEndpoint[example, example]()
-	for _, method := range []string{"GET", "DELETE", "PATCH", "HEAD"} {
-		req, err := http.NewRequestWithContext(ctx, method, srv.URL, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		_, _, _, _, err = client.IssuePutPostRequest(ctx, req, example{})
-		if err == nil {
-			t.Errorf("method %s: expected error, got nil", method)
-		}
 	}
 }
 
@@ -355,7 +337,7 @@ func TestIssuePutPostRequestEmptyTypes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, _, _, _, err := client.IssuePutPostRequest(ctx, req, emptyStruct{})
+	got, _, _, _, err := client.IssueRequest(ctx, req, emptyStruct{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -672,7 +654,7 @@ func TestIssuePutPostBodyClosedOnSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, _, _, err = client.IssuePutPostRequest(ctx, req, example{"x", 1})
+	_, _, _, _, err = client.IssueRequest(ctx, req, example{"x", 1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -694,7 +676,7 @@ func TestIssuePutPostBodyClosedOnErrorStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, _, _, err = client.IssuePutPostRequest(ctx, req, example{})
+	_, _, _, _, err = client.IssueRequest(ctx, req, example{})
 	if err == nil {
 		t.Fatal("expected error")
 	}
