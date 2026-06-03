@@ -1,13 +1,11 @@
-cloudeng.io/cmdutil v0.0.0-20260601212956-cbb9ba55a911 h1:evytHnN1OwqQ/SNeTQs04NPPY+4TwE+uqG8W7DKEsCA=
-cloudeng.io/cmdutil v0.0.0-20260601212956-cbb9ba55a911/go.mod h1:Rw5XMVlk55afzLnvLJDDdLgRxnYsrhzsvsV6rYH5umA=
+cloudeng.io/cmdutil v0.0.0-20260602205728-76c4accb8394 h1:fALmGQqcB6KgNR2b65MVeaZn0BOauv6cptYTIFo0gKw=
+cloudeng.io/cmdutil v0.0.0-20260602205728-76c4accb8394/go.mod h1:P2oKqIyCcbtKGXEJSuC7dKD11Gto7MmZw4SazevzjWc=
 cloudeng.io/errors v0.0.14-0.20260312171538-61fcde6ce278 h1:zvkZ9WBpBjerUAhl+SLCcQLar2mNdsA0kFc0Ku5NKVQ=
 cloudeng.io/errors v0.0.14-0.20260312171538-61fcde6ce278/go.mod h1:6TivTMjXopNNZ0eNsac9MfYij1WC6R0gJcsSIxcunIA=
-cloudeng.io/file v0.0.0-20260601212956-cbb9ba55a911 h1:BlhQCE9iT4U3qjoqxtZon5eq6UgB2rcTkoSq44lmA1Q=
-cloudeng.io/file v0.0.0-20260601212956-cbb9ba55a911/go.mod h1:w4DPhegqduntTqMXN/3cBtSROk2PDWT84HulzkwH4XQ=
+cloudeng.io/file v0.0.0-20260602205728-76c4accb8394 h1:0Bd41XQvZOS/ZyYbmPZvNADv5EzUxZ+p7Ttqe68a5sc=
+cloudeng.io/file v0.0.0-20260602205728-76c4accb8394/go.mod h1:MXYNGMqR3TKTVPjMHfV0Ik45aavhNje26a88lbSiCxM=
 cloudeng.io/text v0.0.16-0.20260312171538-61fcde6ce278 h1:pGH7HR6EiZ7mceD00OY2vdKSqvIUYt+1F/b3G63O6uo=
 cloudeng.io/text v0.0.16-0.20260312171538-61fcde6ce278/go.mod h1:bZd+iMNGHuFhRwk30Ife7WW56IZAMnAqApeEt4KEc0c=
-cloudeng.io/webapi/openapi v0.0.0-20260512044422-94ea35672b76 h1:ju7ltWSCscPfb+g/rUD90hxSHg51snwpbcUd+OP4+IQ=
-cloudeng.io/webapi/openapi v0.0.0-20260512044422-94ea35672b76/go.mod h1:j+lUP9BUypG67+bNEQBRjWbu/fOh78QJJKhMDV+4LiY=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dlclark/regexp2 v1.11.0 h1:G/nrcoOa7ZXlpoa/91N3X7mM3r8eIlMBBJZvsz/mxKI=

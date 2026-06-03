@@ -5,7 +5,7 @@ annotations:
     license: |
       // Use of this source code is governed by the Apache-2.0
       // license that can be found in the LICENSE file.
-    exlusions:
+    exclusions:
       - clients/benchling/benchlingsdk/benchlingsdk.go
       - clients/papersapp/papersappsdk/article_metadata.go
       - clients/papersapp/papersappsdk/ext_ids.go

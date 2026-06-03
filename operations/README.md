@@ -83,6 +83,15 @@ JSONEncoding Encoding = iota
 
 
 
+### Methods
+
+```go
+func (e Encoding) ContentType() string
+```
+ContentType returns the content type associated with this encoding.
+
+
+
 
 ### Type Endpoint
 ```go
@@ -90,8 +99,9 @@ type Endpoint[T any] struct {
 	// contains filtered or unexported fields
 }
 ```
-Endpoint represents an API endpoint that whose response body is unmarshaled,
-by default using json.Unmarshal, into the specified type.
+Endpoint represents an API endpoint that can be invoked using GET.
+The response body is unmarshaled into the specified type T. Use PutEndpoint
+for operations where both the request and response bodies can be typed.
 
 ### Functions
 
@@ -161,6 +171,13 @@ part of a crawl. The Fetcher extracts/decodes items to be fetched from the
 result of a Scan and then downloads each item.
 
 
+### Type Marshal
+```go
+type Marshal func(any) ([]byte, error)
+```
+Marshal represents a function that can be used to marshal a request body.
+
+
 ### Type Option
 ```go
 type Option func(o *options)
@@ -181,6 +198,13 @@ func WithLogger(logger *slog.Logger) Option
 ```
 WithLogger specifies the logger to use for logging request and response
 information. If not specified, no logging is performed.
+
+
+```go
+func WithMarshal(marshal Marshal, e Encoding) Option
+```
+WithMarshal specifies a custom marshaling function to use for encoding
+request bodies. The default is json.Marshal.
 
 
 ```go
@@ -211,6 +235,49 @@ type Paginator[T any] interface {
 Paginator represents the ability to generate the next request (URL with
 optional body) given the response from the previous request. Paginators are
 typically used with Scanners to iterate over a paginated API.
+
+
+### Type PutEndpoint
+```go
+type PutEndpoint[RequestT, ResponseT any] struct {
+	// contains filtered or unexported fields
+}
+```
+PutEndpoint represents an API endpoint that supports PUT requests with a
+request body of type RequestT and a response body of type ResponseT.
+
+### Functions
+
+```go
+func NewPutEndpoint[RequestT, ResponseT any](opts ...Option) *PutEndpoint[RequestT, ResponseT]
+```
+
+
+
+### Methods
+
+```go
+func (ep *PutEndpoint[RequestT, ResponseT]) IssueRequest(ctx context.Context, req *http.Request, data RequestT) (ResponseT, []byte, Encoding, *http.Response, error)
+```
+IssueRequest invokes an arbitrary request on this endpoint using the
+supplied http.Request except that the Request body is overridden with
+encoding of the supplied data.
+
+
+```go
+func (ep *PutEndpoint[RequestT, ResponseT]) Post(ctx context.Context, url string, data RequestT) (ResponseT, []byte, Encoding, error)
+```
+Post invokes a POST request on this endpoint with a request of type RequestT
+and a response of type ResponseT.
+
+
+```go
+func (ep *PutEndpoint[RequestT, ResponseT]) Put(ctx context.Context, url string, data RequestT) (ResponseT, []byte, Encoding, error)
+```
+Put invokes a PUT request on this endpoint with a request of type RequestT
+and a response of type ResponseT.
+
+
 
 
 ### Type Response

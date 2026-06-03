@@ -3,10 +3,10 @@ module cloudeng.io/webapi/clients/benchling
 go 1.26
 
 require (
-	cloudeng.io/algo v0.0.0-20260601212956-cbb9ba55a911
+	cloudeng.io/algo v0.0.0-20260602205728-76c4accb8394
 	cloudeng.io/errors v0.0.14-0.20260312171538-61fcde6ce278
-	cloudeng.io/file v0.0.0-20260601212956-cbb9ba55a911
-	cloudeng.io/logging v0.0.0-20260601212956-cbb9ba55a911
+	cloudeng.io/file v0.0.0-20260602205728-76c4accb8394
+	cloudeng.io/logging v0.0.0-20260602205728-76c4accb8394
 	cloudeng.io/path v0.0.10-0.20260312171538-61fcde6ce278
 	cloudeng.io/sync v0.0.11
 	cloudeng.io/webapi/operations v0.0.0-20260510204434-243224b8f05a
@@ -17,8 +17,8 @@ require (
 )
 
 require (
-	cloudeng.io/cmdutil v0.0.0-20260601212956-cbb9ba55a911 // indirect
-	cloudeng.io/os v0.0.0-20260601212956-cbb9ba55a911 // indirect
+	cloudeng.io/cmdutil v0.0.0-20260602205728-76c4accb8394 // indirect
+	cloudeng.io/os v0.0.0-20260602205728-76c4accb8394 // indirect
 	cloudeng.io/text v0.0.16-0.20260312171538-61fcde6ce278 // indirect
 	cloudeng.io/webapi/webapitestutil v0.0.0-20260108223722-702b7fae5336 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
