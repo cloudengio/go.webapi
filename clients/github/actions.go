@@ -5,7 +5,6 @@
 package github
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -238,17 +237,13 @@ type RegistrationToken struct {
 func CreateRegistrationToken(ctx context.Context, owner, repo string, opts ...operations.Option) (RegistrationToken, error) {
 	u := fmt.Sprintf("%s/repos/%s/%s/actions/runners/registration-token",
 		APIHost, url.PathEscape(owner), url.PathEscape(repo))
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, nil)
-	if err != nil {
-		return RegistrationToken{}, err
-	}
-	ep := operations.NewEndpoint[RegistrationToken](opts...)
-	tok, body, _, _, err := ep.IssueRequest(ctx, req)
+	ep := operations.NewPutEndpoint[struct{}, RegistrationToken](opts...)
+	tok, body, _, err := ep.Post(ctx, u, struct{}{})
 	if err == nil {
 		return tok, nil
 	}
-	// GitHub returns 201 Created for this endpoint; IssueRequest treats any
-	// non-200 status as an error but still returns the pre-read body bytes.
+	// GitHub returns 201 Created for this endpoint; Post treats any non-200
+	// status as an error but still returns the pre-read body bytes.
 	if opErr, ok := err.(*operations.Error); ok && opErr.StatusCode == http.StatusCreated {
 		if jsonErr := json.Unmarshal(body, &tok); jsonErr != nil {
 			return RegistrationToken{}, jsonErr
@@ -291,22 +286,15 @@ type Webhook struct {
 func CreateWebhook(ctx context.Context, owner, repo string, request CreateWebhookRequest, opts ...operations.Option) (Webhook, error) {
 	u := fmt.Sprintf("%s/repos/%s/%s/hooks",
 		APIHost, url.PathEscape(owner), url.PathEscape(repo))
-	body, err := json.Marshal(request)
-	if err != nil {
-		return Webhook{}, err
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, bytes.NewReader(body))
-	if err != nil {
-		return Webhook{}, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	ep := operations.NewEndpoint[Webhook](opts...)
-	hook, respBody, _, _, err := ep.IssueRequest(ctx, req)
+	ep := operations.NewPutEndpoint[CreateWebhookRequest, Webhook](opts...)
+	hook, body, _, err := ep.Post(ctx, u, request)
 	if err == nil {
 		return hook, nil
 	}
+	// GitHub returns 201 Created on success; Post treats any non-200 status as
+	// an error but still returns the pre-read body bytes.
 	if opErr, ok := err.(*operations.Error); ok && opErr.StatusCode == http.StatusCreated {
-		if jsonErr := json.Unmarshal(respBody, &hook); jsonErr != nil {
+		if jsonErr := json.Unmarshal(body, &hook); jsonErr != nil {
 			return Webhook{}, jsonErr
 		}
 		return hook, nil

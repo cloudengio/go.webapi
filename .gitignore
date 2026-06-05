@@ -18,3 +18,5 @@ go.webapi.code-workspace
 oapi-tool/oapi-tool
 go.work
 go.work.sum
+
+.gograph/
