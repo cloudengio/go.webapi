@@ -7,20 +7,6 @@ annotations:
       // license that can be found in the LICENSE file.
     exclusions:
       - clients/benchling/benchlingsdk/benchlingsdk.go
-      - clients/papersapp/papersappsdk/article_metadata.go
-      - clients/papersapp/papersappsdk/ext_ids.go
-      - clients/papersapp/papersappsdk/item.go
-      - clients/papersapp/papersappsdk/collection.go
-      - clients/papersapp/papersappsdk/file.go
-      - clients/papersapp/papersappsdk/items.go
-      - clients/papersapp/papersappsdk/swagger.json
-      - clients/papersapp/papersappsdk/collections.go
-      - clients/papersapp/papersappsdk/import_data.go
-      - clients/papersapp/papersappsdk/list.go
-      - clients/papersapp/papersappsdk/token.go
-      - clients/papersapp/papersappsdk/custom_field.go
-      - clients/papersapp/papersappsdk/item_type.go
-      - clients/papersapp/papersappsdk/lists.go
-      - clients/papersapp/papersappsdk/user_data.go
+      - clients/papersapp/papersappsdk/.*.go
 options:
   concurrency: 0
