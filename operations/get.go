@@ -41,7 +41,7 @@ type Endpoint[T any] struct {
 // NewEndpoint returns a new endpoint for the specified type.
 func NewEndpoint[T any](opts ...Option) *Endpoint[T] {
 	ep := &Endpoint[T]{}
-	handleOptions(&ep.options, opts...)
+	handleOptions(&ep.options, false, opts...)
 	return ep
 }
 
@@ -69,10 +69,10 @@ func (ep *Endpoint[T]) get(ctx context.Context, req *http.Request) (T, []byte, E
 }
 
 func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *http.Response, []byte, error) {
-	return issueRequest[T](ctx, ep.options, req, http.StatusOK)
+	return issueRequest[T](ctx, ep.options, req)
 }
 
-func issueRequest[T any](ctx context.Context, opts options, req *http.Request, okStatus int) (T, *http.Response, []byte, error) {
+func issueRequest[T any](ctx context.Context, opts options, req *http.Request) (T, *http.Response, []byte, error) {
 	opts.logger.Info("starting request", "method", req.Method, "url", req.URL.Redacted())
 	var result T
 	if err := opts.rateController.Wait(ctx); err != nil {
@@ -91,25 +91,25 @@ func issueRequest[T any](ctx context.Context, opts options, req *http.Request, o
 		var m T
 		if !authSet && opts.auth != nil {
 			if err := opts.auth.WithAuthorization(ctx, req); err != nil {
-				return m, nil, nil, handleError(err, "", 0, retries, okStatus)
+				return m, nil, nil, handleError(err, "", 0, opts.isSuccessCode, retries)
 			}
 			authSet = true
 		}
 		if req.GetBody != nil {
 			body, gerr := req.GetBody()
 			if gerr != nil {
-				return result, nil, nil, handleError(gerr, "", 0, retries, okStatus)
+				return result, nil, nil, handleError(gerr, "", 0, opts.isSuccessCode, retries)
 			}
 			req.Body = body
 		}
 		resp, err := opts.client.Do(req)
 		if err != nil {
 			if !opts.isErrorRetryableAndLog(ctx, req, err) {
-				return result, nil, nil, handleError(err, "", 0, retries, okStatus)
+				return result, nil, nil, handleError(err, "", 0, opts.isSuccessCode, retries)
 			}
 			if done, _ := backoff.Wait(ctx, nil); done {
 				logBackoff(ctx, "network backoff giving up", req, retries, time.Since(start), true, err)
-				return result, nil, nil, handleError(err, "", 0, retries, okStatus)
+				return result, nil, nil, handleError(err, "", 0, opts.isSuccessCode, retries)
 			}
 			logBackoff(ctx, "network backoff", req, retries, time.Since(start), false, err)
 			continue
@@ -118,35 +118,35 @@ func issueRequest[T any](ctx context.Context, opts options, req *http.Request, o
 			resp.Body.Close()
 			if done, _ := backoff.Wait(ctx, resp); done {
 				logBackoff(ctx, "application backoff giving up", req, retries, time.Since(start), true, err)
-				return result, nil, nil, handleError(err, resp.Status, resp.StatusCode, okStatus, retries)
+				return result, nil, nil, handleError(err, resp.Status, resp.StatusCode, opts.isSuccessCode, retries)
 			}
 			logBackoff(ctx, "application backoff", req, retries, time.Since(start), false, err)
 			continue
 		}
-		if resp.StatusCode == okStatus {
+		if opts.isSuccessCode(resp.StatusCode) {
 			opts.logger.Info("request successful", "method", req.Method, "url", req.URL.Redacted())
-			return handleResponse[T](resp, opts.unmarshal, retries, okStatus)
+			return handleResponse[T](resp, opts.unmarshal, retries, opts.isSuccessCode)
 		}
-		return handleErrorResponse[T](resp, retries, okStatus)
+		return handleErrorResponse[T](resp, retries, opts.isSuccessCode)
 	}
 }
 
-func handleErrorResponse[T any](resp *http.Response, steps int, okStatus int) (T, *http.Response, []byte, error) {
+func handleErrorResponse[T any](resp *http.Response, steps int, isOk func(int) bool) (T, *http.Response, []byte, error) {
 	var result T
 	body, err := io.ReadAll(resp.Body)
 	defer resp.Body.Close()
-	return result, resp, body, handleError(err, resp.Status, resp.StatusCode, okStatus, steps)
+	return result, resp, body, handleError(err, resp.Status, resp.StatusCode, isOk, steps)
 }
 
-func handleResponse[T any](resp *http.Response, unmarshal Unmarshal, steps, okStatus int) (T, *http.Response, []byte, error) {
+func handleResponse[T any](resp *http.Response, unmarshal Unmarshal, steps int, isOk func(int) bool) (T, *http.Response, []byte, error) {
 	var result T
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return result, resp, body, handleError(err, resp.Status, resp.StatusCode, okStatus, steps)
+		return result, resp, body, handleError(err, resp.Status, resp.StatusCode, isOk, steps)
 	}
 	if len(body) > 0 {
 		err = unmarshal(body, &result)
 	}
-	return result, resp, body, handleError(err, resp.Status, resp.StatusCode, okStatus, steps)
+	return result, resp, body, handleError(err, resp.Status, resp.StatusCode, isOk, steps)
 }

@@ -5,7 +5,6 @@
 package operations_test
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -508,22 +507,20 @@ func TestPutNilSlice(t *testing.T) {
 func TestPutWithSigner(t *testing.T) {
 	ctx := context.Background()
 	var receivedSigHeader string
+	var receivedBody []byte
 	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedSigHeader = r.Header.Get("X-Signature")
-		body, _ := io.ReadAll(r.Body)
+		receivedBody, _ = io.ReadAll(r.Body)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)
-		_, _ = w.Write(body)
+		_, _ = w.Write(receivedBody)
 	}))
 	defer srv.Close()
 
-	signer := func(req *http.Request, payload []byte) error {
-		req.Header.Set("X-Signature", "signed")
-		req.ContentLength = int64(len(payload))
-		req.GetBody = func() (io.ReadCloser, error) {
-			return io.NopCloser(bytes.NewReader(payload)), nil
-		}
-		req.Body = io.NopCloser(bytes.NewReader(payload))
+	// Signer now receives (header, payload) — it only modifies headers.
+	// setRequestBody handles body/ContentLength/GetBody after calling the signer.
+	signer := func(header http.Header, _ []byte) error {
+		header.Set("X-Signature", "signed")
 		return nil
 	}
 
@@ -539,17 +536,78 @@ func TestPutWithSigner(t *testing.T) {
 	if !reflect.DeepEqual(got, data) {
 		t.Errorf("got %v, want %v", got, data)
 	}
+	// Verify the body was still delivered correctly (setRequestBody sets it after signer).
+	encoded, _ := json.Marshal(data)
+	if !reflect.DeepEqual(receivedBody, encoded) {
+		t.Errorf("body: got %s, want %s", receivedBody, encoded)
+	}
 }
 
 func TestPutSignerError(t *testing.T) {
 	ctx := context.Background()
-	signer := func(_ *http.Request, _ []byte) error {
+	signer := func(_ http.Header, _ []byte) error {
 		return fmt.Errorf("signing failed")
 	}
 	client := operations.NewPutEndpoint[example, example](operations.WithSigner(signer))
 	_, _, _, err := client.Put(ctx, "http://127.0.0.1:1/", example{})
 	if err == nil {
 		t.Fatal("expected error from signer")
+	}
+}
+
+func TestPutDefaultSuccessCodes(t *testing.T) {
+	ctx := context.Background()
+	// PUT/POST endpoints accept both 200 OK and 202 Accepted by default.
+	for _, status := range []int{http.StatusOK, http.StatusAccepted} {
+		status := status
+		srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			body, _ := io.ReadAll(r.Body)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(status)
+			_, _ = w.Write(body)
+		}))
+		data := example{"test", status}
+		client := operations.NewPutEndpoint[example, example]()
+		got, _, _, err := client.Put(ctx, srv.URL, data)
+		srv.Close()
+		if err != nil {
+			t.Errorf("status %d: unexpected error: %v", status, err)
+			continue
+		}
+		if !reflect.DeepEqual(got, data) {
+			t.Errorf("status %d: got %v, want %v", status, got, data)
+		}
+	}
+}
+
+func TestPutWithSuccessCodes(t *testing.T) {
+	ctx := context.Background()
+	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write(body)
+	}))
+	defer srv.Close()
+
+	// Without WithSuccessCodes, 201 is treated as an error by default.
+	client := operations.NewPutEndpoint[example, example]()
+	_, _, _, err := client.Put(ctx, srv.URL, example{})
+	if err == nil {
+		t.Fatal("expected error for 201 without WithSuccessCodes")
+	}
+
+	// WithSuccessCodes(201) makes 201 a success.
+	client2 := operations.NewPutEndpoint[example, example](
+		operations.WithSuccessCodes(http.StatusCreated),
+	)
+	data := example{"created", 1}
+	got, _, _, err := client2.Put(ctx, srv.URL, data)
+	if err != nil {
+		t.Fatalf("WithSuccessCodes(201): unexpected error: %v", err)
+	}
+	if !reflect.DeepEqual(got, data) {
+		t.Errorf("got %v, want %v", got, data)
 	}
 }
 

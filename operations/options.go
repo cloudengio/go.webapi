@@ -21,12 +21,9 @@ import (
 
 // Signer represents a function that can be used to sign requests, e.g. by
 // adding appropriate headers. This is used for operations that require signing
-// of requests. Signer is called with the http.Request and the payload that is
-// being sent in the request body. It should modify the request in place
-// to add the appropriate signature information, e.g. by adding headers,
-// to set Content-Length, and to set the Body and GetBody fields of the
-// request.
-type Signer func(req *http.Request, payload []byte) error
+// of requests. Signer is called with the payload to be signed and the header
+// to which signature information should be added.
+type Signer func(header http.Header, payload []byte) error
 
 // Option represents an option that can be used when creating
 // new Endpoints and Streams.
@@ -43,9 +40,10 @@ type options struct {
 	logger             *slog.Logger
 	client             *http.Client
 	signer             Signer
+	successCodes       []int
 }
 
-func handleOptions(options *options, opts ...Option) {
+func handleOptions(options *options, putPost bool, opts ...Option) {
 	for _, fn := range opts {
 		fn(options)
 	}
@@ -65,6 +63,13 @@ func handleOptions(options *options, opts ...Option) {
 	}
 	if options.client == nil {
 		options.client = http.DefaultClient
+	}
+	if len(options.successCodes) == 0 {
+		if putPost {
+			options.successCodes = []int{http.StatusOK, http.StatusAccepted}
+		} else {
+			options.successCodes = []int{http.StatusOK}
+		}
 	}
 }
 
@@ -104,6 +109,16 @@ func WithHTTPClient(client *http.Client) Option {
 func WithSigner(signer Signer) Option {
 	return func(o *options) {
 		o.signer = signer
+	}
+}
+
+// WithSuccessCodes specifies the HTTP status codes that should be considered
+// successful responses. If not specified, only http.StatusOK (200) is
+// considered a successful response for Get operations and http.StatusOK (200)
+// http.StatusAccepted or for Put/Post operations.
+func WithSuccessCodes(codes ...int) Option {
+	return func(o *options) {
+		o.successCodes = slices.Clone(codes)
 	}
 }
 
@@ -162,4 +177,8 @@ func (o options) isErrorRetryableAndLog(ctx context.Context, req *http.Request, 
 func logBackoff(ctx context.Context, msg string, req *http.Request, retries int, took time.Duration, done bool, err error) {
 	grp := slog.Group("req", "url", req.URL, "retries", retries, "took", took, "done", done, "err", err)
 	ctxlog.Info(ctx, msg, grp)
+}
+
+func (o options) isSuccessCode(code int) bool {
+	return slices.Contains(o.successCodes, code)
 }

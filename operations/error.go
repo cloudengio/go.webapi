@@ -22,8 +22,8 @@ func (err *Error) Error() string {
 	return fmt.Sprintf("%v: %v", err.Status, err.Err)
 }
 
-func handleError(err error, status string, statusCode, okStatus int, attempts int) error {
-	if err == nil && statusCode == okStatus {
+func handleError(err error, status string, statusCode int, isOK func(int) bool, attempts int) error {
+	if err == nil && isOK(statusCode) {
 		return nil
 	}
 	return &Error{

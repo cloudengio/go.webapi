@@ -313,9 +313,7 @@ func TestWithUnmarshal(t *testing.T) {
 	srv := webapitestutil.NewServer(webapitestutil.NewEchoHandler(&eg))
 	defer srv.Close()
 
-	customUnmarshal := func(data []byte, v any) error {
-		return json.Unmarshal(data, v)
-	}
+	customUnmarshal := json.Unmarshal
 	client := operations.NewEndpoint[example](
 		operations.WithUnmarshal(customUnmarshal, operations.JSONEncoding),
 	)
@@ -328,6 +326,34 @@ func TestWithUnmarshal(t *testing.T) {
 	}
 	if got, want := enc, operations.JSONEncoding; got != want {
 		t.Errorf("encoding: got %v, want %v", got, want)
+	}
+}
+
+func TestGetWithSuccessCodes(t *testing.T) {
+	ctx := context.Background()
+	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"Name":"x","Value":1}`))
+	}))
+	defer srv.Close()
+
+	// GET default accepts only 200; 201 is an error.
+	client := operations.NewEndpoint[example]()
+	_, _, _, err := client.Get(ctx, srv.URL)
+	if err == nil {
+		t.Fatal("expected error for 201 without WithSuccessCodes")
+	}
+
+	// WithSuccessCodes(201) makes 201 a success.
+	client2 := operations.NewEndpoint[example](
+		operations.WithSuccessCodes(http.StatusCreated),
+	)
+	got, _, _, err := client2.Get(ctx, srv.URL)
+	if err != nil {
+		t.Fatalf("WithSuccessCodes(201): unexpected error: %v", err)
+	}
+	if want := (example{"x", 1}); !reflect.DeepEqual(got, want) {
+		t.Errorf("got %v, want %v", got, want)
 	}
 }
 

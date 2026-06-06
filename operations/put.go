@@ -19,7 +19,7 @@ type PutEndpoint[RequestT, ResponseT any] struct {
 
 func NewPutEndpoint[RequestT, ResponseT any](opts ...Option) *PutEndpoint[RequestT, ResponseT] {
 	ep := &PutEndpoint[RequestT, ResponseT]{}
-	handleOptions(&ep.options, opts...)
+	handleOptions(&ep.options, true, opts...)
 	return ep
 }
 
@@ -44,7 +44,7 @@ func (ep *PutEndpoint[RequestT, ResponseT]) putPost(ctx context.Context, url str
 	if err := setRequestBody(req, ep.marshal, ep.marshalEncoding, ep.signer, data); err != nil {
 		return result, nil, ep.encoding, err
 	}
-	result, _, body, err := issueRequest[ResponseT](ctx, ep.options, req, http.StatusAccepted)
+	result, _, body, err := issueRequest[ResponseT](ctx, ep.options, req)
 	if err != nil {
 		return result, body, ep.encoding, err
 	}
@@ -59,7 +59,7 @@ func (ep *PutEndpoint[RequestT, ResponseT]) IssueRequest(ctx context.Context, re
 	if err := setRequestBody(req, ep.marshal, ep.marshalEncoding, ep.signer, data); err != nil {
 		return result, nil, ep.encoding, nil, err
 	}
-	t, r, b, err := issueRequest[ResponseT](ctx, ep.options, req, http.StatusAccepted)
+	t, r, b, err := issueRequest[ResponseT](ctx, ep.options, req)
 	return t, b, ep.encoding, r, err
 }
 
@@ -73,7 +73,9 @@ func setRequestBody[RequestT any](req *http.Request, m Marshal, e Encoding, sign
 	}
 	req.Header.Set("Content-Type", e.ContentType())
 	if signer != nil {
-		return signer(req, reqBody)
+		if err := signer(req.Header, reqBody); err != nil {
+			return err
+		}
 	}
 	req.ContentLength = int64(len(reqBody))
 	req.GetBody = func() (io.ReadCloser, error) {
