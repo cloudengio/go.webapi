@@ -19,7 +19,7 @@ type PutEndpoint[RequestT, ResponseT any] struct {
 
 func NewPutEndpoint[RequestT, ResponseT any](opts ...Option) *PutEndpoint[RequestT, ResponseT] {
 	ep := &PutEndpoint[RequestT, ResponseT]{}
-	handleOptions(&ep.options, opts...)
+	handleOptions(&ep.options, true, opts...)
 	return ep
 }
 
@@ -41,7 +41,7 @@ func (ep *PutEndpoint[RequestT, ResponseT]) putPost(ctx context.Context, url str
 	if err != nil {
 		return result, nil, ep.encoding, err
 	}
-	if err := setRequestBody(req, ep.marshal, ep.marshalEncoding, data); err != nil {
+	if err := setRequestBody(req, ep.marshal, ep.marshalEncoding, ep.signer, data); err != nil {
 		return result, nil, ep.encoding, err
 	}
 	result, _, body, err := issueRequest[ResponseT](ctx, ep.options, req)
@@ -56,25 +56,31 @@ func (ep *PutEndpoint[RequestT, ResponseT]) putPost(ctx context.Context, url str
 // with encoding of the supplied data.
 func (ep *PutEndpoint[RequestT, ResponseT]) IssueRequest(ctx context.Context, req *http.Request, data RequestT) (ResponseT, []byte, Encoding, *http.Response, error) {
 	var result ResponseT
-	if err := setRequestBody(req, ep.marshal, ep.marshalEncoding, data); err != nil {
+	if err := setRequestBody(req, ep.marshal, ep.marshalEncoding, ep.signer, data); err != nil {
 		return result, nil, ep.encoding, nil, err
 	}
 	t, r, b, err := issueRequest[ResponseT](ctx, ep.options, req)
 	return t, b, ep.encoding, r, err
 }
 
-func setRequestBody[RequestT any](req *http.Request, m Marshal, e Encoding, data RequestT) error {
+func setRequestBody[RequestT any](req *http.Request, m Marshal, e Encoding, signer Signer, data RequestT) error {
 	reqBody, err := m(data)
 	if err != nil {
 		return err
 	}
-	req.ContentLength = int64(len(reqBody))
 	if req.Header == nil {
 		req.Header = make(http.Header)
 	}
 	req.Header.Set("Content-Type", e.ContentType())
+	if signer != nil {
+		if err := signer(req.Header, reqBody); err != nil {
+			return err
+		}
+	}
+	req.ContentLength = int64(len(reqBody))
 	req.GetBody = func() (io.ReadCloser, error) {
 		return io.NopCloser(bytes.NewReader(reqBody)), nil
 	}
+	req.Body = io.NopCloser(bytes.NewReader(reqBody))
 	return nil
 }
