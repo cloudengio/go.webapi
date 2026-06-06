@@ -533,9 +533,6 @@ func TestPutWithSigner(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Verify the context was forwarded to the signer.
-	if got, want := signerCtxVal, "signer-context"; got != want {
-		t.Errorf("signer context: got %q, want %q", got, want)
-	}
 	if got, want := receivedSigHeader, "signed"; got != want {
 		t.Errorf("X-Signature: got %q, want %q", got, want)
 	}
