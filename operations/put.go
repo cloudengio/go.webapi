@@ -73,7 +73,7 @@ func setRequestBody[RequestT any](req *http.Request, m Marshal, e Encoding, sign
 	}
 	req.Header.Set("Content-Type", e.ContentType())
 	if signer != nil {
-		if err := signer(req.Header, reqBody); err != nil {
+		if err := signer(req.Context(), req.Header, reqBody); err != nil {
 			return err
 		}
 	}

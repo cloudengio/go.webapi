@@ -228,6 +228,15 @@ WithSigner specifies a Signer function to use for signing requests.
 
 
 ```go
+func WithSuccessCodes(codes ...int) Option
+```
+WithSuccessCodes specifies the HTTP status codes that should be considered
+successful responses. If not specified, only http.StatusOK (200) is
+considered a successful response for Get operations and http.StatusOK (200)
+http.StatusAccepted or for Put/Post operations.
+
+
+```go
 func WithUnmarshal(u Unmarshal, e Encoding) Option
 ```
 WithUnmarshal specifies a custom unmarshaling function to use for decoding
@@ -392,14 +401,12 @@ page to scan, false otherwise.
 
 ### Type Signer
 ```go
-type Signer func(req *http.Request, payload []byte) error
+type Signer func(ctx context.Context, header http.Header, payload []byte) error
 ```
-Signer represents a function that can be used to sign requests, e.g. by
-adding appropriate headers. This is used for operations that require signing
-of requests. Signer is called with the http.Request and the payload that is
-being sent in the request body. It should modify the request in place to
-add the appropriate signature information, e.g. by adding headers, to set
-Content-Length, and to set the Body and GetBody fields of the request.
+Signer represents a function that can be used to sign requests, e.g.
+by adding appropriate headers. This is used for operations that require
+signing of requests. Signer is called with the payload to be signed and the
+header to which signature information should be added.
 
 
 ### Type Unmarshal

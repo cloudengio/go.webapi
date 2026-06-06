@@ -23,7 +23,7 @@ import (
 // adding appropriate headers. This is used for operations that require signing
 // of requests. Signer is called with the payload to be signed and the header
 // to which signature information should be added.
-type Signer func(header http.Header, payload []byte) error
+type Signer func(ctx context.Context, header http.Header, payload []byte) error
 
 // Option represents an option that can be used when creating
 // new Endpoints and Streams.

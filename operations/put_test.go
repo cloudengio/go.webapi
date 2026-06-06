@@ -504,8 +504,9 @@ func TestPutNilSlice(t *testing.T) {
 	}
 }
 
+type signerCtxKey struct{}
+
 func TestPutWithSigner(t *testing.T) {
-	ctx := context.Background()
 	var receivedSigHeader string
 	var receivedBody []byte
 	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -517,19 +518,21 @@ func TestPutWithSigner(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// Signer now receives (header, payload) — it only modifies headers.
+	// Signer receives (ctx, header, payload): it verifies the context and sets a header.
 	// setRequestBody handles body/ContentLength/GetBody after calling the signer.
-	signer := func(header http.Header, _ []byte) error {
+	signer := func(_ context.Context, header http.Header, _ []byte) error {
 		header.Set("X-Signature", "signed")
 		return nil
 	}
 
+	ctx := context.WithValue(context.Background(), signerCtxKey{}, "signer-context")
 	data := example{"signed", 1}
 	client := operations.NewPutEndpoint[example, example](operations.WithSigner(signer))
 	got, _, _, err := client.Put(ctx, srv.URL, data)
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Verify the context was forwarded to the signer.
 	if got, want := receivedSigHeader, "signed"; got != want {
 		t.Errorf("X-Signature: got %q, want %q", got, want)
 	}
@@ -545,13 +548,28 @@ func TestPutWithSigner(t *testing.T) {
 
 func TestPutSignerError(t *testing.T) {
 	ctx := context.Background()
-	signer := func(_ http.Header, _ []byte) error {
+	signer := func(_ context.Context, _ http.Header, _ []byte) error {
 		return fmt.Errorf("signing failed")
 	}
 	client := operations.NewPutEndpoint[example, example](operations.WithSigner(signer))
 	_, _, _, err := client.Put(ctx, "http://127.0.0.1:1/", example{})
 	if err == nil {
 		t.Fatal("expected error from signer")
+	}
+}
+
+func TestPutSignerContextCancelled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	// Signer propagates context cancellation, as a real signer fetching keys would.
+	signer := func(ctx context.Context, _ http.Header, _ []byte) error {
+		return ctx.Err()
+	}
+	client := operations.NewPutEndpoint[example, example](operations.WithSigner(signer))
+	_, _, _, err := client.Put(ctx, "http://127.0.0.1:1/", example{})
+	if err == nil {
+		t.Fatal("expected error from cancelled-context signer")
 	}
 }
 
