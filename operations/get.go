@@ -69,10 +69,10 @@ func (ep *Endpoint[T]) get(ctx context.Context, req *http.Request) (T, []byte, E
 }
 
 func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *http.Response, []byte, error) {
-	return issueRequest[T](ctx, ep.options, req, http.StatusOK)
+	return issueRequest[T](ctx, ep.options, req)
 }
 
-func issueRequest[T any](ctx context.Context, opts options, req *http.Request, okStatus int) (T, *http.Response, []byte, error) {
+func issueRequest[T any](ctx context.Context, opts options, req *http.Request) (T, *http.Response, []byte, error) {
 	opts.logger.Info("starting request", "method", req.Method, "url", req.URL.Redacted())
 	var result T
 	if err := opts.rateController.Wait(ctx); err != nil {
