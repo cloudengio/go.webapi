@@ -519,7 +519,7 @@ func TestPutWithSigner(t *testing.T) {
 
 	// Signer now receives (header, payload) — it only modifies headers.
 	// setRequestBody handles body/ContentLength/GetBody after calling the signer.
-	signer := func(header http.Header, _ []byte) error {
+	signer := func(_ context.Context, header http.Header, _ []byte) error {
 		header.Set("X-Signature", "signed")
 		return nil
 	}
@@ -545,7 +545,7 @@ func TestPutWithSigner(t *testing.T) {
 
 func TestPutSignerError(t *testing.T) {
 	ctx := context.Background()
-	signer := func(_ http.Header, _ []byte) error {
+	signer := func(_ context.Context, _ http.Header, _ []byte) error {
 		return fmt.Errorf("signing failed")
 	}
 	client := operations.NewPutEndpoint[example, example](operations.WithSigner(signer))
