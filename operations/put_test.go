@@ -5,8 +5,10 @@
 package operations_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -20,9 +22,9 @@ import (
 	"cloudeng.io/webapi/webapitestutil"
 )
 
-// bodyEchoHandler reads the request body and writes it back as the response,
-// also exposing the received Content-Type and method via response headers for
-// inspection.
+// bodyEchoHandler reads the request body and writes it back as the response
+// with HTTP 202 Accepted (PutEndpoint expects 202).  It also exposes the
+// received Content-Type and method via response headers for inspection.
 type bodyEchoHandler struct {
 	t *testing.T
 }
@@ -37,6 +39,7 @@ func (h *bodyEchoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Received-Content-Type", r.Header.Get("Content-Type"))
 	w.Header().Set("X-Received-Method", r.Method)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
 	if _, err := w.Write(body); err != nil {
 		h.t.Errorf("writing response: %v", err)
 	}
@@ -44,6 +47,32 @@ func (h *bodyEchoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func newBodyEchoServer(t *testing.T) *httptest.Server {
 	return webapitestutil.NewServer(&bodyEchoHandler{t: t})
+}
+
+// acceptedEchoHandler is a minimal inline helper: reads body, writes it back
+// with 202 and application/json.
+func acceptedEchoHandler(w http.ResponseWriter, r *http.Request) {
+	body, _ := io.ReadAll(r.Body)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
+	_, _ = w.Write(body)
+}
+
+// retryThenAccepted returns a handler that responds with 429 for the first
+// retries requests and then with 202 containing json.Marshal(retries).
+func retryThenAccepted(retries int) http.Handler {
+	count := 0
+	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if count < retries {
+			count++
+			w.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
+		body, _ := json.Marshal(retries)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write(body)
+	})
 }
 
 func TestPutBasic(t *testing.T) {
@@ -93,6 +122,7 @@ func TestPutContentTypeHeader(t *testing.T) {
 		receivedMethod = r.Method
 		body, _ := io.ReadAll(r.Body)
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
 		_, _ = w.Write(body)
 	}))
 	defer srv.Close()
@@ -117,6 +147,7 @@ func TestPostContentTypeHeader(t *testing.T) {
 		receivedMethod = r.Method
 		body, _ := io.ReadAll(r.Body)
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
 		_, _ = w.Write(body)
 	}))
 	defer srv.Close()
@@ -141,6 +172,8 @@ func TestPutEmptyRequestType(t *testing.T) {
 		receivedBody, _ = io.ReadAll(r.Body)
 		resp := example{"response", 1}
 		body, _ := json.Marshal(resp)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
 		_, _ = w.Write(body)
 	}))
 	defer srv.Close()
@@ -163,7 +196,8 @@ func TestPutEmptyResponseType(t *testing.T) {
 	ctx := context.Background()
 	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.ReadAll(r.Body)
-		// return empty JSON object
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
 		_, _ = w.Write([]byte("{}"))
 	}))
 	defer srv.Close()
@@ -182,6 +216,8 @@ func TestPutBothEmptyTypes(t *testing.T) {
 	ctx := context.Background()
 	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.ReadAll(r.Body)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
 		_, _ = w.Write([]byte("{}"))
 	}))
 	defer srv.Close()
@@ -198,10 +234,7 @@ func TestPutBothEmptyTypes(t *testing.T) {
 
 func TestPutPrimitiveTypes(t *testing.T) {
 	ctx := context.Background()
-	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, _ := io.ReadAll(r.Body)
-		_, _ = w.Write(body)
-	}))
+	srv := webapitestutil.NewServer(http.HandlerFunc(acceptedEchoHandler))
 	defer srv.Close()
 
 	client := operations.NewPutEndpoint[int, int]()
@@ -216,10 +249,7 @@ func TestPutPrimitiveTypes(t *testing.T) {
 
 func TestPutStringTypes(t *testing.T) {
 	ctx := context.Background()
-	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, _ := io.ReadAll(r.Body)
-		_, _ = w.Write(body)
-	}))
+	srv := webapitestutil.NewServer(http.HandlerFunc(acceptedEchoHandler))
 	defer srv.Close()
 
 	client := operations.NewPutEndpoint[string, string]()
@@ -328,6 +358,8 @@ func TestIssuePutPostRequestEmptyTypes(t *testing.T) {
 	ctx := context.Background()
 	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.ReadAll(r.Body)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
 		_, _ = w.Write([]byte("{}"))
 	}))
 	defer srv.Close()
@@ -352,6 +384,8 @@ func TestPutWithAuth(t *testing.T) {
 	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedHeader = r.Header.Get("something")
 		body, _ := io.ReadAll(r.Body)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
 		_, _ = w.Write(body)
 	}))
 	defer srv.Close()
@@ -386,6 +420,8 @@ func TestPutCustomMarshaler(t *testing.T) {
 	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedBody, _ = io.ReadAll(r.Body)
 		resp, _ := json.Marshal(example{"ok", 0})
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
 		_, _ = w.Write(resp)
 	}))
 	defer srv.Close()
@@ -429,10 +465,7 @@ func TestPutResponseBodyReturnedOnError(t *testing.T) {
 
 func TestPutSliceTypes(t *testing.T) {
 	ctx := context.Background()
-	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, _ := io.ReadAll(r.Body)
-		_, _ = w.Write(body)
-	}))
+	srv := webapitestutil.NewServer(http.HandlerFunc(acceptedEchoHandler))
 	defer srv.Close()
 
 	client := operations.NewPutEndpoint[[]example, []example]()
@@ -451,6 +484,8 @@ func TestPutNilSlice(t *testing.T) {
 	var receivedBody []byte
 	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedBody, _ = io.ReadAll(r.Body)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
 		_, _ = w.Write([]byte("[]"))
 	}))
 	defer srv.Close()
@@ -467,6 +502,114 @@ func TestPutNilSlice(t *testing.T) {
 	// response [] decodes to empty (non-nil) slice
 	if len(got) != 0 {
 		t.Errorf("got %v, want empty/nil slice", got)
+	}
+}
+
+func TestPutWithSigner(t *testing.T) {
+	ctx := context.Background()
+	var receivedSigHeader string
+	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedSigHeader = r.Header.Get("X-Signature")
+		body, _ := io.ReadAll(r.Body)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write(body)
+	}))
+	defer srv.Close()
+
+	signer := func(req *http.Request, payload []byte) error {
+		req.Header.Set("X-Signature", "signed")
+		req.ContentLength = int64(len(payload))
+		req.GetBody = func() (io.ReadCloser, error) {
+			return io.NopCloser(bytes.NewReader(payload)), nil
+		}
+		req.Body = io.NopCloser(bytes.NewReader(payload))
+		return nil
+	}
+
+	data := example{"signed", 1}
+	client := operations.NewPutEndpoint[example, example](operations.WithSigner(signer))
+	got, _, _, err := client.Put(ctx, srv.URL, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := receivedSigHeader, "signed"; got != want {
+		t.Errorf("X-Signature: got %q, want %q", got, want)
+	}
+	if !reflect.DeepEqual(got, data) {
+		t.Errorf("got %v, want %v", got, data)
+	}
+}
+
+func TestPutSignerError(t *testing.T) {
+	ctx := context.Background()
+	signer := func(_ *http.Request, _ []byte) error {
+		return fmt.Errorf("signing failed")
+	}
+	client := operations.NewPutEndpoint[example, example](operations.WithSigner(signer))
+	_, _, _, err := client.Put(ctx, "http://127.0.0.1:1/", example{})
+	if err == nil {
+		t.Fatal("expected error from signer")
+	}
+}
+
+func TestPutMarshalError(t *testing.T) {
+	ctx := context.Background()
+	failMarshal := func(_ any) ([]byte, error) {
+		return nil, fmt.Errorf("marshal failed")
+	}
+	client := operations.NewPutEndpoint[example, example](
+		operations.WithMarshal(failMarshal, operations.JSONEncoding),
+	)
+	_, _, _, err := client.Put(ctx, "http://127.0.0.1:1/", example{})
+	if err == nil {
+		t.Fatal("expected error from marshal")
+	}
+}
+
+func TestPutInvalidURL(t *testing.T) {
+	ctx := context.Background()
+	client := operations.NewPutEndpoint[example, example]()
+	_, _, _, err := client.Put(ctx, "://invalid-url", example{})
+	if err == nil {
+		t.Fatal("expected error for invalid URL")
+	}
+}
+
+func TestIssueRequestMarshalError(t *testing.T) {
+	ctx := context.Background()
+	failMarshal := func(_ any) ([]byte, error) {
+		return nil, fmt.Errorf("marshal failed")
+	}
+	client := operations.NewPutEndpoint[example, example](
+		operations.WithMarshal(failMarshal, operations.JSONEncoding),
+	)
+	req, _ := http.NewRequestWithContext(ctx, "PUT", "http://127.0.0.1:1/", nil)
+	_, _, _, _, err := client.IssueRequest(ctx, req, example{})
+	if err == nil {
+		t.Fatal("expected error from marshal in IssueRequest")
+	}
+}
+
+func TestIssueRequestNilHeaders(t *testing.T) {
+	ctx := context.Background()
+	srv := newBodyEchoServer(t)
+	defer srv.Close()
+
+	client := operations.NewPutEndpoint[example, example]()
+	req, err := http.NewRequestWithContext(ctx, "PUT", srv.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Force nil headers to exercise the req.Header == nil branch in setRequestBody.
+	req.Header = nil
+	data := example{"nil-headers", 7}
+	got, _, _, _, err := client.IssueRequest(ctx, req, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, data) {
+		t.Errorf("got %v, want %v", got, data)
 	}
 }
 
@@ -589,6 +732,8 @@ func TestPutBodyClosedOnEmptyStructSuccess(t *testing.T) {
 	tr := installTrackingTransport(t)
 	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.ReadAll(r.Body)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
 		_, _ = w.Write([]byte("{}"))
 	}))
 	defer srv.Close()
@@ -607,7 +752,7 @@ func TestPutBodyClosedOnBackoffThenSuccess(t *testing.T) {
 	ctx := context.Background()
 	tr := installTrackingTransport(t)
 	numRetries := 2
-	srv := webapitestutil.NewServer(webapitestutil.NewRetryHandler(numRetries))
+	srv := webapitestutil.NewServer(retryThenAccepted(numRetries))
 	defer srv.Close()
 
 	rc := ratecontrol.New(ratecontrol.WithExponentialBackoff(time.Millisecond, numRetries, true))

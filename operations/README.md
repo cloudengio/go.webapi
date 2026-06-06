@@ -194,6 +194,13 @@ WithAuth specifies the instance of Auth to use when making requests.
 
 
 ```go
+func WithHTTPClient(client *http.Client) Option
+```
+WithHTTPClient specifies the http.Client to use for making requests.
+If not specified, http.DefaultClient is used.
+
+
+```go
 func WithLogger(logger *slog.Logger) Option
 ```
 WithLogger specifies the logger to use for logging request and response
@@ -212,6 +219,12 @@ func WithRateController(rc *ratecontrol.Controller, statusCodes ...int) Option
 ```
 WithRateController sets the rate controller to use to enforce rate control
 and backoff.
+
+
+```go
+func WithSigner(signer Signer) Option
+```
+WithSigner specifies a Signer function to use for signing requests.
 
 
 ```go
@@ -375,6 +388,18 @@ Scan iterates over the paginated API. It returns true if there is another
 page to scan, false otherwise.
 
 
+
+
+### Type Signer
+```go
+type Signer func(req *http.Request, payload []byte) error
+```
+Signer represents a function that can be used to sign requests, e.g. by
+adding appropriate headers. This is used for operations that require signing
+of requests. Signer is called with the http.Request and the payload that is
+being sent in the request body. It should modify the request in place to
+add the appropriate signature information, e.g. by adding headers, to set
+Content-Length, and to set the Body and GetBody fields of the request.
 
 
 ### Type Unmarshal

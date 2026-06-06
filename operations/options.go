@@ -19,6 +19,15 @@ import (
 	"cloudeng.io/logging/ctxlog"
 )
 
+// Signer represents a function that can be used to sign requests, e.g. by
+// adding appropriate headers. This is used for operations that require signing
+// of requests. Signer is called with the http.Request and the payload that is
+// being sent in the request body. It should modify the request in place
+// to add the appropriate signature information, e.g. by adding headers,
+// to set Content-Length, and to set the Body and GetBody fields of the
+// request.
+type Signer func(req *http.Request, payload []byte) error
+
 // Option represents an option that can be used when creating
 // new Endpoints and Streams.
 type Option func(o *options)
@@ -32,6 +41,8 @@ type options struct {
 	marshal            Marshal
 	marshalEncoding    Encoding
 	logger             *slog.Logger
+	client             *http.Client
+	signer             Signer
 }
 
 func handleOptions(options *options, opts ...Option) {
@@ -51,6 +62,9 @@ func handleOptions(options *options, opts ...Option) {
 	}
 	if options.logger == nil {
 		options.logger = slog.New(slog.DiscardHandler)
+	}
+	if options.client == nil {
+		options.client = http.DefaultClient
 	}
 }
 
@@ -75,6 +89,21 @@ func WithAuth(a Auth) Option {
 func WithLogger(logger *slog.Logger) Option {
 	return func(o *options) {
 		o.logger = logger
+	}
+}
+
+// WithHTTPClient specifies the http.Client to use for making requests. If not
+// specified, http.DefaultClient is used.
+func WithHTTPClient(client *http.Client) Option {
+	return func(o *options) {
+		o.client = client
+	}
+}
+
+// WithSigner specifies a Signer function to use for signing requests.
+func WithSigner(signer Signer) Option {
+	return func(o *options) {
+		o.signer = signer
 	}
 }
 

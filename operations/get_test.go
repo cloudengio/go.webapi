@@ -8,6 +8,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"reflect"
 	"testing"
@@ -179,5 +181,173 @@ func TestTimeout(t *testing.T) {
 
 	if got, want := operr.Attempts, 10; got != want {
 		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
+func TestEndpointIssueRequest(t *testing.T) {
+	ctx := context.Background()
+	eg := example{"issue", 42}
+	srv := webapitestutil.NewServer(webapitestutil.NewEchoHandler(&eg))
+	defer srv.Close()
+
+	client := operations.NewEndpoint[example]()
+	req, err := http.NewRequestWithContext(ctx, "GET", srv.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, body, enc, resp, err := client.IssueRequest(ctx, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp == nil {
+		t.Fatal("expected non-nil http.Response")
+	}
+	if !reflect.DeepEqual(got, eg) {
+		t.Errorf("got %v, want %v", got, eg)
+	}
+	data, _ := json.Marshal(eg)
+	if !bytes.Equal(body, data) {
+		t.Errorf("body: got %s, want %s", body, data)
+	}
+	if got, want := enc, operations.JSONEncoding; got != want {
+		t.Errorf("encoding: got %v, want %v", got, want)
+	}
+}
+
+type failAuth struct{}
+
+func (a *failAuth) WithAuthorization(_ context.Context, _ *http.Request) error {
+	return fmt.Errorf("auth failed")
+}
+
+func TestAuthError(t *testing.T) {
+	ctx := context.Background()
+	srv := webapitestutil.NewServer(webapitestutil.NewEchoHandler(&example{}))
+	defer srv.Close()
+
+	client := operations.NewEndpoint[example](operations.WithAuth(&failAuth{}))
+	_, _, _, err := client.Get(ctx, srv.URL)
+	if err == nil {
+		t.Fatal("expected error from failing auth")
+	}
+}
+
+func TestEncodingContentType(t *testing.T) {
+	if got, want := operations.JSONEncoding.ContentType(), "application/json"; got != want {
+		t.Errorf("JSONEncoding: got %q, want %q", got, want)
+	}
+	// An unknown Encoding value should fall back to octet-stream.
+	unknown := operations.Encoding(99)
+	if got, want := unknown.ContentType(), "application/octet-stream"; got != want {
+		t.Errorf("unknown encoding: got %q, want %q", got, want)
+	}
+}
+
+func TestEndpointGetInvalidURL(t *testing.T) {
+	ctx := context.Background()
+	client := operations.NewEndpoint[example]()
+	_, _, _, err := client.Get(ctx, "://invalid-url")
+	if err == nil {
+		t.Fatal("expected error for invalid URL")
+	}
+}
+
+func TestGetNetworkError(t *testing.T) {
+	ctx := context.Background()
+	client := operations.NewEndpoint[example]()
+	// Port 1 is reserved and will refuse connections, triggering a non-retryable
+	// network error and covering isErrorRetryable / isErrorRetryableAndLog.
+	_, _, _, err := client.Get(ctx, "http://127.0.0.1:1/")
+	if err == nil {
+		t.Fatal("expected network error")
+	}
+	// Verify Error.Error() works for the non-nil-Err branch.
+	operr, ok := err.(*operations.Error)
+	if !ok {
+		t.Fatalf("expected *operations.Error, got %T", err)
+	}
+	if operr.Error() == "" {
+		t.Error("Error.Error() returned empty string")
+	}
+}
+
+func TestErrorMethodNilErr(t *testing.T) {
+	ctx := context.Background()
+	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	client := operations.NewEndpoint[example]()
+	_, _, _, err := client.Get(ctx, srv.URL)
+	operr, ok := err.(*operations.Error)
+	if !ok {
+		t.Fatalf("expected *operations.Error, got %T", err)
+	}
+	// When Err is nil, Error() returns Status — covers the nil branch in Error().
+	if operr.Error() == "" {
+		t.Error("Error.Error() returned empty string for nil-Err case")
+	}
+}
+
+func TestWithHTTPClient(t *testing.T) {
+	ctx := context.Background()
+	eg := example{"custom-client", 1}
+	srv := webapitestutil.NewServer(webapitestutil.NewEchoHandler(&eg))
+	defer srv.Close()
+
+	customClient := &http.Client{Timeout: 10 * time.Second}
+	client := operations.NewEndpoint[example](operations.WithHTTPClient(customClient))
+	got, _, _, err := client.Get(ctx, srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, eg) {
+		t.Errorf("got %v, want %v", got, eg)
+	}
+}
+
+func TestWithUnmarshal(t *testing.T) {
+	ctx := context.Background()
+	eg := example{"custom-unmarshal", 2}
+	srv := webapitestutil.NewServer(webapitestutil.NewEchoHandler(&eg))
+	defer srv.Close()
+
+	customUnmarshal := func(data []byte, v any) error {
+		return json.Unmarshal(data, v)
+	}
+	client := operations.NewEndpoint[example](
+		operations.WithUnmarshal(customUnmarshal, operations.JSONEncoding),
+	)
+	got, _, enc, err := client.Get(ctx, srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, eg) {
+		t.Errorf("got %v, want %v", got, eg)
+	}
+	if got, want := enc, operations.JSONEncoding; got != want {
+		t.Errorf("encoding: got %v, want %v", got, want)
+	}
+}
+
+func TestWithLogger(t *testing.T) {
+	ctx := context.Background()
+	eg := example{"logged", 3}
+	srv := webapitestutil.NewServer(webapitestutil.NewEchoHandler(&eg))
+	defer srv.Close()
+
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, nil))
+	client := operations.NewEndpoint[example](operations.WithLogger(logger))
+	got, _, _, err := client.Get(ctx, srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, eg) {
+		t.Errorf("got %v, want %v", got, eg)
+	}
+	if buf.Len() == 0 {
+		t.Error("expected log output, got none")
 	}
 }

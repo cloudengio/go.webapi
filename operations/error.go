@@ -6,7 +6,6 @@ package operations
 
 import (
 	"fmt"
-	"net/http"
 )
 
 type Error struct {
@@ -23,8 +22,8 @@ func (err *Error) Error() string {
 	return fmt.Sprintf("%v: %v", err.Status, err.Err)
 }
 
-func handleError(err error, status string, statusCode int, attempts int) error {
-	if err == nil && statusCode == http.StatusOK {
+func handleError(err error, status string, statusCode, okStatus int, attempts int) error {
+	if err == nil && statusCode == okStatus {
 		return nil
 	}
 	return &Error{
