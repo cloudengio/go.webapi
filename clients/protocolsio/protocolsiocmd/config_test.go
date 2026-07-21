@@ -22,7 +22,7 @@ protocols.io:
 
 func TestConfig(t *testing.T) {
 	var crawls apicrawlcmd.Crawls
-	if err := cmdyaml.ParseConfigString(protocolsioSpec, &crawls); err != nil {
+	if err := cmdyaml.ParseConfigs(&crawls, []byte(protocolsioSpec)); err != nil {
 		t.Fatal(err)
 	}
 	var cfg apicrawlcmd.Crawl[protocolsiocmd.Service]
