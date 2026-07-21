@@ -10,19 +10,16 @@ require (
 	cloudeng.io/logging v0.0.0-20260721222700-155e56185eeb
 	cloudeng.io/path v0.0.10-0.20260312171538-61fcde6ce278
 	cloudeng.io/webapi/operations v0.0.0-20260510204434-243224b8f05a
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
 	cloudeng.io/os v0.0.0-20260721222700-155e56185eeb // indirect
-	cloudeng.io/sys v0.0.0-20260721222700-155e56185eeb // indirect
-	golang.org/x/sys v0.47.0 // indirect
-)
-
-require (
 	cloudeng.io/sync v0.0.11 // indirect
+	cloudeng.io/sys v0.0.0-20260721222700-155e56185eeb // indirect
 	cloudeng.io/text v0.0.16-0.20260624171915-da98fe9dec2b // indirect
 	golang.org/x/net v0.57.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1
+	golang.org/x/sys v0.47.0 // indirect
 )
 
 replace cloudeng.io/webapi/operations => ../../operations
