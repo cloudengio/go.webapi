@@ -39,7 +39,7 @@ type api2 struct {
 
 func TestAPICrawlConfig(t *testing.T) {
 	var crawls apicrawlcmd.Crawls
-	if err := cmdyaml.ParseConfigString(apiCrawlSpec, &crawls); err != nil {
+	if err := cmdyaml.ParseConfigs(&crawls, []byte(apiCrawlSpec)); err != nil {
 		t.Fatal(err)
 	}
 
