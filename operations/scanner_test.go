@@ -6,6 +6,7 @@ package operations_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -127,6 +128,86 @@ func TestScannerErrorImmediately(t *testing.T) {
 	}
 	if err := scanner.Err(); err == nil || err.Error() != "fail immediately" {
 		t.Errorf("missing or unexpected error: %v", err)
+	}
+}
+
+// errorHandler responds with a fixed status code and body for every request,
+// so tests can exercise the error-detail path of Scanner where an HTTP-level
+// error carries a response body and originating request.
+type errorHandler struct {
+	statusCode int
+	body       string
+}
+
+func (h *errorHandler) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(h.statusCode)
+	_, _ = w.Write([]byte(h.body))
+}
+
+// TestScannerErrDetail verifies that when scanning fails because of an HTTP
+// error, ErrDetail returns the error together with the non-nil response body
+// and the request that caused it.
+func TestScannerErrDetail(t *testing.T) {
+	ctx := context.Background()
+	const body = `{"message":"not found"}`
+	srv := webapitestutil.NewServer(&errorHandler{statusCode: http.StatusNotFound, body: body})
+	defer srv.Close()
+	paginator := &paginator{url: srv.URL}
+	scanner := operations.NewScanner[webapitestutil.Paginated](paginator)
+	for scanner.Scan(ctx) {
+		t.Error("expected Scan to return false")
+	}
+
+	err := scanner.Err()
+	var opErr *operations.Error
+	if !errors.As(err, &opErr) {
+		t.Fatalf("expected *operations.Error, got %T: %v", err, err)
+	}
+	if got, want := opErr.StatusCode, http.StatusNotFound; got != want {
+		t.Errorf("got %v, want %v", got, want)
+	}
+
+	dbody, dreq, derr := scanner.ErrDetail()
+	if got, want := derr, err; got != want {
+		t.Errorf("ErrDetail error: got %v, want %v", got, want)
+	}
+	if got, want := string(dbody), body; got != want {
+		t.Errorf("body: got %q, want %q", got, want)
+	}
+	if dreq == nil {
+		t.Fatal("expected a non-nil request")
+	}
+	if got, want := dreq.URL.String(), srv.URL; got != want {
+		t.Errorf("request URL: got %v, want %v", got, want)
+	}
+}
+
+// TestScannerErrDetailPaginatorError verifies that when scanning fails because
+// the paginator itself returns an error (rather than an HTTP response), ErrDetail
+// returns the error together with an empty, but non-nil, body and request.
+func TestScannerErrDetailPaginatorError(t *testing.T) {
+	ctx := context.Background()
+	handler := &webapitestutil.PaginatedHandler{Last: 10}
+	srv := webapitestutil.NewServer(handler)
+	defer srv.Close()
+	paginator := &errPaginator{url: srv.URL}
+	scanner := operations.NewScanner[webapitestutil.Paginated](paginator)
+	for scanner.Scan(ctx) {
+		t.Error("expected Scan to return false")
+	}
+
+	dbody, dreq, derr := scanner.ErrDetail()
+	if derr == nil || derr.Error() != "fail immediately" {
+		t.Errorf("missing or unexpected error: %v", derr)
+	}
+	if dbody == nil {
+		t.Error("expected a non-nil body")
+	}
+	if got, want := len(dbody), 0; got != want {
+		t.Errorf("body length: got %v, want %v", got, want)
+	}
+	if dreq == nil {
+		t.Fatal("expected a non-nil request")
 	}
 }
 

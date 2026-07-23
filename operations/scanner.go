@@ -7,6 +7,7 @@ package operations
 import (
 	"context"
 	"net/http"
+	"net/url"
 )
 
 // Paginator represents the ability to generate the next request (URL with optional
@@ -20,6 +21,7 @@ type Paginator[T any] interface {
 }
 
 type response[T any] struct {
+	req          *http.Request
 	response     T
 	httpResponse *http.Response
 	body         []byte
@@ -31,6 +33,8 @@ type response[T any] struct {
 // Scanner provides the ability to iterate over a paginated API a page at a time.
 type Scanner[T any] struct {
 	err       error
+	errBody   []byte
+	errReq    *http.Request
 	done      bool
 	paginator Paginator[T]
 	ep        *Endpoint[T]
@@ -75,6 +79,8 @@ func (sc *Scanner[T]) Scan(ctx context.Context) bool {
 	resp := <-sc.ch
 	if err := resp.err; err != nil {
 		sc.err = err
+		sc.errBody = resp.body
+		sc.errReq = resp.req
 		return false
 	}
 	sc.resp = resp
@@ -104,7 +110,7 @@ func (sc *Scanner[T]) Body() []byte {
 func (sc *Scanner[T]) get(ctx context.Context, req *http.Request) {
 	payload, resp, body, err := sc.ep.getWithResp(ctx, req)
 	if err != nil {
-		sc.ch <- response[T]{response: payload, body: body, last: true, err: err}
+		sc.ch <- response[T]{req: req, response: payload, body: body, last: true, err: err}
 		return
 	}
 	req, last, err := sc.paginator.Next(ctx, payload, resp)
@@ -125,4 +131,21 @@ func (sc *Scanner[T]) get(ctx context.Context, req *http.Request) {
 // Err returns the first error encountered during scanning.
 func (sc *Scanner[T]) Err() error {
 	return sc.err
+}
+
+// ErrDetail returns the first error encountered during scanning along with the
+// body and request that caused the error. This can be used to provide more
+// context when debugging errors. The body and request will never be nil,
+// but may be empty if the error occurred before a request was made or a
+// response was received.
+func (sc *Scanner[T]) ErrDetail() ([]byte, *http.Request, error) {
+	body := sc.errBody
+	if body == nil {
+		body = []byte{}
+	}
+	req := sc.errReq
+	if req == nil {
+		req = &http.Request{URL: &url.URL{}}
+	}
+	return body, req, sc.err
 }
