@@ -379,7 +379,7 @@ Err returns the first error encountered during scanning.
 
 
 ```go
-func (sc *Scanner[T]) ErrDetail() (error, []byte, *http.Request)
+func (sc *Scanner[T]) ErrDetail() ([]byte, *http.Request, error)
 ```
 ErrDetail returns the first error encountered during scanning along with
 the body and request that caused the error. This can be used to provide more

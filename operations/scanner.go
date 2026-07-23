@@ -7,6 +7,7 @@ package operations
 import (
 	"context"
 	"net/http"
+	"net/url"
 )
 
 // Paginator represents the ability to generate the next request (URL with optional
@@ -114,7 +115,7 @@ func (sc *Scanner[T]) get(ctx context.Context, req *http.Request) {
 	}
 	req, last, err := sc.paginator.Next(ctx, payload, resp)
 	if err != nil {
-		sc.ch <- response[T]{response: payload, last: true, err: err}
+		sc.ch <- response[T]{response: payload, body: body, last: true, err: err}
 		return
 	}
 	sc.ch <- response[T]{
@@ -137,14 +138,14 @@ func (sc *Scanner[T]) Err() error {
 // context when debugging errors. The body and request will never be nil,
 // but may be empty if the error occurred before a request was made or a
 // response was received.
-func (sc *Scanner[T]) ErrDetail() (error, []byte, *http.Request) {
+func (sc *Scanner[T]) ErrDetail() ([]byte, *http.Request, error) {
 	body := sc.errBody
 	if body == nil {
 		body = []byte{}
 	}
 	req := sc.errReq
 	if req == nil {
-		req = &http.Request{}
+		req = &http.Request{URL: &url.URL{}}
 	}
-	return sc.err, body, req
+	return body, req, sc.err
 }

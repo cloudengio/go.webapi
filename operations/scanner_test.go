@@ -167,7 +167,7 @@ func TestScannerErrDetail(t *testing.T) {
 		t.Errorf("got %v, want %v", got, want)
 	}
 
-	derr, dbody, dreq := scanner.ErrDetail()
+	dbody, dreq, derr := scanner.ErrDetail()
 	if got, want := derr, err; got != want {
 		t.Errorf("ErrDetail error: got %v, want %v", got, want)
 	}
@@ -196,7 +196,7 @@ func TestScannerErrDetailPaginatorError(t *testing.T) {
 		t.Error("expected Scan to return false")
 	}
 
-	derr, dbody, dreq := scanner.ErrDetail()
+	dbody, dreq, derr := scanner.ErrDetail()
 	if derr == nil || derr.Error() != "fail immediately" {
 		t.Errorf("missing or unexpected error: %v", derr)
 	}
