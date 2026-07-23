@@ -379,6 +379,16 @@ Err returns the first error encountered during scanning.
 
 
 ```go
+func (sc *Scanner[T]) ErrDetail() (error, []byte, *http.Request)
+```
+ErrDetail returns the first error encountered during scanning along with
+the body and request that caused the error. This can be used to provide more
+context when debugging errors. The body and request will never be nil, but
+may be empty if the error occurred before a request was made or a response
+was received.
+
+
+```go
 func (sc *Scanner[T]) HTTPResponse() *http.Response
 ```
 HTTPResponse returns the response for the current page.
