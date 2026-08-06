@@ -128,19 +128,19 @@ func MockJob(owner, repo string) *gogithub.WorkflowJob {
 func MockRun(owner, repo string) *gogithub.WorkflowRun {
 	now := gogithub.Timestamp{Time: time.Now().UTC()}
 	return &gogithub.WorkflowRun{
-		ID:           gogithub.Ptr(int64(1)),
-		Name:         gogithub.Ptr("CI"),
-		HeadBranch:   gogithub.Ptr("main"),
-		HeadSHA:      gogithub.Ptr(strings.Repeat("a", 40)),
-		RunNumber:    gogithub.Ptr(1),
-		RunAttempt:   gogithub.Ptr(1),
-		Status:       gogithub.Ptr("requested"),
-		Event:        gogithub.Ptr("push"),
-		WorkflowID:   gogithub.Ptr(int64(1)),
-		URL:          gogithub.Ptr(fmt.Sprintf("%s/repos/%s/%s/actions/runs/1", APIHost, url.PathEscape(owner), url.PathEscape(repo))),
-		HTMLURL:      gogithub.Ptr(fmt.Sprintf("https://github.com/%s/%s/actions/runs/1", url.PathEscape(owner), url.PathEscape(repo))),
-		CreatedAt:    &now,
-		Actor:        &gogithub.User{Login: gogithub.Ptr(owner)},
+		ID:         gogithub.Ptr(int64(1)),
+		Name:       gogithub.Ptr("CI"),
+		HeadBranch: gogithub.Ptr("main"),
+		HeadSHA:    gogithub.Ptr(strings.Repeat("a", 40)),
+		RunNumber:  gogithub.Ptr(1),
+		RunAttempt: gogithub.Ptr(1),
+		Status:     gogithub.Ptr("requested"),
+		Event:      gogithub.Ptr("push"),
+		WorkflowID: gogithub.Ptr(int64(1)),
+		URL:        gogithub.Ptr(fmt.Sprintf("%s/repos/%s/%s/actions/runs/1", APIHost, url.PathEscape(owner), url.PathEscape(repo))),
+		HTMLURL:    gogithub.Ptr(fmt.Sprintf("https://github.com/%s/%s/actions/runs/1", url.PathEscape(owner), url.PathEscape(repo))),
+		CreatedAt:  &now,
+		Actor:      &gogithub.User{Login: gogithub.Ptr(owner)},
 	}
 }
 
