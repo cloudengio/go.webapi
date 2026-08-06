@@ -17,35 +17,9 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	gogithub "github.com/google/go-github/v89/github"
 )
-
-// Repository represents the repository information included in webhook payloads.
-type Repository struct {
-	ID       int64  `json:"id"`
-	Name     string `json:"name"`
-	FullName string `json:"full_name"`
-	HTMLURL  string `json:"html_url"`
-	Private  bool   `json:"private"`
-	Owner    Actor  `json:"owner"`
-}
-
-// WorkflowJobEvent is the payload delivered to a webhook for workflow_job events.
-// Action is one of "queued", "in_progress", or "completed".
-type WorkflowJobEvent struct {
-	Action      string     `json:"action"`
-	WorkflowJob Job        `json:"workflow_job"`
-	Repository  Repository `json:"repository"`
-	Sender      Actor      `json:"sender"`
-}
-
-// WorkflowRunEvent is the payload delivered to a webhook for workflow_run events.
-// Action is one of "requested", "in_progress", or "completed".
-type WorkflowRunEvent struct {
-	Action      string      `json:"action"`
-	WorkflowRun WorkflowRun `json:"workflow_run"`
-	Repository  Repository  `json:"repository"`
-	Sender      Actor       `json:"sender"`
-}
 
 // MockWebhook creates signed HTTP POST requests that mimic GitHub webhook
 // deliveries. It is intended for testing webhook relays and handlers.
@@ -64,34 +38,34 @@ func NewMockWebhook(owner, repo, secret string) *MockWebhook {
 
 // JobRequest returns a signed HTTP POST request to targetURL for a workflow_job
 // event. action must be one of "queued", "in_progress", or "completed".
-func (m *MockWebhook) JobRequest(ctx context.Context, targetURL, action string, job Job) (*http.Request, error) {
-	event := WorkflowJobEvent{
-		Action:      action,
+func (m *MockWebhook) JobRequest(ctx context.Context, targetURL, action string, job *gogithub.WorkflowJob) (*http.Request, error) {
+	event := gogithub.WorkflowJobEvent{
+		Action:      gogithub.Ptr(action),
 		WorkflowJob: job,
-		Repository:  m.repository(),
-		Sender:      Actor{Login: m.owner},
+		Repo:        m.repository(),
+		Sender:      &gogithub.User{Login: gogithub.Ptr(m.owner)},
 	}
 	return m.newRequest(ctx, targetURL, "workflow_job", event)
 }
 
 // RunRequest returns a signed HTTP POST request to targetURL for a workflow_run
 // event. action must be one of "requested", "in_progress", or "completed".
-func (m *MockWebhook) RunRequest(ctx context.Context, targetURL, action string, run WorkflowRun) (*http.Request, error) {
-	event := WorkflowRunEvent{
-		Action:      action,
+func (m *MockWebhook) RunRequest(ctx context.Context, targetURL, action string, run *gogithub.WorkflowRun) (*http.Request, error) {
+	event := gogithub.WorkflowRunEvent{
+		Action:      gogithub.Ptr(action),
 		WorkflowRun: run,
-		Repository:  m.repository(),
-		Sender:      Actor{Login: m.owner},
+		Repo:        m.repository(),
+		Sender:      &gogithub.User{Login: gogithub.Ptr(m.owner)},
 	}
 	return m.newRequest(ctx, targetURL, "workflow_run", event)
 }
 
-func (m *MockWebhook) repository() Repository {
-	return Repository{
-		Name:     m.repo,
-		FullName: m.owner + "/" + m.repo,
-		HTMLURL:  "https://github.com/" + url.PathEscape(m.owner) + "/" + url.PathEscape(m.repo),
-		Owner:    Actor{Login: m.owner},
+func (m *MockWebhook) repository() *gogithub.Repository {
+	return &gogithub.Repository{
+		Name:     gogithub.Ptr(m.repo),
+		FullName: gogithub.Ptr(m.owner + "/" + m.repo),
+		HTMLURL:  gogithub.Ptr("https://github.com/" + url.PathEscape(m.owner) + "/" + url.PathEscape(m.repo)),
+		Owner:    &gogithub.User{Login: gogithub.Ptr(m.owner)},
 	}
 }
 
@@ -132,42 +106,41 @@ func VerifyWebhookSignature(secret string, body []byte, signature string) bool {
 	return hmac.Equal(mac.Sum(nil), want)
 }
 
-// MockJob returns a Job populated with typical values for use in tests.
+// MockJob returns a WorkflowJob populated with typical values for use in tests.
 // Callers may overwrite any field before passing it to MockWebhook.JobRequest.
-func MockJob(owner, repo string) Job {
-	now := time.Now().UTC()
-	return Job{
-		ID:           1,
-		RunID:        1,
-		Name:         "test-job",
-		Status:       "queued",
-		HeadBranch:   "main",
-		HeadSHA:      strings.Repeat("a", 40),
-		WorkflowName: "CI",
-		HTMLURL:      fmt.Sprintf("https://github.com/%s/%s/actions/runs/1/jobs/1", url.PathEscape(owner), url.PathEscape(repo)),
+func MockJob(owner, repo string) *gogithub.WorkflowJob {
+	now := gogithub.Timestamp{Time: time.Now().UTC()}
+	return &gogithub.WorkflowJob{
+		ID:           gogithub.Ptr(int64(1)),
+		RunID:        gogithub.Ptr(int64(1)),
+		Name:         gogithub.Ptr("test-job"),
+		Status:       gogithub.Ptr("queued"),
+		HeadBranch:   gogithub.Ptr("main"),
+		HeadSHA:      gogithub.Ptr(strings.Repeat("a", 40)),
+		WorkflowName: gogithub.Ptr("CI"),
+		HTMLURL:      gogithub.Ptr(fmt.Sprintf("https://github.com/%s/%s/actions/runs/1/jobs/1", url.PathEscape(owner), url.PathEscape(repo))),
 		StartedAt:    &now,
 	}
 }
 
 // MockRun returns a WorkflowRun populated with typical values for use in tests.
 // Callers may overwrite any field before passing it to MockWebhook.RunRequest.
-func MockRun(owner, repo string) WorkflowRun {
-	now := time.Now().UTC()
-	return WorkflowRun{
-		ID:           1,
-		Name:         "CI",
-		HeadBranch:   "main",
-		HeadSHA:      strings.Repeat("a", 40),
-		RunNumber:    1,
-		RunAttempt:   1,
-		Status:       "requested",
-		Event:        "push",
-		WorkflowID:   1,
-		WorkflowName: "CI",
-		URL:          fmt.Sprintf("%s/repos/%s/%s/actions/runs/1", APIHost, url.PathEscape(owner), url.PathEscape(repo)),
-		HTMLURL:      fmt.Sprintf("https://github.com/%s/%s/actions/runs/1", url.PathEscape(owner), url.PathEscape(repo)),
+func MockRun(owner, repo string) *gogithub.WorkflowRun {
+	now := gogithub.Timestamp{Time: time.Now().UTC()}
+	return &gogithub.WorkflowRun{
+		ID:           gogithub.Ptr(int64(1)),
+		Name:         gogithub.Ptr("CI"),
+		HeadBranch:   gogithub.Ptr("main"),
+		HeadSHA:      gogithub.Ptr(strings.Repeat("a", 40)),
+		RunNumber:    gogithub.Ptr(1),
+		RunAttempt:   gogithub.Ptr(1),
+		Status:       gogithub.Ptr("requested"),
+		Event:        gogithub.Ptr("push"),
+		WorkflowID:   gogithub.Ptr(int64(1)),
+		URL:          gogithub.Ptr(fmt.Sprintf("%s/repos/%s/%s/actions/runs/1", APIHost, url.PathEscape(owner), url.PathEscape(repo))),
+		HTMLURL:      gogithub.Ptr(fmt.Sprintf("https://github.com/%s/%s/actions/runs/1", url.PathEscape(owner), url.PathEscape(repo))),
 		CreatedAt:    &now,
-		Actor:        Actor{Login: owner},
+		Actor:        &gogithub.User{Login: gogithub.Ptr(owner)},
 	}
 }
 

@@ -7,32 +7,26 @@ package githubcmd
 import (
 	"context"
 	"fmt"
+	"iter"
+	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"cloudeng.io/webapi/clients/github"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
-	"gopkg.in/yaml.v3"
+	gogithub "github.com/google/go-github/v89/github"
 )
 
 // Command implements the GitHub Actions API command line operations.
 type Command struct {
-	state apicrawlcmd.State[Service]
+	config apicrawlcmd.Crawl[Service]
 }
 
 // NewCommand returns a new Command for GitHub Actions API commands.
-func NewCommand(ctx context.Context, config apicrawlcmd.Crawl[yaml.Node], resources apicrawlcmd.Resources) (*Command, error) {
-	state, err := apicrawlcmd.NewState[Service](ctx, config, resources)
-	if err != nil {
-		return nil, err
-	}
-	return &Command{state: state}, nil
+func NewCommand(ctx context.Context, config apicrawlcmd.Crawl[Service]) (*Command, error) {
+	return &Command{config: config}, nil
 }
-
-// GetRunFlags are the flags for the GetRun command.
-type GetRunFlags struct{}
 
 // ListRunsFlags are the flags for the ListRuns command.
 type ListRunsFlags struct {
@@ -42,9 +36,6 @@ type ListRunsFlags struct {
 	Actor    string `subcmd:"actor,,'filter by the login of the user who triggered the run'"`
 	PageSize int    `subcmd:"size,30,'number of items per page (max 100)'"`
 }
-
-// GetJobFlags are the flags for the GetJob command.
-type GetJobFlags struct{}
 
 // ListJobsFlags are the flags for the ListJobs command.
 type ListJobsFlags struct {
@@ -58,7 +49,7 @@ type ListRunnersFlags struct {
 }
 
 func (c *Command) cfg() apicrawlcmd.Crawl[Service] {
-	return c.state.Config
+	return c.config
 }
 
 func (c *Command) perPage(flagSize int) int {
@@ -68,168 +59,230 @@ func (c *Command) perPage(flagSize int) int {
 	if c.cfg().Service.PerPage > 0 {
 		return c.cfg().Service.PerPage
 	}
-	return 30
+	return DefaultPageSize
 }
 
-// GetRun retrieves the workflow run for each run ID supplied as an argument
-// and prints it to stdout.
-func (c *Command) GetRun(ctx context.Context, _ *GetRunFlags, args []string) error {
-	opts, err := OptionsForEndpoint(c.cfg())
-	if err != nil {
-		return err
-	}
-	ep := operations.NewEndpoint[github.WorkflowRun](opts...)
-	svc := c.cfg().Service
-	for _, id := range args {
-		u := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%s",
-			github.APIHost,
-			url.PathEscape(svc.Owner), url.PathEscape(svc.Repo), url.PathEscape(id))
-		run, _, _, err := ep.Get(ctx, u)
+// GetRuns returns an iterator over the workflow runs for each run ID supplied as
+// an argument. Each run is yielded with any error encountered while fetching it;
+// the caller decides whether to stop on error.
+func (c *Command) GetRuns(ctx context.Context, args []string) iter.Seq2[gogithub.WorkflowRun, error] {
+	return func(yield func(gogithub.WorkflowRun, error) bool) {
+		opts, err := OptionsForEndpoint(c.cfg())
 		if err != nil {
-			return fmt.Errorf("get run %s: %w", id, err)
+			yield(gogithub.WorkflowRun{}, err)
+			return
 		}
-		fmt.Printf("%d\t%s\t%s\t%s\t%s\t%s\n",
-			run.ID, run.Name, run.HeadBranch, run.Event, run.Status, run.Conclusion)
-	}
-	return nil
-}
-
-// ListRuns iterates over all workflow runs for the configured repo and prints
-// each run to stdout. Runs are retrieved using the scanner/paginator pattern
-// and optional filters can be applied via ListRunsFlags.
-func (c *Command) ListRuns(ctx context.Context, fv *ListRunsFlags) error {
-	opts, err := OptionsForEndpoint(c.cfg())
-	if err != nil {
-		return err
-	}
-	svc := c.cfg().Service
-	filter := github.RunsFilter{
-		Actor:  fv.Actor,
-		Branch: fv.Branch,
-		Event:  fv.Event,
-		Status: fv.Status,
-	}
-	scanner := github.NewRunsScanner(svc.Owner, svc.Repo, c.perPage(fv.PageSize), filter, opts...)
-	for scanner.Scan(ctx) {
-		page := scanner.Response()
-		for _, run := range page.WorkflowRuns {
-			fmt.Printf("%d\t%s\t%s\t%s\t%s\t%s\t%s\n",
-				run.ID, run.Name, run.HeadBranch, run.Event,
-				run.Status, run.Conclusion, ft(run.CreatedAt))
+		ep := operations.NewEndpoint[gogithub.WorkflowRun](opts...)
+		svc := c.cfg().Service
+		for _, id := range args {
+			u := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%s",
+				github.APIHost,
+				url.PathEscape(svc.Owner), url.PathEscape(svc.Repo), url.PathEscape(id))
+			run, _, _, err := ep.Get(ctx, u)
+			if err != nil {
+				err = fmt.Errorf("get run %s: %w", id, err)
+			}
+			if !yield(run, err) {
+				return
+			}
 		}
 	}
-	return scanner.Err()
 }
 
-func ft(t *time.Time) string {
-	if t != nil {
-		return t.Format("2006-01-02T15:04:05Z")
+func getPageSize(ps int) int {
+	if ps < 1 || ps > 100 {
+		return DefaultPageSize
 	}
-	return "N/A"
+	return ps
 }
 
-// GetJob retrieves the job for each job ID supplied as an argument and prints
-// it to stdout.
-func (c *Command) GetJob(ctx context.Context, _ *GetJobFlags, args []string) error {
-	opts, err := OptionsForEndpoint(c.cfg())
-	if err != nil {
-		return err
+// ListRuns returns an iterator over all workflow runs for the configured repo
+// and a function that, once iteration has completed, reports the detail of the
+// first error encountered (see operations.Scanner.ErrDetail): the response body
+// and request that caused it along with the error itself. Optional filters can
+// be applied via ListRunsFlags and pagination is handled transparently.
+func (c *Command) ListRuns(ctx context.Context, fv ListRunsFlags) (iter.Seq[gogithub.WorkflowRun], func() ([]byte, *http.Request, error)) {
+	pageSize := getPageSize(fv.PageSize)
+	var (
+		body []byte
+		req  *http.Request
+		err  error
+	)
+	seq := func(yield func(gogithub.WorkflowRun) bool) {
+		opts, oerr := OptionsForEndpoint(c.cfg())
+		if oerr != nil {
+			err = oerr
+			return
+		}
+		svc := c.cfg().Service
+		filter := github.RunsFilter{
+			Actor:  fv.Actor,
+			Branch: fv.Branch,
+			Event:  fv.Event,
+			Status: fv.Status,
+		}
+		scanner := github.NewRunsScanner(svc.Owner, svc.Repo, c.perPage(pageSize), filter, opts...)
+		for scanner.Scan(ctx) {
+			page := scanner.Response()
+			for _, run := range page.WorkflowRuns {
+				if !yield(*run) {
+					return
+				}
+			}
+		}
+		body, req, err = scanner.ErrDetail()
 	}
-	ep := operations.NewEndpoint[github.Job](opts...)
-	svc := c.cfg().Service
-	for _, id := range args {
-		u := fmt.Sprintf("%s/repos/%s/%s/actions/jobs/%s",
-			github.APIHost,
-			url.PathEscape(svc.Owner), url.PathEscape(svc.Repo), url.PathEscape(id))
-		job, _, _, err := ep.Get(ctx, u)
+	return seq, func() ([]byte, *http.Request, error) { return body, req, err }
+}
+
+// GetJobs returns an iterator over the jobs for each job ID supplied as an
+// argument. Each job is yielded with any error encountered while fetching it;
+// the caller decides whether to stop on error.
+func (c *Command) GetJobs(ctx context.Context, args []string) iter.Seq2[gogithub.WorkflowJob, error] {
+	return func(yield func(gogithub.WorkflowJob, error) bool) {
+		opts, err := OptionsForEndpoint(c.cfg())
 		if err != nil {
-			return fmt.Errorf("get job %s: %w", id, err)
+			yield(gogithub.WorkflowJob{}, err)
+			return
 		}
-		fmt.Printf("%d\t%s\t%s\t%s\t%s\n",
-			job.ID, job.Name, job.Status, job.Conclusion, job.RunnerName)
+		ep := operations.NewEndpoint[gogithub.WorkflowJob](opts...)
+		svc := c.cfg().Service
+		for _, id := range args {
+			u := fmt.Sprintf("%s/repos/%s/%s/actions/jobs/%s",
+				github.APIHost,
+				url.PathEscape(svc.Owner), url.PathEscape(svc.Repo), url.PathEscape(id))
+			job, _, _, err := ep.Get(ctx, u)
+			if err != nil {
+				err = fmt.Errorf("get job %s: %w", id, err)
+			}
+			if !yield(job, err) {
+				return
+			}
+		}
 	}
-	return nil
 }
 
-// ListJobs iterates over all jobs for the specified workflow run ID and prints
-// each job to stdout.
-func (c *Command) ListJobs(ctx context.Context, fv *ListJobsFlags, runID int64) error {
-	opts, err := OptionsForEndpoint(c.cfg())
-	if err != nil {
-		return err
-	}
-	svc := c.cfg().Service
-	scanner := github.NewJobsScanner(svc.Owner, svc.Repo, runID, fv.Filter, c.perPage(fv.PageSize), opts...)
-	for scanner.Scan(ctx) {
-		page := scanner.Response()
-		for _, job := range page.Jobs {
-			fmt.Printf("%d\t%s\t%s\t%s\t%s\n",
-				job.ID, job.Name, job.Status, job.Conclusion, job.RunnerName)
+// ListJobs returns an iterator over all jobs for the specified workflow run ID
+// and a function that, once iteration has completed, reports the detail of the
+// first error encountered (see operations.Scanner.ErrDetail): the response body
+// and request that caused it along with the error itself. Pagination is handled
+// transparently.
+func (c *Command) ListJobs(ctx context.Context, fv ListJobsFlags, runID int64) (iter.Seq[gogithub.WorkflowJob], func() ([]byte, *http.Request, error)) {
+	pageSize := getPageSize(fv.PageSize)
+	var (
+		body []byte
+		req  *http.Request
+		err  error
+	)
+	seq := func(yield func(gogithub.WorkflowJob) bool) {
+		opts, oerr := OptionsForEndpoint(c.cfg())
+		if oerr != nil {
+			err = oerr
+			return
 		}
+		svc := c.cfg().Service
+		scanner := github.NewJobsScanner(svc.Owner, svc.Repo, runID, fv.Filter, c.perPage(pageSize), opts...)
+		for scanner.Scan(ctx) {
+			page := scanner.Response()
+			for _, job := range page.Jobs {
+				if !yield(*job) {
+					return
+				}
+			}
+		}
+		body, req, err = scanner.ErrDetail()
 	}
-	return scanner.Err()
+	return seq, func() ([]byte, *http.Request, error) { return body, req, err }
 }
 
 // CreateWebhookFlags are the flags for the CreateWebhook command.
 type CreateWebhookFlags struct {
 	URL         string `subcmd:"url,,'webhook delivery URL (required)'"`
 	ContentType string `subcmd:"content-type,json,'payload content type: json or form'"`
-	Secret      string `subcmd:"secret,,'webhook secret for HMAC signature verification'"`
 	Events      string `subcmd:"events,push,'comma-separated list of events to trigger on'"`
 	Inactive    bool   `subcmd:"inactive,,'create the webhook in an inactive state'"`
 }
 
 // CreateWebhook creates a new HTTP webhook for the configured owner/repo and
 // prints the resulting webhook ID, URL, active state, and events to stdout.
-func (c *Command) CreateWebhook(ctx context.Context, fv *CreateWebhookFlags) error {
+func (c *Command) CreateWebhook(ctx context.Context, secret string, fv CreateWebhookFlags) (gogithub.Hook, error) {
 	if fv.URL == "" {
-		return fmt.Errorf("--url is required")
+		return gogithub.Hook{}, fmt.Errorf("--url is required")
 	}
 	opts, err := OptionsForEndpoint(c.cfg())
 	if err != nil {
-		return err
+		return gogithub.Hook{}, err
 	}
 	svc := c.cfg().Service
 	events := strings.Split(fv.Events, ",")
-	request := github.CreateWebhookRequest{
-		Name:   "web",
-		Active: !fv.Inactive,
+	request := &gogithub.Hook{
+		Name:   gogithub.Ptr("web"),
+		Active: gogithub.Ptr(!fv.Inactive),
 		Events: events,
-		Config: github.WebhookConfig{
-			URL:         fv.URL,
-			ContentType: fv.ContentType,
-			Secret:      fv.Secret,
+		Config: &gogithub.HookConfig{
+			URL:         gogithub.Ptr(fv.URL),
+			ContentType: gogithub.Ptr(fv.ContentType),
+			Secret:      gogithub.Ptr(secret),
 		},
 	}
 	hook, err := github.CreateWebhook(ctx, svc.Owner, svc.Repo, request, opts...)
 	if err != nil {
-		return err
+		return gogithub.Hook{}, err
 	}
-	fmt.Printf("%d\t%s\tactive=%v\t%s\n",
-		hook.ID, hook.Config.URL, hook.Active, strings.Join(hook.Events, ","))
-	return nil
+
+	return hook, nil
 }
 
-// ListRunners iterates over all self-hosted runners for the configured repo
-// and prints each runner to stdout.
-func (c *Command) ListRunners(ctx context.Context, fv *ListRunnersFlags) error {
+// CreateRegistrationTokenFlags are the flags for the CreateRegistrationToken
+// command.
+type CreateRegistrationTokenFlags struct{}
+
+// CreateRegistrationToken requests a new self-hosted runner registration token
+// for the configured owner/repo and prints the token and its expiry to stdout.
+func (c *Command) CreateRegistrationToken(ctx context.Context) (gogithub.RegistrationToken, error) {
 	opts, err := OptionsForEndpoint(c.cfg())
 	if err != nil {
-		return err
+		return gogithub.RegistrationToken{}, err
 	}
 	svc := c.cfg().Service
-	scanner := github.NewRunnersScanner(svc.Owner, svc.Repo, c.perPage(fv.PageSize), opts...)
-	for scanner.Scan(ctx) {
-		page := scanner.Response()
-		for _, runner := range page.Runners {
-			labels := make([]string, len(runner.Labels))
-			for i, l := range runner.Labels {
-				labels[i] = l.Name
-			}
-			fmt.Printf("%d\t%s\t%s\t%s\tbusy=%v\t%s\n",
-				runner.ID, runner.Name, runner.OS, runner.Status,
-				runner.Busy, strings.Join(labels, ","))
-		}
+	tok, err := github.CreateRegistrationToken(ctx, svc.Owner, svc.Repo, opts...)
+	if err != nil {
+		return gogithub.RegistrationToken{}, err
 	}
-	return scanner.Err()
+	return tok, nil
+}
+
+const DefaultPageSize = 30
+
+// ListRunners returns an iterator over all self-hosted runners for the
+// configured repo and a function that, once iteration has completed, reports the
+// detail of the first error encountered (see operations.Scanner.ErrDetail): the
+// response body and request that caused it along with the error itself.
+// Pagination is handled transparently.
+func (c *Command) ListRunners(ctx context.Context, fv ListRunnersFlags) (iter.Seq[gogithub.Runner], func() ([]byte, *http.Request, error)) {
+	pageSize := getPageSize(fv.PageSize)
+	var (
+		body []byte
+		req  *http.Request
+		err  error
+	)
+	seq := func(yield func(gogithub.Runner) bool) {
+		opts, oerr := OptionsForEndpoint(c.cfg())
+		if oerr != nil {
+			err = oerr
+			return
+		}
+		svc := c.cfg().Service
+		scanner := github.NewRunnersScanner(svc.Owner, svc.Repo, c.perPage(pageSize), opts...)
+		for scanner.Scan(ctx) {
+			page := scanner.Response()
+			for _, runner := range page.Runners {
+				if !yield(*runner) {
+					return
+				}
+			}
+		}
+		body, req, err = scanner.ErrDetail()
+	}
+	return seq, func() ([]byte, *http.Request, error) { return body, req, err }
 }

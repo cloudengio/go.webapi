@@ -14,9 +14,12 @@
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
+.DS_store
+
 go.webapi.code-workspace
 oapi-tool/oapi-tool
 go.work
 go.work.sum
 
 .gograph/
+graphify-out/
