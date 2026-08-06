@@ -15,6 +15,7 @@
 # vendor/
 
 .DS_store
+*.swp
 
 go.webapi.code-workspace
 oapi-tool/oapi-tool
