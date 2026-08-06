@@ -7,121 +7,20 @@ package github
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
+	"cloudeng.io/text/textutil"
 	"cloudeng.io/webapi/operations"
+	gogithub "github.com/google/go-github/v89/github"
 )
 
 const APIHost = "https://api.github.com"
-
-// Actor represents a GitHub user or app that triggered a workflow run.
-type Actor struct {
-	Login string `json:"login"`
-	ID    int64  `json:"id"`
-	Type  string `json:"type"`
-}
-
-// HeadCommit contains information about the commit that triggered a run.
-type HeadCommit struct {
-	ID        string `json:"id"`
-	Message   string `json:"message"`
-	Timestamp string `json:"timestamp"`
-	Author    struct {
-		Name  string `json:"name"`
-		Email string `json:"email"`
-	} `json:"author"`
-}
-
-// WorkflowRun represents a single GitHub Actions workflow run.
-type WorkflowRun struct {
-	ID           int64      `json:"id"`
-	Name         string     `json:"name"`
-	HeadBranch   string     `json:"head_branch"`
-	HeadSHA      string     `json:"head_sha"`
-	RunNumber    int        `json:"run_number"`
-	RunAttempt   int        `json:"run_attempt"`
-	Status       string     `json:"status"`
-	Conclusion   string     `json:"conclusion"`
-	WorkflowID   int64      `json:"workflow_id"`
-	WorkflowName string     `json:"workflow_name"`
-	URL          string     `json:"url"`
-	HTMLURL      string     `json:"html_url"`
-	CreatedAt    *time.Time `json:"created_at"`
-	UpdatedAt    *time.Time `json:"updated_at"`
-	RunStartedAt *time.Time `json:"run_started_at"`
-	Event        string     `json:"event"`
-	Actor        Actor      `json:"actor"`
-	HeadCommit   HeadCommit `json:"head_commit"`
-}
-
-// WorkflowRunsResponse is the response from the list workflow runs endpoint.
-type WorkflowRunsResponse struct {
-	TotalCount   int           `json:"total_count"`
-	WorkflowRuns []WorkflowRun `json:"workflow_runs"`
-}
-
-// Step represents a single step within a GitHub Actions job.
-type Step struct {
-	Name        string     `json:"name"`
-	Status      string     `json:"status"`
-	Conclusion  string     `json:"conclusion"`
-	Number      int        `json:"number"`
-	StartedAt   *time.Time `json:"started_at"`
-	CompletedAt *time.Time `json:"completed_at"`
-}
-
-// Job represents a single GitHub Actions job within a workflow run.
-type Job struct {
-	ID              int64      `json:"id"`
-	RunID           int64      `json:"run_id"`
-	Name            string     `json:"name"`
-	Status          string     `json:"status"`
-	Conclusion      string     `json:"conclusion"`
-	StartedAt       *time.Time `json:"started_at"`
-	CompletedAt     *time.Time `json:"completed_at"`
-	HTMLURL         string     `json:"html_url"`
-	Steps           []Step     `json:"steps"`
-	RunnerName      string     `json:"runner_name"`
-	RunnerGroupName string     `json:"runner_group_name"`
-	WorkflowName    string     `json:"workflow_name"`
-	HeadBranch      string     `json:"head_branch"`
-	HeadSHA         string     `json:"head_sha"`
-}
-
-// JobsResponse is the response from the list jobs for a workflow run endpoint.
-type JobsResponse struct {
-	TotalCount int   `json:"total_count"`
-	Jobs       []Job `json:"jobs"`
-}
-
-// RunnerLabel represents a label assigned to a self-hosted runner.
-type RunnerLabel struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
-	Type string `json:"type"`
-}
-
-// Runner represents a GitHub Actions self-hosted runner.
-type Runner struct {
-	ID     int64         `json:"id"`
-	Name   string        `json:"name"`
-	OS     string        `json:"os"`
-	Status string        `json:"status"`
-	Busy   bool          `json:"busy"`
-	Labels []RunnerLabel `json:"labels"`
-}
-
-// RunnersResponse is the response from the list runners endpoint.
-type RunnersResponse struct {
-	TotalCount int      `json:"total_count"`
-	Runners    []Runner `json:"runners"`
-}
 
 // linkNextRE matches the URL with rel="next" in a GitHub Link response header.
 var linkNextRE = regexp.MustCompile(`<([^>]*)>;\s*rel="next"`)
@@ -190,7 +89,7 @@ func (p *linkPaginator[T]) Next(ctx context.Context, _ T, r *http.Response) (*ht
 // for the specified owner and repo, one page at a time. Non-empty fields in
 // filter are sent as query parameters so the GitHub API performs server-side
 // filtering before any results are returned.
-func NewRunsScanner(owner, repo string, perPage int, filter RunsFilter, opts ...operations.Option) *operations.Scanner[WorkflowRunsResponse] {
+func NewRunsScanner(owner, repo string, perPage int, filter RunsFilter, opts ...operations.Option) *operations.Scanner[gogithub.WorkflowRuns] {
 	u := fmt.Sprintf("%s/repos/%s/%s/actions/runs",
 		APIHost,
 		url.PathEscape(owner), url.PathEscape(repo))
@@ -199,13 +98,13 @@ func NewRunsScanner(owner, repo string, perPage int, filter RunsFilter, opts ...
 	u = appendQueryParam(u, "event", filter.Event)
 	u = appendQueryParam(u, "status", filter.Status)
 	return operations.NewScanner(
-		&linkPaginator[WorkflowRunsResponse]{initialURL: u, perPage: perPage}, opts...)
+		&linkPaginator[gogithub.WorkflowRuns]{initialURL: u, perPage: perPage}, opts...)
 }
 
 // NewJobsScanner returns an operations.Scanner that iterates over jobs for the
 // specified workflow run. filter may be "latest" (the default) or "all" to
 // include jobs from all prior run attempts.
-func NewJobsScanner(owner, repo string, runID int64, filter string, perPage int, opts ...operations.Option) *operations.Scanner[JobsResponse] {
+func NewJobsScanner(owner, repo string, runID int64, filter string, perPage int, opts ...operations.Option) *operations.Scanner[gogithub.Jobs] {
 	u := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/jobs",
 		APIHost,
 		url.PathEscape(owner), url.PathEscape(repo), runID)
@@ -213,31 +112,65 @@ func NewJobsScanner(owner, repo string, runID int64, filter string, perPage int,
 		u = u + "?filter=" + filter
 	}
 	return operations.NewScanner(
-		&linkPaginator[JobsResponse]{initialURL: u, perPage: perPage}, opts...)
+		&linkPaginator[gogithub.Jobs]{initialURL: u, perPage: perPage}, opts...)
+}
+
+// GetWorkflowJob returns the job with the specified ID via the
+// /repos/{owner}/{repo}/actions/jobs/{job_id} endpoint. Unlike the jobs
+// returned by NewJobsScanner, which are scoped to a single workflow run, a job
+// is addressed here by its own ID, as reported by, for example, the workflow_job
+// webhook event.
+func GetWorkflowJob(ctx context.Context, owner, repo string, jobID int64, opts ...operations.Option) (gogithub.WorkflowJob, error) {
+	u := fmt.Sprintf("%s/repos/%s/%s/actions/jobs/%d",
+		APIHost, url.PathEscape(owner), url.PathEscape(repo), jobID)
+	ep := operations.NewEndpoint[gogithub.WorkflowJob](opts...)
+	job, body, _, err := ep.Get(ctx, u)
+	if err != nil {
+		truncatedBody := textutil.Head(body, '\n', 5)
+		return gogithub.WorkflowJob{}, fmt.Errorf("failed to get job %v: %q: %s: %w", jobID, u, truncatedBody, err)
+	}
+	return job, nil
+}
+
+// RerunWorkflowJob requests that the job with the specified ID be rerun, via
+// the /repos/{owner}/{repo}/actions/jobs/{job_id}/rerun endpoint. GitHub reruns
+// the job along with any jobs in the same workflow run that depend on it, and
+// responds 201 Created with an empty body, so there is nothing to return beyond
+// any error. The rerun is queued asynchronously: a successful return means
+// GitHub accepted the request, not that the job has started.
+func RerunWorkflowJob(ctx context.Context, owner, repo string, jobID int64, opts ...operations.Option) error {
+	u := fmt.Sprintf("%s/repos/%s/%s/actions/jobs/%d/rerun",
+		APIHost, url.PathEscape(owner), url.PathEscape(repo), jobID)
+	ep := operations.NewPutEndpoint[struct{}, struct{}](opts...)
+	_, body, _, err := ep.Post(ctx, u, struct{}{})
+	if err == nil {
+		return nil
+	}
+	// GitHub returns 201 Created for this endpoint; Post treats any non-200
+	// status as an error but still returns the pre-read body bytes.
+	if opErr, ok := err.(*operations.Error); ok && opErr.StatusCode == http.StatusCreated {
+		return nil
+	}
+	truncatedBody := textutil.Head(body, '\n', 5)
+	return fmt.Errorf("failed to rerun job %v: %q: %s: %w", jobID, u, truncatedBody, err)
 }
 
 // NewRunnersScanner returns an operations.Scanner that iterates over self-hosted
 // runners registered for the specified owner and repo.
-func NewRunnersScanner(owner, repo string, perPage int, opts ...operations.Option) *operations.Scanner[RunnersResponse] {
+func NewRunnersScanner(owner, repo string, perPage int, opts ...operations.Option) *operations.Scanner[gogithub.Runners] {
 	u := fmt.Sprintf("%s/repos/%s/%s/actions/runners", APIHost,
 		url.PathEscape(owner), url.PathEscape(repo))
 	return operations.NewScanner(
-		&linkPaginator[RunnersResponse]{initialURL: u, perPage: perPage}, opts...)
-}
-
-// RegistrationToken is the response from the runner registration-token endpoint.
-type RegistrationToken struct {
-	Token     string    `json:"token"`
-	ExpiresAt time.Time `json:"expires_at"`
+		&linkPaginator[gogithub.Runners]{initialURL: u, perPage: perPage}, opts...)
 }
 
 // CreateRegistrationToken requests a new runner registration token for the
 // given owner/repo. Options (including WithAuth) follow the same pattern as
 // NewRunsScanner, NewRunnersScanner, and the other functions in this package.
-func CreateRegistrationToken(ctx context.Context, owner, repo string, opts ...operations.Option) (RegistrationToken, error) {
+func CreateRegistrationToken(ctx context.Context, owner, repo string, opts ...operations.Option) (gogithub.RegistrationToken, error) {
 	u := fmt.Sprintf("%s/repos/%s/%s/actions/runners/registration-token",
 		APIHost, url.PathEscape(owner), url.PathEscape(repo))
-	ep := operations.NewPutEndpoint[struct{}, RegistrationToken](opts...)
+	ep := operations.NewPutEndpoint[struct{}, gogithub.RegistrationToken](opts...)
 	tok, body, _, err := ep.Post(ctx, u, struct{}{})
 	if err == nil {
 		return tok, nil
@@ -246,47 +179,21 @@ func CreateRegistrationToken(ctx context.Context, owner, repo string, opts ...op
 	// status as an error but still returns the pre-read body bytes.
 	if opErr, ok := err.(*operations.Error); ok && opErr.StatusCode == http.StatusCreated {
 		if jsonErr := json.Unmarshal(body, &tok); jsonErr != nil {
-			return RegistrationToken{}, jsonErr
+			return gogithub.RegistrationToken{}, jsonErr
 		}
 		return tok, nil
 	}
-	return RegistrationToken{}, err
-}
-
-// WebhookConfig holds the delivery configuration for a repository webhook.
-type WebhookConfig struct {
-	URL         string `json:"url"`
-	ContentType string `json:"content_type,omitempty"`
-	Secret      string `json:"secret,omitempty"`
-	InsecureSSL string `json:"insecure_ssl,omitempty"`
-}
-
-// CreateWebhookRequest is the request body for creating a repository webhook.
-type CreateWebhookRequest struct {
-	Name   string        `json:"name"`
-	Active bool          `json:"active"`
-	Events []string      `json:"events"`
-	Config WebhookConfig `json:"config"`
-}
-
-// Webhook is the response from the create/get repository webhook endpoints.
-type Webhook struct {
-	ID        int64         `json:"id"`
-	Name      string        `json:"name"`
-	Active    bool          `json:"active"`
-	Events    []string      `json:"events"`
-	Config    WebhookConfig `json:"config"`
-	CreatedAt *time.Time    `json:"created_at"`
-	UpdatedAt *time.Time    `json:"updated_at"`
+	truncatedBody := textutil.Head(body, '\n', 5)
+	return gogithub.RegistrationToken{}, fmt.Errorf("failed to create registration token: %q: %s: %w", u, truncatedBody, err)
 }
 
 // CreateWebhook creates a new webhook for the given owner/repo. The Name field
 // in the request must be "web" for HTTP webhooks. GitHub returns 201 Created
 // on success.
-func CreateWebhook(ctx context.Context, owner, repo string, request CreateWebhookRequest, opts ...operations.Option) (Webhook, error) {
+func CreateWebhook(ctx context.Context, owner, repo string, request *gogithub.Hook, opts ...operations.Option) (gogithub.Hook, error) {
 	u := fmt.Sprintf("%s/repos/%s/%s/hooks",
 		APIHost, url.PathEscape(owner), url.PathEscape(repo))
-	ep := operations.NewPutEndpoint[CreateWebhookRequest, Webhook](opts...)
+	ep := operations.NewPutEndpoint[*gogithub.Hook, gogithub.Hook](opts...)
 	hook, body, _, err := ep.Post(ctx, u, request)
 	if err == nil {
 		return hook, nil
@@ -295,9 +202,113 @@ func CreateWebhook(ctx context.Context, owner, repo string, request CreateWebhoo
 	// an error but still returns the pre-read body bytes.
 	if opErr, ok := err.(*operations.Error); ok && opErr.StatusCode == http.StatusCreated {
 		if jsonErr := json.Unmarshal(body, &hook); jsonErr != nil {
-			return Webhook{}, jsonErr
+			return gogithub.Hook{}, jsonErr
 		}
 		return hook, nil
 	}
-	return Webhook{}, err
+	truncatedBody := textutil.Head(body, '\n', 5)
+	return gogithub.Hook{}, fmt.Errorf("failed to create webhook: %q: %s: %w", u, truncatedBody, err)
+}
+
+// ErrRelayClosed is returned by ReadWebhookEvent when the relay closes the
+// long-poll connection without delivering an event (for example when the relay
+// is shutting down). Callers looping over ReadWebhookEvent can use it to
+// distinguish a clean relay shutdown from a transport or decode error.
+var ErrRelayClosed = errors.New("relay closed the connection without delivering an event")
+
+// ErrUnexpectedEvent is returned by ReadWorkflowRunEvent and ReadWorkflowJobEvent
+// when the relay delivers an event whose type does not match the one the caller
+// asked for. It is wrapped with the delivered event type so callers can match it
+// with errors.Is and skip the delivery.
+var ErrUnexpectedEvent = errors.New("unexpected webhook event type")
+
+// ReadWebhookEvent performs a single long-poll ("hanging read") GET against a
+// webhooks.Relay polling endpoint at relayURL and returns the GitHub event type
+// together with the raw, already-verified webhook payload. The relay validates
+// the webhook signature before queuing deliveries, so the returned payload is
+// already authenticated.
+//
+// eventType is taken from the X-GitHub-Event header the relay forwards; it is
+// empty if the relay is not configured to forward that header. Callers can
+// switch on eventType to demultiplex different event types (for example
+// workflow_run vs workflow_job) from a single relay.
+//
+// The request is issued via an operations.Endpoint, so it shares the same
+// rate-control, retry/backoff, auth, HTTP client, and logging behaviour as the
+// rest of the package; configure them via opts (for example
+// operations.WithHTTPClient or operations.WithRateController). Because a hanging
+// read can block indefinitely, any configured HTTP client should not impose a
+// request timeout — use ctx to bound or cancel the call.
+//
+// It blocks until the relay delivers a payload, ctx is cancelled, or the
+// request fails, and is intended to be called in a loop to consume a stream of
+// events. ErrRelayClosed is returned if the relay responds with an empty body,
+// which indicates a clean shutdown.
+func ReadWebhookEvent(ctx context.Context, relayURL string, opts ...operations.Option) (eventType string, payload json.RawMessage, err error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, relayURL, nil)
+	if err != nil {
+		return "", nil, err
+	}
+	ep := operations.NewEndpoint[json.RawMessage](opts...)
+	payload, body, encoding, resp, err := ep.IssueRequest(ctx, req)
+	if err != nil {
+		return "", nil, err
+	}
+	if encoding != operations.JSONEncoding {
+		return "", nil, fmt.Errorf("unexpected content encoding %v from relay %q", encoding, relayURL)
+	}
+	if len(body) == 0 {
+		return "", nil, ErrRelayClosed
+	}
+	return resp.Header.Get("X-GitHub-Event"), payload, nil
+}
+
+// ReadWorkflowRunEvent performs a single long-poll ("hanging read") GET against
+// a webhooks.Relay polling endpoint at relayURL and decodes the delivered
+// payload as a workflow_run webhook event. It is a convenience wrapper around
+// ReadWebhookEvent for callers that consume only workflow_run events; see that
+// function for the blocking, options, and shutdown semantics.
+//
+// If the relay reports an event type (via the forwarded X-GitHub-Event header)
+// that is not workflow_run, it returns ErrUnexpectedEvent wrapped with the
+// delivered type so the caller can skip it. When the relay does not forward the
+// event type the payload is decoded as workflow_run unconditionally.
+func ReadWorkflowRunEvent(ctx context.Context, relayURL string, opts ...operations.Option) (gogithub.WorkflowRunEvent, error) {
+	eventType, body, err := ReadWebhookEvent(ctx, relayURL, opts...)
+	if err != nil {
+		return gogithub.WorkflowRunEvent{}, err
+	}
+	if eventType != "" && eventType != "workflow_run" {
+		return gogithub.WorkflowRunEvent{}, fmt.Errorf("%w: %q", ErrUnexpectedEvent, eventType)
+	}
+	var event gogithub.WorkflowRunEvent
+	if err := json.Unmarshal(body, &event); err != nil {
+		return gogithub.WorkflowRunEvent{}, fmt.Errorf("failed to decode workflow_run event from relay %q: %w", relayURL, err)
+	}
+	return event, nil
+}
+
+// ReadWorkflowJobEvent performs a single long-poll ("hanging read") GET against
+// a webhooks.Relay polling endpoint at relayURL and decodes the delivered
+// payload as a workflow_job webhook event. It is a convenience wrapper around
+// ReadWebhookEvent for callers that consume only workflow_job events; see that
+// function for the blocking, options, and shutdown semantics.
+//
+// If the relay reports an event type (via the forwarded X-GitHub-Event header)
+// that is not workflow_job, it returns ErrUnexpectedEvent wrapped with the
+// delivered type so the caller can skip it. When the relay does not forward the
+// event type the payload is decoded as workflow_job unconditionally.
+func ReadWorkflowJobEvent(ctx context.Context, relayURL string, opts ...operations.Option) (gogithub.WorkflowJobEvent, error) {
+	eventType, body, err := ReadWebhookEvent(ctx, relayURL, opts...)
+	if err != nil {
+		return gogithub.WorkflowJobEvent{}, err
+	}
+	if eventType != "" && eventType != "workflow_job" {
+		return gogithub.WorkflowJobEvent{}, fmt.Errorf("%w: %q", ErrUnexpectedEvent, eventType)
+	}
+	var event gogithub.WorkflowJobEvent
+	if err := json.Unmarshal(body, &event); err != nil {
+		return gogithub.WorkflowJobEvent{}, fmt.Errorf("failed to decode workflow_job event from relay %q: %w", relayURL, err)
+	}
+	return event, nil
 }

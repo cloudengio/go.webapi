@@ -8,6 +8,7 @@ package github
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"cloudeng.io/webapi/operations/apitokens"
@@ -26,11 +27,11 @@ type BearerToken struct {
 func (bt BearerToken) WithAuthorization(ctx context.Context, req *http.Request) error {
 	token, ok := apitokens.TokenFromContext(ctx, bt.KeyUser, bt.KeyID)
 	if !ok {
-		return apitokens.NewErrNotFound(bt.KeyID, "github bearer token")
+		return apitokens.NewErrNotFound(bt.KeyID, fmt.Sprintf("github bearer token for user %q", bt.KeyUser))
 	}
 	defer token.Clear()
 	req.Header.Set("Authorization", "Bearer "+string(token.Value()))
 	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+	req.Header.Set("X-GitHub-Api-Version", "2026-03-10")
 	return nil
 }

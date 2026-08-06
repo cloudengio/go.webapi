@@ -7,6 +7,8 @@
 package githubcmd
 
 import (
+	"fmt"
+
 	"cloudeng.io/webapi/clients/github"
 	"cloudeng.io/webapi/operations"
 	"cloudeng.io/webapi/operations/apicrawlcmd"
@@ -14,9 +16,22 @@ import (
 
 // Service represents the GitHub-specific configuration for API access.
 type Service struct {
-	Owner   string `yaml:"owner" cmd:"repository owner (user or organization)"`
-	Repo    string `yaml:"repo" cmd:"repository name"`
-	PerPage int    `yaml:"per_page" cmd:"number of results per page (max 100, default 30)"`
+	Owner   string `yaml:"owner" doc:"repository owner, the organization or user name"`
+	Repo    string `yaml:"repo" doc:"repository name"`
+	PerPage int    `yaml:"per_page" doc:"number of results per page (max 100, default 30)"`
+}
+
+func (s Service) Validate() error {
+	if s.Owner == "" {
+		return fmt.Errorf("githubcmd.Service: missing owner: %+v", s)
+	}
+	if s.Repo == "" {
+		return fmt.Errorf("githubcmd.Service: missing repo: %+v", s)
+	}
+	if s.PerPage < 1 || s.PerPage > 100 {
+		return fmt.Errorf("githubcmd.Service: invalid per_page: must be between 1 and 100: %+v", s)
+	}
+	return nil
 }
 
 // OptionsForEndpoint returns the operations.Option slice for making API
@@ -24,7 +39,7 @@ type Service struct {
 func OptionsForEndpoint(cfg apicrawlcmd.Crawl[Service]) ([]operations.Option, error) {
 	opts := []operations.Option{}
 	if len(cfg.KeyID) > 0 {
-		opts = append(opts, operations.WithAuth(github.BearerToken{KeyID: cfg.KeyID}))
+		opts = append(opts, operations.WithAuth(github.BearerToken{KeyID: cfg.KeyID, KeyUser: cfg.UserID}))
 	}
 	rc, err := cfg.RateControl.NewRateController()
 	if err != nil {
