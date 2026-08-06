@@ -16,10 +16,75 @@ APIHost = "https://api.github.com"
 
 
 
+## Variables
+### ErrRelayClosed
+```go
+ErrRelayClosed = errors.New("relay closed the connection without delivering an event")
+
+```
+ErrRelayClosed is returned by ReadWebhookEvent when the relay closes the
+long-poll connection without delivering an event (for example when the
+relay is shutting down). Callers looping over ReadWebhookEvent can use it to
+distinguish a clean relay shutdown from a transport or decode error.
+
+### ErrUnexpectedEvent
+```go
+ErrUnexpectedEvent = errors.New("unexpected webhook event type")
+
+```
+ErrUnexpectedEvent is returned by ReadWorkflowRunEvent and
+ReadWorkflowJobEvent when the relay delivers an event whose type does not
+match the one the caller asked for. It is wrapped with the delivered event
+type so callers can match it with errors.Is and skip the delivery.
+
+
+
 ## Functions
+### Func CreateRegistrationToken
+```go
+func CreateRegistrationToken(ctx context.Context, owner, repo string, opts ...operations.Option) (gogithub.RegistrationToken, error)
+```
+CreateRegistrationToken requests a new runner registration token for the
+given owner/repo. Options (including WithAuth) follow the same pattern as
+NewRunsScanner, NewRunnersScanner, and the other functions in this package.
+
+### Func CreateWebhook
+```go
+func CreateWebhook(ctx context.Context, owner, repo string, request *gogithub.Hook, opts ...operations.Option) (gogithub.Hook, error)
+```
+CreateWebhook creates a new webhook for the given owner/repo. The Name field
+in the request must be "web" for HTTP webhooks. GitHub returns 201 Created
+on success.
+
+### Func GetWorkflowJob
+```go
+func GetWorkflowJob(ctx context.Context, owner, repo string, jobID int64, opts ...operations.Option) (gogithub.WorkflowJob, error)
+```
+GetWorkflowJob returns the job with the specified ID via the
+/repos/{owner}/{repo}/actions/jobs/{job_id} endpoint. Unlike the jobs
+returned by NewJobsScanner, which are scoped to a single workflow run,
+a job is addressed here by its own ID, as reported by, for example,
+the workflow_job webhook event.
+
+### Func MockJob
+```go
+func MockJob(owner, repo string) *gogithub.WorkflowJob
+```
+MockJob returns a WorkflowJob populated with typical values for
+use in tests. Callers may overwrite any field before passing it to
+MockWebhook.JobRequest.
+
+### Func MockRun
+```go
+func MockRun(owner, repo string) *gogithub.WorkflowRun
+```
+MockRun returns a WorkflowRun populated with typical values for
+use in tests. Callers may overwrite any field before passing it to
+MockWebhook.RunRequest.
+
 ### Func NewJobsScanner
 ```go
-func NewJobsScanner(owner, repo string, runID int64, filter string, perPage int, opts ...operations.Option) *operations.Scanner[JobsResponse]
+func NewJobsScanner(owner, repo string, runID int64, filter string, perPage int, opts ...operations.Option) *operations.Scanner[gogithub.Jobs]
 ```
 NewJobsScanner returns an operations.Scanner that iterates over jobs for
 the specified workflow run. filter may be "latest" (the default) or "all" to
@@ -27,19 +92,87 @@ include jobs from all prior run attempts.
 
 ### Func NewRunnersScanner
 ```go
-func NewRunnersScanner(owner, repo string, perPage int, opts ...operations.Option) *operations.Scanner[RunnersResponse]
+func NewRunnersScanner(owner, repo string, perPage int, opts ...operations.Option) *operations.Scanner[gogithub.Runners]
 ```
 NewRunnersScanner returns an operations.Scanner that iterates over
 self-hosted runners registered for the specified owner and repo.
 
 ### Func NewRunsScanner
 ```go
-func NewRunsScanner(owner, repo string, perPage int, filter RunsFilter, opts ...operations.Option) *operations.Scanner[WorkflowRunsResponse]
+func NewRunsScanner(owner, repo string, perPage int, filter RunsFilter, opts ...operations.Option) *operations.Scanner[gogithub.WorkflowRuns]
 ```
 NewRunsScanner returns an operations.Scanner that iterates over workflow
 runs for the specified owner and repo, one page at a time. Non-empty
 fields in filter are sent as query parameters so the GitHub API performs
 server-side filtering before any results are returned.
+
+### Func ReadWebhookEvent
+```go
+func ReadWebhookEvent(ctx context.Context, relayURL string, opts ...operations.Option) (eventType string, payload json.RawMessage, err error)
+```
+ReadWebhookEvent performs a single long-poll ("hanging read") GET against
+a webhooks.Relay polling endpoint at relayURL and returns the GitHub event
+type together with the raw, already-verified webhook payload. The relay
+validates the webhook signature before queuing deliveries, so the returned
+payload is already authenticated.
+
+eventType is taken from the X-GitHub-Event header the relay forwards;
+it is empty if the relay is not configured to forward that header. Callers
+can switch on eventType to demultiplex different event types (for example
+workflow_run vs workflow_job) from a single relay.
+
+The request is issued via an operations.Endpoint, so it shares the same
+rate-control, retry/backoff, auth, HTTP client, and logging behaviour
+as the rest of the package; configure them via opts (for example
+operations.WithHTTPClient or operations.WithRateController). Because a
+hanging read can block indefinitely, any configured HTTP client should not
+impose a request timeout — use ctx to bound or cancel the call.
+
+It blocks until the relay delivers a payload, ctx is cancelled, or the
+request fails, and is intended to be called in a loop to consume a stream of
+events. ErrRelayClosed is returned if the relay responds with an empty body,
+which indicates a clean shutdown.
+
+### Func ReadWorkflowJobEvent
+```go
+func ReadWorkflowJobEvent(ctx context.Context, relayURL string, opts ...operations.Option) (gogithub.WorkflowJobEvent, error)
+```
+ReadWorkflowJobEvent performs a single long-poll ("hanging read") GET
+against a webhooks.Relay polling endpoint at relayURL and decodes the
+delivered payload as a workflow_job webhook event. It is a convenience
+wrapper around ReadWebhookEvent for callers that consume only workflow_job
+events; see that function for the blocking, options, and shutdown semantics.
+
+If the relay reports an event type (via the forwarded X-GitHub-Event header)
+that is not workflow_job, it returns ErrUnexpectedEvent wrapped with the
+delivered type so the caller can skip it. When the relay does not forward
+the event type the payload is decoded as workflow_job unconditionally.
+
+### Func ReadWorkflowRunEvent
+```go
+func ReadWorkflowRunEvent(ctx context.Context, relayURL string, opts ...operations.Option) (gogithub.WorkflowRunEvent, error)
+```
+ReadWorkflowRunEvent performs a single long-poll ("hanging read") GET
+against a webhooks.Relay polling endpoint at relayURL and decodes the
+delivered payload as a workflow_run webhook event. It is a convenience
+wrapper around ReadWebhookEvent for callers that consume only workflow_run
+events; see that function for the blocking, options, and shutdown semantics.
+
+If the relay reports an event type (via the forwarded X-GitHub-Event header)
+that is not workflow_run, it returns ErrUnexpectedEvent wrapped with the
+delivered type so the caller can skip it. When the relay does not forward
+the event type the payload is decoded as workflow_run unconditionally.
+
+### Func RerunWorkflowJob
+```go
+func RerunWorkflowJob(ctx context.Context, owner, repo string, jobID int64, opts ...operations.Option) error
+```
+RerunWorkflowJob requests that the job with the specified ID be rerun,
+via the /repos/{owner}/{repo}/actions/jobs/{job_id}/rerun endpoint. GitHub
+reruns the job along with any jobs in the same workflow run that depend
+on it, and responds 201 Created with an empty body, so there is nothing to
+return beyond any error. The rerun is queued asynchronously: a successful
+return means GitHub accepted the request, not that the job has started.
 
 ### Func VerifyWebhookSignature
 ```go
@@ -52,17 +185,6 @@ relay or handler performs on receipt.
 
 
 ## Types
-### Type Actor
-```go
-type Actor struct {
-	Login string `json:"login"`
-	ID    int64  `json:"id"`
-	Type  string `json:"type"`
-}
-```
-Actor represents a GitHub user or app that triggered a workflow run.
-
-
 ### Type BearerToken
 ```go
 type BearerToken struct {
@@ -83,75 +205,6 @@ WithAuthorization implements operations.Auth. It sets the Authorization
 header and the required GitHub API headers on the request.
 
 
-
-
-### Type CreateWebhookRequest
-```go
-type CreateWebhookRequest struct {
-	Name   string        `json:"name"`
-	Active bool          `json:"active"`
-	Events []string      `json:"events"`
-	Config WebhookConfig `json:"config"`
-}
-```
-CreateWebhookRequest is the request body for creating a repository webhook.
-
-
-### Type HeadCommit
-```go
-type HeadCommit struct {
-	ID        string `json:"id"`
-	Message   string `json:"message"`
-	Timestamp string `json:"timestamp"`
-	Author    struct {
-		Name  string `json:"name"`
-		Email string `json:"email"`
-	} `json:"author"`
-}
-```
-HeadCommit contains information about the commit that triggered a run.
-
-
-### Type Job
-```go
-type Job struct {
-	ID              int64      `json:"id"`
-	RunID           int64      `json:"run_id"`
-	Name            string     `json:"name"`
-	Status          string     `json:"status"`
-	Conclusion      string     `json:"conclusion"`
-	StartedAt       *time.Time `json:"started_at"`
-	CompletedAt     *time.Time `json:"completed_at"`
-	HTMLURL         string     `json:"html_url"`
-	Steps           []Step     `json:"steps"`
-	RunnerName      string     `json:"runner_name"`
-	RunnerGroupName string     `json:"runner_group_name"`
-	WorkflowName    string     `json:"workflow_name"`
-	HeadBranch      string     `json:"head_branch"`
-	HeadSHA         string     `json:"head_sha"`
-}
-```
-Job represents a single GitHub Actions job within a workflow run.
-
-### Functions
-
-```go
-func MockJob(owner, repo string) Job
-```
-MockJob returns a Job populated with typical values for use in tests.
-Callers may overwrite any field before passing it to MockWebhook.JobRequest.
-
-
-
-
-### Type JobsResponse
-```go
-type JobsResponse struct {
-	TotalCount int   `json:"total_count"`
-	Jobs       []Job `json:"jobs"`
-}
-```
-JobsResponse is the response from the list jobs for a workflow run endpoint.
 
 
 ### Type Meta
@@ -221,7 +274,7 @@ string to skip signing.
 ### Methods
 
 ```go
-func (m *MockWebhook) JobRequest(ctx context.Context, targetURL, action string, job Job) (*http.Request, error)
+func (m *MockWebhook) JobRequest(ctx context.Context, targetURL, action string, job *gogithub.WorkflowJob) (*http.Request, error)
 ```
 JobRequest returns a signed HTTP POST request to targetURL for a
 workflow_job event. action must be one of "queued", "in_progress",
@@ -229,85 +282,13 @@ or "completed".
 
 
 ```go
-func (m *MockWebhook) RunRequest(ctx context.Context, targetURL, action string, run WorkflowRun) (*http.Request, error)
+func (m *MockWebhook) RunRequest(ctx context.Context, targetURL, action string, run *gogithub.WorkflowRun) (*http.Request, error)
 ```
 RunRequest returns a signed HTTP POST request to targetURL for a
 workflow_run event. action must be one of "requested", "in_progress",
 or "completed".
 
 
-
-
-### Type RegistrationToken
-```go
-type RegistrationToken struct {
-	Token     string    `json:"token"`
-	ExpiresAt time.Time `json:"expires_at"`
-}
-```
-RegistrationToken is the response from the runner registration-token
-endpoint.
-
-### Functions
-
-```go
-func CreateRegistrationToken(ctx context.Context, owner, repo string, opts ...operations.Option) (RegistrationToken, error)
-```
-CreateRegistrationToken requests a new runner registration token for the
-given owner/repo. Options (including WithAuth) follow the same pattern as
-NewRunsScanner, NewRunnersScanner, and the other functions in this package.
-
-
-
-
-### Type Repository
-```go
-type Repository struct {
-	ID       int64  `json:"id"`
-	Name     string `json:"name"`
-	FullName string `json:"full_name"`
-	HTMLURL  string `json:"html_url"`
-	Private  bool   `json:"private"`
-	Owner    Actor  `json:"owner"`
-}
-```
-Repository represents the repository information included in webhook
-payloads.
-
-
-### Type Runner
-```go
-type Runner struct {
-	ID     int64         `json:"id"`
-	Name   string        `json:"name"`
-	OS     string        `json:"os"`
-	Status string        `json:"status"`
-	Busy   bool          `json:"busy"`
-	Labels []RunnerLabel `json:"labels"`
-}
-```
-Runner represents a GitHub Actions self-hosted runner.
-
-
-### Type RunnerLabel
-```go
-type RunnerLabel struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
-	Type string `json:"type"`
-}
-```
-RunnerLabel represents a label assigned to a self-hosted runner.
-
-
-### Type RunnersResponse
-```go
-type RunnersResponse struct {
-	TotalCount int      `json:"total_count"`
-	Runners    []Runner `json:"runners"`
-}
-```
-RunnersResponse is the response from the list runners endpoint.
 
 
 ### Type RunsFilter
@@ -334,131 +315,6 @@ type SSHKeyFingerprints struct {
 ```
 SSHKeyFingerprints holds the SHA256 fingerprints for each of GitHub's host
 keys.
-
-
-### Type Step
-```go
-type Step struct {
-	Name        string     `json:"name"`
-	Status      string     `json:"status"`
-	Conclusion  string     `json:"conclusion"`
-	Number      int        `json:"number"`
-	StartedAt   *time.Time `json:"started_at"`
-	CompletedAt *time.Time `json:"completed_at"`
-}
-```
-Step represents a single step within a GitHub Actions job.
-
-
-### Type Webhook
-```go
-type Webhook struct {
-	ID        int64         `json:"id"`
-	Name      string        `json:"name"`
-	Active    bool          `json:"active"`
-	Events    []string      `json:"events"`
-	Config    WebhookConfig `json:"config"`
-	CreatedAt *time.Time    `json:"created_at"`
-	UpdatedAt *time.Time    `json:"updated_at"`
-}
-```
-Webhook is the response from the create/get repository webhook endpoints.
-
-### Functions
-
-```go
-func CreateWebhook(ctx context.Context, owner, repo string, request CreateWebhookRequest, opts ...operations.Option) (Webhook, error)
-```
-CreateWebhook creates a new webhook for the given owner/repo. The Name field
-in the request must be "web" for HTTP webhooks. GitHub returns 201 Created
-on success.
-
-
-
-
-### Type WebhookConfig
-```go
-type WebhookConfig struct {
-	URL         string `json:"url"`
-	ContentType string `json:"content_type,omitempty"`
-	Secret      string `json:"secret,omitempty"`
-	InsecureSSL string `json:"insecure_ssl,omitempty"`
-}
-```
-WebhookConfig holds the delivery configuration for a repository webhook.
-
-
-### Type WorkflowJobEvent
-```go
-type WorkflowJobEvent struct {
-	Action      string     `json:"action"`
-	WorkflowJob Job        `json:"workflow_job"`
-	Repository  Repository `json:"repository"`
-	Sender      Actor      `json:"sender"`
-}
-```
-WorkflowJobEvent is the payload delivered to a webhook for workflow_job
-events. Action is one of "queued", "in_progress", or "completed".
-
-
-### Type WorkflowRun
-```go
-type WorkflowRun struct {
-	ID           int64      `json:"id"`
-	Name         string     `json:"name"`
-	HeadBranch   string     `json:"head_branch"`
-	HeadSHA      string     `json:"head_sha"`
-	RunNumber    int        `json:"run_number"`
-	RunAttempt   int        `json:"run_attempt"`
-	Status       string     `json:"status"`
-	Conclusion   string     `json:"conclusion"`
-	WorkflowID   int64      `json:"workflow_id"`
-	WorkflowName string     `json:"workflow_name"`
-	URL          string     `json:"url"`
-	HTMLURL      string     `json:"html_url"`
-	CreatedAt    *time.Time `json:"created_at"`
-	UpdatedAt    *time.Time `json:"updated_at"`
-	RunStartedAt *time.Time `json:"run_started_at"`
-	Event        string     `json:"event"`
-	Actor        Actor      `json:"actor"`
-	HeadCommit   HeadCommit `json:"head_commit"`
-}
-```
-WorkflowRun represents a single GitHub Actions workflow run.
-
-### Functions
-
-```go
-func MockRun(owner, repo string) WorkflowRun
-```
-MockRun returns a WorkflowRun populated with typical values for
-use in tests. Callers may overwrite any field before passing it to
-MockWebhook.RunRequest.
-
-
-
-
-### Type WorkflowRunEvent
-```go
-type WorkflowRunEvent struct {
-	Action      string      `json:"action"`
-	WorkflowRun WorkflowRun `json:"workflow_run"`
-	Repository  Repository  `json:"repository"`
-	Sender      Actor       `json:"sender"`
-}
-```
-WorkflowRunEvent is the payload delivered to a webhook for workflow_run
-events. Action is one of "requested", "in_progress", or "completed".
-
-
-### Type WorkflowRunsResponse
-```go
-type WorkflowRunsResponse struct {
-	TotalCount   int           `json:"total_count"`
-	WorkflowRuns []WorkflowRun `json:"workflow_runs"`
-}
-```
-WorkflowRunsResponse is the response from the list workflow runs endpoint.
 
 
 

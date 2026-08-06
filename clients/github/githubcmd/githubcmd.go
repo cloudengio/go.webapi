@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 
 	"cloudeng.io/webapi/clients/github"
 	"cloudeng.io/webapi/operations"
@@ -50,6 +51,42 @@ type ListRunnersFlags struct {
 
 func (c *Command) cfg() apicrawlcmd.Crawl[Service] {
 	return c.config
+}
+
+// errDetail records the error detail reported by the function returned
+// alongside each of the List iterators. The iterator writes it as iteration
+// completes and the returned function reads it, so the two are serialised
+// here: callers that iterate and read the detail from different goroutines are
+// safe, though a read taken before iteration has finished only reports what has
+// been recorded so far.
+type errDetail struct {
+	mu   sync.Mutex
+	body []byte
+	req  *http.Request
+	err  error
+}
+
+func (d *errDetail) set(body []byte, req *http.Request, err error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.body, d.req, d.err = body, req, err
+}
+
+// get returns the recorded detail, substituting empty values for anything not
+// recorded so that the body and request are never nil, matching the guarantee
+// made by operations.Scanner.ErrDetail.
+func (d *errDetail) get() ([]byte, *http.Request, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	body := d.body
+	if body == nil {
+		body = []byte{}
+	}
+	req := d.req
+	if req == nil {
+		req = &http.Request{URL: &url.URL{}}
+	}
+	return body, req, d.err
 }
 
 func (c *Command) perPage(flagSize int) int {
@@ -103,15 +140,11 @@ func getPageSize(ps int) int {
 // be applied via ListRunsFlags and pagination is handled transparently.
 func (c *Command) ListRuns(ctx context.Context, fv ListRunsFlags) (iter.Seq[gogithub.WorkflowRun], func() ([]byte, *http.Request, error)) {
 	pageSize := getPageSize(fv.PageSize)
-	var (
-		body []byte
-		req  *http.Request
-		err  error
-	)
+	detail := &errDetail{}
 	seq := func(yield func(gogithub.WorkflowRun) bool) {
 		opts, oerr := OptionsForEndpoint(c.cfg())
 		if oerr != nil {
-			err = oerr
+			detail.set(nil, nil, oerr)
 			return
 		}
 		svc := c.cfg().Service
@@ -130,9 +163,9 @@ func (c *Command) ListRuns(ctx context.Context, fv ListRunsFlags) (iter.Seq[gogi
 				}
 			}
 		}
-		body, req, err = scanner.ErrDetail()
+		detail.set(scanner.ErrDetail())
 	}
-	return seq, func() ([]byte, *http.Request, error) { return body, req, err }
+	return seq, detail.get
 }
 
 // GetJobs returns an iterator over the jobs for each job ID supplied as an
@@ -169,15 +202,11 @@ func (c *Command) GetJobs(ctx context.Context, args []string) iter.Seq2[gogithub
 // transparently.
 func (c *Command) ListJobs(ctx context.Context, fv ListJobsFlags, runID int64) (iter.Seq[gogithub.WorkflowJob], func() ([]byte, *http.Request, error)) {
 	pageSize := getPageSize(fv.PageSize)
-	var (
-		body []byte
-		req  *http.Request
-		err  error
-	)
+	detail := &errDetail{}
 	seq := func(yield func(gogithub.WorkflowJob) bool) {
 		opts, oerr := OptionsForEndpoint(c.cfg())
 		if oerr != nil {
-			err = oerr
+			detail.set(nil, nil, oerr)
 			return
 		}
 		svc := c.cfg().Service
@@ -190,9 +219,9 @@ func (c *Command) ListJobs(ctx context.Context, fv ListJobsFlags, runID int64) (
 				}
 			}
 		}
-		body, req, err = scanner.ErrDetail()
+		detail.set(scanner.ErrDetail())
 	}
-	return seq, func() ([]byte, *http.Request, error) { return body, req, err }
+	return seq, detail.get
 }
 
 // CreateWebhookFlags are the flags for the CreateWebhook command.
@@ -261,15 +290,11 @@ const DefaultPageSize = 30
 // Pagination is handled transparently.
 func (c *Command) ListRunners(ctx context.Context, fv ListRunnersFlags) (iter.Seq[gogithub.Runner], func() ([]byte, *http.Request, error)) {
 	pageSize := getPageSize(fv.PageSize)
-	var (
-		body []byte
-		req  *http.Request
-		err  error
-	)
+	detail := &errDetail{}
 	seq := func(yield func(gogithub.Runner) bool) {
 		opts, oerr := OptionsForEndpoint(c.cfg())
 		if oerr != nil {
-			err = oerr
+			detail.set(nil, nil, oerr)
 			return
 		}
 		svc := c.cfg().Service
@@ -282,7 +307,7 @@ func (c *Command) ListRunners(ctx context.Context, fv ListRunnersFlags) (iter.Se
 				}
 			}
 		}
-		body, req, err = scanner.ErrDetail()
+		detail.set(scanner.ErrDetail())
 	}
-	return seq, func() ([]byte, *http.Request, error) { return body, req, err }
+	return seq, detail.get
 }

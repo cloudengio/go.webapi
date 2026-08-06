@@ -138,6 +138,11 @@ func (sc *Scanner[T]) Err() error {
 // context when debugging errors. The body and request will never be nil,
 // but may be empty if the error occurred before a request was made or a
 // response was received.
+//
+// The placeholder request is allocated per call rather than shared between
+// Scanners: http.Request is mutable, so a single shared instance could be
+// modified by one caller for every other. ErrDetail is called at most once per
+// scan, so the allocation is immaterial next to the requests the scan issues.
 func (sc *Scanner[T]) ErrDetail() ([]byte, *http.Request, error) {
 	body := sc.errBody
 	if body == nil {

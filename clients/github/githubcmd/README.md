@@ -7,6 +7,15 @@ import cloudeng.io/webapi/clients/github/githubcmd
 Package githubcmd provides support for building command line tools that
 access the GitHub Actions API.
 
+## Constants
+### DefaultPageSize
+```go
+DefaultPageSize = 30
+
+```
+
+
+
 ## Functions
 ### Func OptionsForEndpoint
 ```go
@@ -29,7 +38,7 @@ Command implements the GitHub Actions API command line operations.
 ### Functions
 
 ```go
-func NewCommand(ctx context.Context, config apicrawlcmd.Crawl[yaml.Node], resources apicrawlcmd.Resources) (*Command, error)
+func NewCommand(ctx context.Context, config apicrawlcmd.Crawl[Service]) (*Command, error)
 ```
 NewCommand returns a new Command for GitHub Actions API commands.
 
@@ -38,48 +47,74 @@ NewCommand returns a new Command for GitHub Actions API commands.
 ### Methods
 
 ```go
-func (c *Command) CreateWebhook(ctx context.Context, fv *CreateWebhookFlags) error
+func (c *Command) CreateRegistrationToken(ctx context.Context) (gogithub.RegistrationToken, error)
+```
+CreateRegistrationToken requests a new self-hosted runner registration token
+for the configured owner/repo and prints the token and its expiry to stdout.
+
+
+```go
+func (c *Command) CreateWebhook(ctx context.Context, secret string, fv CreateWebhookFlags) (gogithub.Hook, error)
 ```
 CreateWebhook creates a new HTTP webhook for the configured owner/repo and
 prints the resulting webhook ID, URL, active state, and events to stdout.
 
 
 ```go
-func (c *Command) GetJob(ctx context.Context, _ *GetJobFlags, args []string) error
+func (c *Command) GetJobs(ctx context.Context, args []string) iter.Seq2[gogithub.WorkflowJob, error]
 ```
-GetJob retrieves the job for each job ID supplied as an argument and prints
-it to stdout.
+GetJobs returns an iterator over the jobs for each job ID supplied as an
+argument. Each job is yielded with any error encountered while fetching it;
+the caller decides whether to stop on error.
 
 
 ```go
-func (c *Command) GetRun(ctx context.Context, _ *GetRunFlags, args []string) error
+func (c *Command) GetRuns(ctx context.Context, args []string) iter.Seq2[gogithub.WorkflowRun, error]
 ```
-GetRun retrieves the workflow run for each run ID supplied as an argument
-and prints it to stdout.
+GetRuns returns an iterator over the workflow runs for each run ID supplied
+as an argument. Each run is yielded with any error encountered while
+fetching it; the caller decides whether to stop on error.
 
 
 ```go
-func (c *Command) ListJobs(ctx context.Context, fv *ListJobsFlags, runID int64) error
+func (c *Command) ListJobs(ctx context.Context, fv ListJobsFlags, runID int64) (iter.Seq[gogithub.WorkflowJob], func() ([]byte, *http.Request, error))
 ```
-ListJobs iterates over all jobs for the specified workflow run ID and prints
-each job to stdout.
+ListJobs returns an iterator over all jobs for the specified workflow
+run ID and a function that, once iteration has completed, reports the
+detail of the first error encountered (see operations.Scanner.ErrDetail):
+the response body and request that caused it along with the error itself.
+Pagination is handled transparently.
 
 
 ```go
-func (c *Command) ListRunners(ctx context.Context, fv *ListRunnersFlags) error
+func (c *Command) ListRunners(ctx context.Context, fv ListRunnersFlags) (iter.Seq[gogithub.Runner], func() ([]byte, *http.Request, error))
 ```
-ListRunners iterates over all self-hosted runners for the configured repo
-and prints each runner to stdout.
+ListRunners returns an iterator over all self-hosted runners
+for the configured repo and a function that, once iteration has
+completed, reports the detail of the first error encountered (see
+operations.Scanner.ErrDetail): the response body and request that caused it
+along with the error itself. Pagination is handled transparently.
 
 
 ```go
-func (c *Command) ListRuns(ctx context.Context, fv *ListRunsFlags) error
+func (c *Command) ListRuns(ctx context.Context, fv ListRunsFlags) (iter.Seq[gogithub.WorkflowRun], func() ([]byte, *http.Request, error))
 ```
-ListRuns iterates over all workflow runs for the configured repo and prints
-each run to stdout. Runs are retrieved using the scanner/paginator pattern
-and optional filters can be applied via ListRunsFlags.
+ListRuns returns an iterator over all workflow runs for the configured
+repo and a function that, once iteration has completed, reports the
+detail of the first error encountered (see operations.Scanner.ErrDetail):
+the response body and request that caused it along with the error itself.
+Optional filters can be applied via ListRunsFlags and pagination is handled
+transparently.
 
 
+
+
+### Type CreateRegistrationTokenFlags
+```go
+type CreateRegistrationTokenFlags struct{}
+```
+CreateRegistrationTokenFlags are the flags for the CreateRegistrationToken
+command.
 
 
 ### Type CreateWebhookFlags
@@ -87,26 +122,11 @@ and optional filters can be applied via ListRunsFlags.
 type CreateWebhookFlags struct {
 	URL         string `subcmd:"url,,'webhook delivery URL (required)'"`
 	ContentType string `subcmd:"content-type,json,'payload content type: json or form'"`
-	Secret      string `subcmd:"secret,,'webhook secret for HMAC signature verification'"`
 	Events      string `subcmd:"events,push,'comma-separated list of events to trigger on'"`
 	Inactive    bool   `subcmd:"inactive,,'create the webhook in an inactive state'"`
 }
 ```
 CreateWebhookFlags are the flags for the CreateWebhook command.
-
-
-### Type GetJobFlags
-```go
-type GetJobFlags struct{}
-```
-GetJobFlags are the flags for the GetJob command.
-
-
-### Type GetRunFlags
-```go
-type GetRunFlags struct{}
-```
-GetRunFlags are the flags for the GetRun command.
 
 
 ### Type ListJobsFlags
@@ -144,12 +164,20 @@ ListRunsFlags are the flags for the ListRuns command.
 ### Type Service
 ```go
 type Service struct {
-	Owner   string `yaml:"owner" cmd:"repository owner (user or organization)"`
-	Repo    string `yaml:"repo" cmd:"repository name"`
-	PerPage int    `yaml:"per_page" cmd:"number of results per page (max 100, default 30)"`
+	Owner   string `yaml:"owner" doc:"repository owner, the organization or user name"`
+	Repo    string `yaml:"repo" doc:"repository name"`
+	PerPage int    `yaml:"per_page" doc:"number of results per page (max 100, default 30)"`
 }
 ```
 Service represents the GitHub-specific configuration for API access.
+
+### Methods
+
+```go
+func (s Service) Validate() error
+```
+
+
 
 
 
