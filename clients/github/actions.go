@@ -155,6 +155,31 @@ func RerunWorkflowJob(ctx context.Context, owner, repo string, jobID int64, opts
 	return fmt.Errorf("failed to rerun job %v: %q: %s: %w", jobID, u, truncatedBody, err)
 }
 
+// CancelWorkflowRun requests that the workflow run with the specified ID be
+// cancelled, via the /repos/{owner}/{repo}/actions/runs/{run_id}/cancel
+// endpoint. GitHub responds 202 Accepted with an empty body, so there is
+// nothing to return beyond any error. Cancellation is asynchronous: a
+// successful return means GitHub accepted the request, not that the run and its
+// jobs have stopped. A run that has already completed cannot be cancelled;
+// GitHub reports 409 Conflict for it, which is returned here as an error like
+// any other.
+func CancelWorkflowRun(ctx context.Context, owner, repo string, runID int64, opts ...operations.Option) error {
+	u := fmt.Sprintf("%s/repos/%s/%s/actions/runs/%d/cancel",
+		APIHost, url.PathEscape(owner), url.PathEscape(repo), runID)
+	ep := operations.NewPutEndpoint[struct{}, struct{}](opts...)
+	_, body, _, err := ep.Post(ctx, u, struct{}{})
+	if err == nil {
+		return nil
+	}
+	// GitHub returns 202 Accepted for this endpoint; Post treats any non-200
+	// status as an error but still returns the pre-read body bytes.
+	if opErr, ok := err.(*operations.Error); ok && opErr.StatusCode == http.StatusAccepted {
+		return nil
+	}
+	truncatedBody := textutil.Head(body, '\n', 5)
+	return fmt.Errorf("failed to cancel workflow run %v: %q: %s: %w", runID, u, truncatedBody, err)
+}
+
 // NewRunnersScanner returns an operations.Scanner that iterates over self-hosted
 // runners registered for the specified owner and repo.
 func NewRunnersScanner(owner, repo string, perPage int, opts ...operations.Option) *operations.Scanner[gogithub.Runners] {
