@@ -23,8 +23,17 @@ type Backoff struct {
 	steps     int
 	retries   int
 	nextDelay time.Duration
+	done      bool
 	rnd       *rand.Rand
 }
+
+// closedTimeChan is returned by Next once the backoff has reached its limit;
+// receiving from it never blocks.
+var closedTimeChan = func() <-chan time.Time {
+	ch := make(chan time.Time)
+	close(ch)
+	return ch
+}()
 
 func NewBackoff(initial time.Duration, steps int) *Backoff {
 	return &Backoff{
@@ -38,6 +47,33 @@ func (bb *Backoff) Retries() int {
 	return bb.retries
 }
 
+// Done implements ratecontrol.Backoff.
+func (bb *Backoff) Done() bool {
+	return bb.done
+}
+
+// doubleDelay doubles the delay used for exponential backoff, guarding
+// against overflow.
+func (bb *Backoff) doubleDelay() {
+	if bb.nextDelay < time.Duration(1<<62) {
+		bb.nextDelay *= 2
+	}
+}
+
+// Next implements ratecontrol.Backoff. Unlike Wait, Next has no access to the
+// http response and hence always uses exponential backoff rather than the
+// period requested by the x-rate-limit-reset header.
+func (bb *Backoff) Next() <-chan time.Time {
+	if bb.retries >= bb.steps {
+		bb.done = true
+		return closedTimeChan
+	}
+	delay := bb.nextDelay
+	bb.doubleDelay()
+	bb.retries++
+	return time.NewTimer(delay).C
+}
+
 // Wait implements Backoff.
 func (bb *Backoff) Wait(ctx context.Context, r any) (bool, error) {
 	resp, ok := r.(*http.Response)
@@ -46,6 +82,7 @@ func (bb *Backoff) Wait(ctx context.Context, r any) (bool, error) {
 		return true, fmt.Errorf("expected *http.Response, got %T", r)
 	}
 	if bb.retries >= bb.steps {
+		bb.done = true
 		return true, nil
 	}
 	delay := bb.nextDelay
@@ -73,7 +110,7 @@ func (bb *Backoff) Wait(ctx context.Context, r any) (bool, error) {
 	}
 	bb.retries++
 	if secs == 0 {
-		bb.nextDelay *= 2
+		bb.doubleDelay()
 	}
 	return false, nil
 }

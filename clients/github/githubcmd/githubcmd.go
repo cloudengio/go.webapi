@@ -245,13 +245,13 @@ func (c *Command) CreateWebhook(ctx context.Context, secret string, fv CreateWeb
 	svc := c.cfg().Service
 	events := strings.Split(fv.Events, ",")
 	request := &gogithub.Hook{
-		Name:   gogithub.Ptr("web"),
-		Active: gogithub.Ptr(!fv.Inactive),
+		Name:   new("web"),
+		Active: new(!fv.Inactive),
 		Events: events,
 		Config: &gogithub.HookConfig{
-			URL:         gogithub.Ptr(fv.URL),
-			ContentType: gogithub.Ptr(fv.ContentType),
-			Secret:      gogithub.Ptr(secret),
+			URL:         new(fv.URL),
+			ContentType: new(fv.ContentType),
+			Secret:      new(secret),
 		},
 	}
 	hook, err := github.CreateWebhook(ctx, svc.Owner, svc.Repo, request, opts...)

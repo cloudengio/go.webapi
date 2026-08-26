@@ -40,10 +40,10 @@ func NewMockWebhook(owner, repo, secret string) *MockWebhook {
 // event. action must be one of "queued", "in_progress", or "completed".
 func (m *MockWebhook) JobRequest(ctx context.Context, targetURL, action string, job *gogithub.WorkflowJob) (*http.Request, error) {
 	event := gogithub.WorkflowJobEvent{
-		Action:      gogithub.Ptr(action),
+		Action:      new(action),
 		WorkflowJob: job,
 		Repo:        m.repository(),
-		Sender:      &gogithub.User{Login: gogithub.Ptr(m.owner)},
+		Sender:      &gogithub.User{Login: new(m.owner)},
 	}
 	return m.newRequest(ctx, targetURL, "workflow_job", event)
 }
@@ -52,20 +52,20 @@ func (m *MockWebhook) JobRequest(ctx context.Context, targetURL, action string, 
 // event. action must be one of "requested", "in_progress", or "completed".
 func (m *MockWebhook) RunRequest(ctx context.Context, targetURL, action string, run *gogithub.WorkflowRun) (*http.Request, error) {
 	event := gogithub.WorkflowRunEvent{
-		Action:      gogithub.Ptr(action),
+		Action:      new(action),
 		WorkflowRun: run,
 		Repo:        m.repository(),
-		Sender:      &gogithub.User{Login: gogithub.Ptr(m.owner)},
+		Sender:      &gogithub.User{Login: new(m.owner)},
 	}
 	return m.newRequest(ctx, targetURL, "workflow_run", event)
 }
 
 func (m *MockWebhook) repository() *gogithub.Repository {
 	return &gogithub.Repository{
-		Name:     gogithub.Ptr(m.repo),
-		FullName: gogithub.Ptr(m.owner + "/" + m.repo),
-		HTMLURL:  gogithub.Ptr("https://github.com/" + url.PathEscape(m.owner) + "/" + url.PathEscape(m.repo)),
-		Owner:    &gogithub.User{Login: gogithub.Ptr(m.owner)},
+		Name:     new(m.repo),
+		FullName: new(m.owner + "/" + m.repo),
+		HTMLURL:  new("https://github.com/" + url.PathEscape(m.owner) + "/" + url.PathEscape(m.repo)),
+		Owner:    &gogithub.User{Login: new(m.owner)},
 	}
 }
 
@@ -111,14 +111,14 @@ func VerifyWebhookSignature(secret string, body []byte, signature string) bool {
 func MockJob(owner, repo string) *gogithub.WorkflowJob {
 	now := gogithub.Timestamp{Time: time.Now().UTC()}
 	return &gogithub.WorkflowJob{
-		ID:           gogithub.Ptr(int64(1)),
-		RunID:        gogithub.Ptr(int64(1)),
-		Name:         gogithub.Ptr("test-job"),
-		Status:       gogithub.Ptr("queued"),
-		HeadBranch:   gogithub.Ptr("main"),
-		HeadSHA:      gogithub.Ptr(strings.Repeat("a", 40)),
-		WorkflowName: gogithub.Ptr("CI"),
-		HTMLURL:      gogithub.Ptr(fmt.Sprintf("https://github.com/%s/%s/actions/runs/1/jobs/1", url.PathEscape(owner), url.PathEscape(repo))),
+		ID:           new(int64(1)),
+		RunID:        new(int64(1)),
+		Name:         new("test-job"),
+		Status:       new("queued"),
+		HeadBranch:   new("main"),
+		HeadSHA:      new(strings.Repeat("a", 40)),
+		WorkflowName: new("CI"),
+		HTMLURL:      new(fmt.Sprintf("https://github.com/%s/%s/actions/runs/1/jobs/1", url.PathEscape(owner), url.PathEscape(repo))),
 		StartedAt:    &now,
 	}
 }
@@ -128,19 +128,19 @@ func MockJob(owner, repo string) *gogithub.WorkflowJob {
 func MockRun(owner, repo string) *gogithub.WorkflowRun {
 	now := gogithub.Timestamp{Time: time.Now().UTC()}
 	return &gogithub.WorkflowRun{
-		ID:         gogithub.Ptr(int64(1)),
-		Name:       gogithub.Ptr("CI"),
-		HeadBranch: gogithub.Ptr("main"),
-		HeadSHA:    gogithub.Ptr(strings.Repeat("a", 40)),
-		RunNumber:  gogithub.Ptr(1),
-		RunAttempt: gogithub.Ptr(1),
-		Status:     gogithub.Ptr("requested"),
-		Event:      gogithub.Ptr("push"),
-		WorkflowID: gogithub.Ptr(int64(1)),
-		URL:        gogithub.Ptr(fmt.Sprintf("%s/repos/%s/%s/actions/runs/1", APIHost, url.PathEscape(owner), url.PathEscape(repo))),
-		HTMLURL:    gogithub.Ptr(fmt.Sprintf("https://github.com/%s/%s/actions/runs/1", url.PathEscape(owner), url.PathEscape(repo))),
+		ID:         new(int64(1)),
+		Name:       new("CI"),
+		HeadBranch: new("main"),
+		HeadSHA:    new(strings.Repeat("a", 40)),
+		RunNumber:  new(1),
+		RunAttempt: new(1),
+		Status:     new("requested"),
+		Event:      new("push"),
+		WorkflowID: new(int64(1)),
+		URL:        new(fmt.Sprintf("%s/repos/%s/%s/actions/runs/1", APIHost, url.PathEscape(owner), url.PathEscape(repo))),
+		HTMLURL:    new(fmt.Sprintf("https://github.com/%s/%s/actions/runs/1", url.PathEscape(owner), url.PathEscape(repo))),
 		CreatedAt:  &now,
-		Actor:      &gogithub.User{Login: gogithub.Ptr(owner)},
+		Actor:      &gogithub.User{Login: new(owner)},
 	}
 }
 
