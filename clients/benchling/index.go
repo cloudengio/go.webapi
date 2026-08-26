@@ -190,9 +190,9 @@ func (di *DocumentIndexer) index(ctx context.Context) error {
 			Folder:  di.folders["folder:"+*entry.FolderId],
 			Project: di.projects["folder:"+*entry.FolderId],
 			Users:   make(map[string]benchlingsdk.User),
-		}
-		doc.DayNotes = di.dayText(ctx, &entry)
-		doc.Parents = di.parents(*entry.FolderId, nil)
+
+			DayNotes: di.dayText(ctx, &entry),
+			Parents:  di.parents(*entry.FolderId, nil)}
 		di.addUsers(&doc, entry.Authors)
 		di.addUsers(&doc, entry.AssignedReviewers)
 		if entry.Creator != nil {

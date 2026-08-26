@@ -205,7 +205,6 @@ func (a *API) GetForecasts(ctx context.Context, gp GridPoints, opts ...operation
 		ValidFor:  dur,
 		Periods:   make([]Period, len(frc.Properties.Periods)),
 	}
-	fc.Periods = make([]Period, len(frc.Properties.Periods))
 	copy(fc.Periods, frc.Properties.Periods)
 	for i, p := range fc.Periods {
 		fc.Periods[i].OpaqueCloudCoverage = CloudOpacityFromShortForecast(p.ShortForecast)

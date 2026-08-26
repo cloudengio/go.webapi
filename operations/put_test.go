@@ -577,7 +577,6 @@ func TestPutDefaultSuccessCodes(t *testing.T) {
 	ctx := context.Background()
 	// PUT/POST endpoints accept both 200 OK and 202 Accepted by default.
 	for _, status := range []int{http.StatusOK, http.StatusAccepted} {
-		status := status
 		srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			body, _ := io.ReadAll(r.Body)
 			w.Header().Set("Content-Type", "application/json")

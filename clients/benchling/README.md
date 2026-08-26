@@ -80,6 +80,20 @@ func NewBackoff(initial time.Duration, steps int) *Backoff
 ### Methods
 
 ```go
+func (bb *Backoff) Done() bool
+```
+Done implements ratecontrol.Backoff.
+
+
+```go
+func (bb *Backoff) Next() <-chan time.Time
+```
+Next implements ratecontrol.Backoff. Unlike Wait, Next has no access to
+the http response and hence always uses exponential backoff rather than the
+period requested by the x-rate-limit-reset header.
+
+
+```go
 func (bb *Backoff) Retries() int
 ```
 
