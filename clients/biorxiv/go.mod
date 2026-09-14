@@ -16,10 +16,8 @@ require (
 require (
 	cloudeng.io/os v0.0.0-20260914180154-c85eb1cb5201 // indirect
 	cloudeng.io/sync v0.0.12-0.20260804222138-e9281ed260ba // indirect
-	cloudeng.io/sys v0.0.0-20260914180154-c85eb1cb5201 // indirect
 	cloudeng.io/text v0.0.16-0.20260624171915-da98fe9dec2b // indirect
 	golang.org/x/net v0.59.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
 )
 
 replace cloudeng.io/webapi/operations => ../../operations
