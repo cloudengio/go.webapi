@@ -11,9 +11,6 @@ permissions:
 
 jobs:
   test-lint:
-    env:
-      GOPROXY: "http://gomodproxy.pa.nicolaou.org:3000"
-
     uses: cloudengio/.github/.github/workflows/go-test-multimod.yml@main
     with:
       runner: |
