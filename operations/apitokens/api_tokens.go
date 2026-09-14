@@ -41,7 +41,7 @@ func TokenFromContext(ctx context.Context, user, id string) (keys.Token, bool) {
 // ContextWithOauth returns a new context that contains the provided
 // named oauth2.TokenSource in addition to any existing TokenSources.
 func ContextWithOAuth(ctx context.Context, id, user string, source oauth2.TokenSource) context.Context {
-	ki := keys.NewInfo(id, user, nil)
+	ki := keys.NewInfo(user, id, nil)
 	ki.WithExtra(source)
 	return keys.ContextWithKey(ctx, ki)
 }

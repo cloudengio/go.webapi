@@ -18,7 +18,7 @@ import (
 func TestKeyContext(t *testing.T) {
 	ctx := context.Background()
 
-	k1 := keys.NewInfo("k1", "u1", []byte("t1"))
+	k1 := keys.NewInfo("u1", "k1", []byte("t1"))
 	ctx = apitokens.ContextWithKey(ctx, k1)
 
 	got, ok := apitokens.KeyFromContext(ctx, "u1", "k1")
@@ -92,7 +92,7 @@ func TestOAuthContext(t *testing.T) {
 
 func TestTokenFromContext(t *testing.T) {
 	ctx := context.Background()
-	k1 := keys.NewInfo("k1", "u1", []byte("t1"))
+	k1 := keys.NewInfo("u1", "k1", []byte("t1"))
 	ctx = apitokens.ContextWithKey(ctx, k1)
 
 	tok, ok := apitokens.TokenFromContext(ctx, "u1", "k1")
