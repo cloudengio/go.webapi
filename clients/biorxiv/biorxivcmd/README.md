@@ -104,9 +104,9 @@ type ScanFlags struct {
 ### Type Service
 ```go
 type Service struct {
-	ServiceURL string           `yaml:"service_url" cmd:"rxiv service URL, eg. https://api.biorxiv.org/pubs/biorxiv for biorxiv"`
-	StartDate  cmdyaml.FlexTime `yaml:"start_date" cmd:"start date for crawl, eg. 2020-01-01"`
-	EndDate    cmdyaml.FlexTime `yaml:"end_date" cmd:"end date for crawl, eg. 2020-12-01"`
+	ServiceURL string            `yaml:"service_url" cmd:"rxiv service URL, eg. https://api.biorxiv.org/pubs/biorxiv for biorxiv"`
+	StartDate  cmdtypes.FlexTime `yaml:"start_date" cmd:"start date for crawl, eg. 2020-01-01"`
+	EndDate    cmdtypes.FlexTime `yaml:"end_date" cmd:"end date for crawl, eg. 2020-12-01"`
 }
 ```
 Service represents biorxiv specific configuration parameters.

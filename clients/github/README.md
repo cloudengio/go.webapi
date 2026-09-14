@@ -40,6 +40,19 @@ type so callers can match it with errors.Is and skip the delivery.
 
 
 ## Functions
+### Func CancelWorkflowRun
+```go
+func CancelWorkflowRun(ctx context.Context, owner, repo string, runID int64, opts ...operations.Option) error
+```
+CancelWorkflowRun requests that the workflow run with the specified ID
+be cancelled, via the /repos/{owner}/{repo}/actions/runs/{run_id}/cancel
+endpoint. GitHub responds 202 Accepted with an empty body, so there
+is nothing to return beyond any error. Cancellation is asynchronous:
+a successful return means GitHub accepted the request, not that the run and
+its jobs have stopped. A run that has already completed cannot be cancelled;
+GitHub reports 409 Conflict for it, which is returned here as an error like
+any other.
+
 ### Func CreateRegistrationToken
 ```go
 func CreateRegistrationToken(ctx context.Context, owner, repo string, opts ...operations.Option) (gogithub.RegistrationToken, error)

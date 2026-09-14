@@ -38,7 +38,7 @@ Command implements the GitHub Actions API command line operations.
 ### Functions
 
 ```go
-func NewCommand(ctx context.Context, config apicrawlcmd.Crawl[Service]) (*Command, error)
+func NewCommand(_ context.Context, config apicrawlcmd.Crawl[Service]) (*Command, error)
 ```
 NewCommand returns a new Command for GitHub Actions API commands.
 
