@@ -10,8 +10,8 @@ cloudeng.io/file v0.0.0-20260923165344-0acebac4c1e9 h1:9EPORkewChEq5yOL3rHdAZOUM
 cloudeng.io/file v0.0.0-20260923165344-0acebac4c1e9/go.mod h1:5f8aki7VfQwlg4uvvG2hjMnjDRiIJVazsi213DFpezg=
 cloudeng.io/logging v0.0.0-20260923165344-0acebac4c1e9 h1:g2ftD4vHP21QxbyuZLq6w2gy3WO8eg4tecAJk26sDbI=
 cloudeng.io/logging v0.0.0-20260923165344-0acebac4c1e9/go.mod h1:jMLEVhrVlzxya9df5e1q14kPxxOMnBxEejhV8QpMMKU=
-cloudeng.io/os v0.0.0-20260922225404-b05ec561761a h1:2MftF2r8GSGe18FYfS8ItoPys7fgKYca1oYM3fp/4dw=
-cloudeng.io/os v0.0.0-20260922225404-b05ec561761a/go.mod h1:Niq9E/qVg2w48F4eGaZ7hjj4aQNghmkQ9JxgKVGsoEk=
+cloudeng.io/os v0.0.0-20260923165344-0acebac4c1e9 h1:hVqq9rk32kVC/orzjaHhTvI+NopIrd1Ad56feFgiB2Y=
+cloudeng.io/os v0.0.0-20260923165344-0acebac4c1e9/go.mod h1:Niq9E/qVg2w48F4eGaZ7hjj4aQNghmkQ9JxgKVGsoEk=
 cloudeng.io/path v0.0.10-0.20260312171538-61fcde6ce278 h1:REi7wHqzb//83YtX5gkhLdUzlzNuReVHyTpBeuRmJ2A=
 cloudeng.io/path v0.0.10-0.20260312171538-61fcde6ce278/go.mod h1:zAHxwBvZ4Ijb3WiUeGwp+HU3Qqlo8oBFzShAlRW/92A=
 cloudeng.io/sync v0.0.12-0.20260804222138-e9281ed260ba h1:2+U9tNRu/+O1rHgv2mxRTU80lgUCJSxDFDswbKumBx8=

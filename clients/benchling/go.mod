@@ -18,7 +18,7 @@ require (
 
 require (
 	cloudeng.io/cmdutil v0.0.0-20260922225404-b05ec561761a // indirect
-	cloudeng.io/os v0.0.0-20260922225404-b05ec561761a // indirect
+	cloudeng.io/os v0.0.0-20260923165344-0acebac4c1e9 // indirect
 	cloudeng.io/text v0.0.16-0.20260624171915-da98fe9dec2b // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
