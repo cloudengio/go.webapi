@@ -63,16 +63,26 @@ func (ep *Endpoint[T]) IssueRequest(ctx context.Context, req *http.Request) (T, 
 	return t, b, ep.encoding, r, err
 }
 
+// IssueStream is like IssueRequest except that it returns as soon as the
+// response headers have been received, with the Body in the http.Response
+// unread, for responses that are streamed. The caller must close the Body.
+// A response that is not a success is read and closed as for IssueRequest, and
+// is returned with its error.
+func (ep *Endpoint[T]) IssueStream(ctx context.Context, req *http.Request) (*http.Response, error) {
+	_, r, _, err := issueRequest[T](ctx, ep.options, req, true)
+	return r, err
+}
+
 func (ep *Endpoint[T]) get(ctx context.Context, req *http.Request) (T, []byte, Encoding, error) {
 	t, _, b, err := ep.getWithResp(ctx, req)
 	return t, b, ep.encoding, err
 }
 
 func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *http.Response, []byte, error) {
-	return issueRequest[T](ctx, ep.options, req)
+	return issueRequest[T](ctx, ep.options, req, false)
 }
 
-func issueRequest[T any](ctx context.Context, opts options, req *http.Request) (T, *http.Response, []byte, error) {
+func issueRequest[T any](ctx context.Context, opts options, req *http.Request, stream bool) (T, *http.Response, []byte, error) {
 	opts.logger.Info("starting request", "method", req.Method, "url", req.URL.Redacted())
 	var result T
 	if err := opts.rateController.Wait(ctx); err != nil {
@@ -125,10 +135,18 @@ func issueRequest[T any](ctx context.Context, opts options, req *http.Request) (
 		}
 		if opts.isSuccessCode(resp.StatusCode) {
 			opts.logger.Info("request successful", "method", req.Method, "url", req.URL.Redacted())
-			return handleResponse[T](resp, opts.unmarshal, retries, opts.isSuccessCode)
+			return handleSuccess[T](resp, opts, retries, stream)
 		}
 		return handleErrorResponse[T](resp, retries, opts.isSuccessCode)
 	}
+}
+
+func handleSuccess[T any](resp *http.Response, opts options, retries int, stream bool) (T, *http.Response, []byte, error) {
+	if stream {
+		var result T
+		return result, resp, nil, nil
+	}
+	return handleResponse[T](resp, opts.unmarshal, retries, opts.isSuccessCode)
 }
 
 func handleErrorResponse[T any](resp *http.Response, steps int, isOk func(int) bool) (T, *http.Response, []byte, error) {
