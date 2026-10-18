@@ -128,6 +128,16 @@ supplied http.Request. The Body in the http.Response has already been read
 and its contents returned as the second return value.
 
 
+```go
+func (ep *Endpoint[T]) IssueStream(ctx context.Context, req *http.Request) (*http.Response, error)
+```
+IssueStream is like IssueRequest except that it returns as soon as the
+response headers have been received, with the Body in the http.Response
+unread, for responses that are streamed. The caller must close the Body.
+A response that is not a success is read and closed as for IssueRequest,
+and is returned with its error.
+
+
 
 
 ### Type Error

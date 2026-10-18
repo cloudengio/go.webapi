@@ -25,3 +25,7 @@ oapi-tool/oapi-tool
 
 .gograph/
 graphify-out/
+.agents/
+GEMINI.md
+CLAUDE.md
+.mcp.json

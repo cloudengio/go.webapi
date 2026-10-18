@@ -44,7 +44,7 @@ func (ep *PutEndpoint[RequestT, ResponseT]) putPost(ctx context.Context, url str
 	if err := setRequestBody(req, ep.marshal, ep.marshalEncoding, ep.signer, data); err != nil {
 		return result, nil, ep.encoding, err
 	}
-	result, _, body, err := issueRequest[ResponseT](ctx, ep.options, req)
+	result, _, body, err := issueRequest[ResponseT](ctx, ep.options, req, false)
 	if err != nil {
 		return result, body, ep.encoding, err
 	}
@@ -59,7 +59,7 @@ func (ep *PutEndpoint[RequestT, ResponseT]) IssueRequest(ctx context.Context, re
 	if err := setRequestBody(req, ep.marshal, ep.marshalEncoding, ep.signer, data); err != nil {
 		return result, nil, ep.encoding, nil, err
 	}
-	t, r, b, err := issueRequest[ResponseT](ctx, ep.options, req)
+	t, r, b, err := issueRequest[ResponseT](ctx, ep.options, req, false)
 	return t, b, ep.encoding, r, err
 }
 
