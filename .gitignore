@@ -25,6 +25,7 @@ oapi-tool/oapi-tool
 
 .gograph/
 graphify-out/
+code_review.md
 .agents/
 GEMINI.md
 CLAUDE.md
