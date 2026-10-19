@@ -5,10 +5,12 @@
 package github
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -286,6 +288,82 @@ func ReadWebhookEvent(ctx context.Context, relayURL string, opts ...operations.O
 		return "", nil, ErrRelayClosed
 	}
 	return resp.Header.Get("X-GitHub-Event"), payload, nil
+}
+
+// WebhookStream reads the webhooks that a webhooks.Relay streams to a client
+// that asks for them, see StreamWebhookEvents.
+type WebhookStream struct {
+	body io.Closer
+	sc   *bufio.Scanner
+}
+
+// maxStreamedEventSize bounds a single line of a stream, which holds a webhook
+// payload, to a little more than the 25MB that GitHub sends at most, so that a
+// faulty relay cannot make the client allocate without limit.
+const maxStreamedEventSize = 26 << 20
+
+// relayDelivery is a line of the stream: a webhook's forwarded headers and its
+// payload.
+type relayDelivery struct {
+	Headers http.Header     `json:"headers"`
+	Payload json.RawMessage `json:"payload"`
+}
+
+// StreamWebhookEvents issues a GET against a webhooks.Relay polling endpoint at
+// relayURL that asks for the webhooks to be streamed, that is with the stream=1
+// query parameter, rather than for one. A single stream carries all of the
+// webhooks that the relay has, including all of those of the same session if the
+// relay has sessions enabled, which a series of calls to ReadWebhookEvent cannot
+// be sure to be sent. opts are as for ReadWebhookEvent, and apply to
+// establishing the stream. ctx bounds the stream, and the caller must call Close
+// on the stream.
+func StreamWebhookEvents(ctx context.Context, relayURL string, opts ...operations.Option) (*WebhookStream, error) {
+	u, err := url.Parse(relayURL)
+	if err != nil {
+		return nil, err
+	}
+	q := u.Query()
+	q.Set("stream", "1")
+	u.RawQuery = q.Encode()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := operations.NewStream(opts...).IssueStream(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	sc := bufio.NewScanner(resp.Body)
+	sc.Buffer(nil, maxStreamedEventSize)
+	return &WebhookStream{body: resp.Body, sc: sc}, nil
+}
+
+// Next blocks until the next webhook is received and returns its GitHub event
+// type, taken from the X-GitHub-Event header that the relay forwards, which is
+// empty if it is not configured to, and its payload, as ReadWebhookEvent does.
+// ErrRelayClosed is returned when the relay ends the stream cleanly, which it
+// does after the last webhook of the last session that was bound to the stream,
+// and when it shuts down. Any other error, including that of a ctx that was
+// cancelled, a line that is too long or is not a webhook, or a stream that
+// ended part way through a webhook, is not a clean end and the stream cannot
+// be used again.
+func (s *WebhookStream) Next() (eventType string, payload json.RawMessage, err error) {
+	if !s.sc.Scan() {
+		if err := s.sc.Err(); err != nil {
+			return "", nil, err
+		}
+		return "", nil, ErrRelayClosed
+	}
+	var d relayDelivery
+	if err := json.Unmarshal(s.sc.Bytes(), &d); err != nil {
+		return "", nil, fmt.Errorf("invalid webhook from relay: %w", err)
+	}
+	return d.Headers.Get("X-GitHub-Event"), d.Payload, nil
+}
+
+// Close closes the stream.
+func (s *WebhookStream) Close() error {
+	return s.body.Close()
 }
 
 // ReadWorkflowRunEvent performs a single long-poll ("hanging read") GET against

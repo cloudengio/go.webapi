@@ -330,6 +330,55 @@ SSHKeyFingerprints holds the SHA256 fingerprints for each of GitHub's host
 keys.
 
 
+### Type WebhookStream
+```go
+type WebhookStream struct {
+	// contains filtered or unexported fields
+}
+```
+WebhookStream reads the webhooks that a webhooks.Relay streams to a client
+that asks for them, see StreamWebhookEvents.
+
+### Functions
+
+```go
+func StreamWebhookEvents(ctx context.Context, relayURL string, opts ...operations.Option) (*WebhookStream, error)
+```
+StreamWebhookEvents issues a GET against a webhooks.Relay polling
+endpoint at relayURL that asks for the webhooks to be streamed,
+that is with the stream=1 query parameter, rather than for one.
+A single stream carries all of the webhooks that the relay has, including
+all of those of the same session if the relay has sessions enabled,
+which a series of calls to ReadWebhookEvent cannot be sure to be sent.
+opts are as for ReadWebhookEvent, and apply to establishing the stream.
+ctx bounds the stream, and the caller must call Close on the stream.
+
+
+
+### Methods
+
+```go
+func (s *WebhookStream) Close() error
+```
+Close closes the stream.
+
+
+```go
+func (s *WebhookStream) Next() (eventType string, payload json.RawMessage, err error)
+```
+Next blocks until the next webhook is received and returns its GitHub event
+type, taken from the X-GitHub-Event header that the relay forwards, which
+is empty if it is not configured to, and its payload, as ReadWebhookEvent
+does. ErrRelayClosed is returned when the relay ends the stream cleanly,
+which it does after the last webhook of the last session that was bound
+to the stream, and when it shuts down. Any other error, including that of
+a ctx that was cancelled, a line that is too long or is not a webhook,
+or a stream that ended part way through a webhook, is not a clean end and
+the stream cannot be used again.
+
+
+
+
 
 
 
