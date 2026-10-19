@@ -7,10 +7,14 @@
 package operations
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
+
+	"cloudeng.io/algo/ratecontrol"
 )
 
 // Encoding represents the encoding scheme used for the response body.
@@ -45,6 +49,12 @@ func NewEndpoint[T any](opts ...Option) *Endpoint[T] {
 	return ep
 }
 
+// NewStream returns a new endpoint for streaming responses without requiring
+// a type parameter.
+func NewStream(opts ...Option) *Endpoint[any] {
+	return NewEndpoint[any](opts...)
+}
+
 // Get invokes a GET request on this endpoint (without a body).
 func (ep *Endpoint[T]) Get(ctx context.Context, url string) (T, []byte, Encoding, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -77,7 +87,7 @@ func (ep *Endpoint[T]) IssueRequest(ctx context.Context, req *http.Request) (T, 
 // Timeout since that includes the time spent reading the Body. The type
 // parameter of the Endpoint is not used.
 func (ep *Endpoint[T]) IssueStream(ctx context.Context, req *http.Request) (*http.Response, error) {
-	_, r, _, err := doRequest(ctx, ep.options, req.WithContext(ctx), streamResponse[T])
+	_, r, _, err := doRequest(ctx, &ep.options, req, streamResponse[T])
 	return r, err
 }
 
@@ -92,7 +102,7 @@ func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *
 
 // issueRequest issues req and reads and unmarshals its response.
 func issueRequest[T any](ctx context.Context, opts options, req *http.Request) (T, *http.Response, []byte, error) {
-	return doRequest(ctx, opts, req, func(resp *http.Response, retries int) (T, *http.Response, []byte, error) {
+	return doRequest(ctx, &opts, req, func(resp *http.Response, retries int) (T, *http.Response, []byte, error) {
 		return handleResponse[T](resp, opts.unmarshal, retries, opts.isSuccessCode)
 	})
 }
@@ -109,12 +119,13 @@ func streamResponse[T any](resp *http.Response, _ int) (T, *http.Response, []byt
 
 // doRequest issues req, handling rate control, authorization and retries, and
 // calls handle with the response if it is a success.
-func doRequest[T any](ctx context.Context, opts options, req *http.Request, handle responseHandler[T]) (T, *http.Response, []byte, error) {
+func doRequest[T any](ctx context.Context, opts *options, req *http.Request, handle responseHandler[T]) (T, *http.Response, []byte, error) {
 	opts.logger.Info("starting request", "method", req.Method, "url", req.URL.Redacted())
 	var result T
 	if err := opts.rateController.Wait(ctx); err != nil {
 		return result, nil, nil, err
 	}
+	req = req.Clone(ctx)
 	backoff := opts.rateController.Backoff()
 	start := time.Now()
 	authSet := false
@@ -125,39 +136,20 @@ func doRequest[T any](ctx context.Context, opts options, req *http.Request, hand
 		default:
 		}
 		retries := backoff.Retries()
-		var m T
 		if !authSet && opts.auth != nil {
 			if err := opts.auth.WithAuthorization(ctx, req); err != nil {
-				return m, nil, nil, handleError(err, "", 0, opts.isSuccessCode, retries)
+				return result, nil, nil, handleError(err, "", 0, opts.isSuccessCode, retries)
 			}
 			authSet = true
 		}
-		if req.GetBody != nil {
-			body, gerr := req.GetBody()
-			if gerr != nil {
-				return result, nil, nil, handleError(gerr, "", 0, opts.isSuccessCode, retries)
-			}
-			req.Body = body
+		if err := prepareRequestBody(req, retries); err != nil {
+			return result, nil, nil, handleError(err, "", 0, opts.isSuccessCode, retries)
 		}
-		resp, err := opts.client.Do(req)
+		resp, err := opts.attemptRequest(ctx, req, backoff, retries, start)
 		if err != nil {
-			if !opts.isErrorRetryableAndLog(ctx, req, err) {
-				return result, nil, nil, handleError(err, "", 0, opts.isSuccessCode, retries)
-			}
-			if done, _ := backoff.Wait(ctx, nil); done {
-				logBackoff(ctx, "network backoff giving up", req, retries, time.Since(start), true, err)
-				return result, nil, nil, handleError(err, "", 0, opts.isSuccessCode, retries)
-			}
-			logBackoff(ctx, "network backoff", req, retries, time.Since(start), false, err)
-			continue
+			return result, nil, nil, err
 		}
-		if opts.isBackoffCode(resp.StatusCode) {
-			resp.Body.Close()
-			if done, _ := backoff.Wait(ctx, resp); done {
-				logBackoff(ctx, "application backoff giving up", req, retries, time.Since(start), true, err)
-				return result, nil, nil, handleError(err, resp.Status, resp.StatusCode, opts.isSuccessCode, retries)
-			}
-			logBackoff(ctx, "application backoff", req, retries, time.Since(start), false, err)
+		if resp == nil {
 			continue
 		}
 		if opts.isSuccessCode(resp.StatusCode) {
@@ -168,13 +160,53 @@ func doRequest[T any](ctx context.Context, opts options, req *http.Request, hand
 	}
 }
 
+func prepareRequestBody(req *http.Request, retries int) error {
+	if retries > 0 && req.Body != nil && req.GetBody == nil {
+		return fmt.Errorf("request body cannot be rewound for retry: GetBody is nil")
+	}
+	if req.GetBody != nil {
+		body, err := req.GetBody()
+		if err != nil {
+			return err
+		}
+		req.Body = body
+	}
+	return nil
+}
+
+func (opts *options) attemptRequest(ctx context.Context, req *http.Request, backoff ratecontrol.Backoff, retries int, start time.Time) (*http.Response, error) {
+	resp, err := opts.client.Do(req)
+	if err != nil {
+		if !opts.isErrorRetryableAndLog(ctx, req, err) {
+			return nil, handleError(err, "", 0, opts.isSuccessCode, retries)
+		}
+		if done, _ := backoff.Wait(ctx, nil); done {
+			logBackoff(ctx, "network backoff giving up", req, retries, time.Since(start), true, err)
+			return nil, handleError(err, "", 0, opts.isSuccessCode, retries)
+		}
+		logBackoff(ctx, "network backoff", req, retries, time.Since(start), false, err)
+		return nil, nil
+	}
+	if opts.isBackoffCode(resp.StatusCode) {
+		resp.Body.Close()
+		if done, _ := backoff.Wait(ctx, resp); done {
+			logBackoff(ctx, "application backoff giving up", req, retries, time.Since(start), true, err)
+			return nil, handleError(nil, resp.Status, resp.StatusCode, opts.isSuccessCode, retries)
+		}
+		logBackoff(ctx, "application backoff", req, retries, time.Since(start), false, err)
+		return nil, nil
+	}
+	return resp, nil
+}
+
 // maxErrorBody is the most that is read of the body of an unsuccessful response.
 const maxErrorBody = 64 << 10
 
 func handleErrorResponse[T any](resp *http.Response, steps int, isOk func(int) bool) (T, *http.Response, []byte, error) {
 	var result T
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxErrorBody))
-	defer resp.Body.Close()
+	_ = resp.Body.Close()
+	resp.Body = io.NopCloser(bytes.NewReader(body))
 	return result, resp, body, handleError(err, resp.Status, resp.StatusCode, isOk, steps)
 }
 

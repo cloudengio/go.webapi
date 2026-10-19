@@ -34,6 +34,13 @@ func newStreamRequest(ctx context.Context, t *testing.T, url string) *http.Reque
 // with its body unread, so that it can be read as it arrives.
 func TestIssueStream(t *testing.T) {
 	second := make(chan struct{})
+	defer func() {
+		select {
+		case <-second:
+		default:
+			close(second)
+		}
+	}()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "one")
 		w.(http.Flusher).Flush()
@@ -47,7 +54,7 @@ func TestIssueStream(t *testing.T) {
 	defer srv.Close()
 
 	ctx := context.Background()
-	resp, err := operations.NewEndpoint[string]().IssueStream(ctx, newStreamRequest(ctx, t, srv.URL))
+	resp, err := operations.NewStream().IssueStream(ctx, newStreamRequest(ctx, t, srv.URL))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +77,7 @@ func TestIssueStreamErrorStatus(t *testing.T) {
 	defer srv.Close()
 
 	ctx := context.Background()
-	resp, err := operations.NewEndpoint[string]().IssueStream(ctx, newStreamRequest(ctx, t, srv.URL))
+	resp, err := operations.NewStream().IssueStream(ctx, newStreamRequest(ctx, t, srv.URL))
 	var operr *operations.Error
 	if !errors.As(err, &operr) || operr.StatusCode != http.StatusNotFound {
 		t.Fatalf("got %v, want a %v error", err, http.StatusNotFound)
@@ -78,8 +85,13 @@ func TestIssueStreamErrorStatus(t *testing.T) {
 	if resp == nil {
 		t.Fatal("expected the response")
 	}
-	if _, err := resp.Body.Read(make([]byte, 1)); err == nil || err == io.EOF {
-		t.Errorf("the body of an unsuccessful response was not closed: %v", err)
+	defer resp.Body.Close()
+	b, rerr := io.ReadAll(resp.Body)
+	if rerr != nil {
+		t.Fatalf("expected readable error body, got error: %v", rerr)
+	}
+	if got, want := strings.TrimSpace(string(b)), "nope"; got != want {
+		t.Errorf("got error body %q, want %q", got, want)
 	}
 }
 
@@ -208,5 +220,53 @@ func TestIssueStreamBoundedErrorBody(t *testing.T) {
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("the error body is read without limit")
+	}
+}
+
+func TestIssueStreamPreCanceled(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Error("server should not be called")
+	}))
+	defer srv.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := operations.NewStream().IssueStream(ctx, newStreamRequest(ctx, t, srv.URL))
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("got %v, want context.Canceled", err)
+	}
+}
+
+func TestIssueStreamNonRewindableBodyRetry(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer srv.Close()
+
+	rc := ratecontrol.New(ratecontrol.WithExponentialBackoff(time.Millisecond, 2, true))
+	ctx := context.Background()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, srv.URL, strings.NewReader("payload"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.GetBody = nil // enforce non-rewindable body
+
+	_, err = operations.NewStream(
+		operations.WithRateController(rc, http.StatusTooManyRequests)).IssueStream(ctx, req)
+	if err == nil || !strings.Contains(err.Error(), "cannot be rewound") {
+		t.Fatalf("expected non-rewindable body error, got: %v", err)
+	}
+}
+
+func TestIssueStreamNetworkError(t *testing.T) {
+	ctx := context.Background()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://127.0.0.1:0", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = operations.NewStream().IssueStream(ctx, req)
+	if err == nil {
+		t.Fatal("expected network error for invalid port")
 	}
 }

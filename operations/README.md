@@ -111,6 +111,13 @@ func NewEndpoint[T any](opts ...Option) *Endpoint[T]
 NewEndpoint returns a new endpoint for the specified type.
 
 
+```go
+func NewStream(opts ...Option) *Endpoint[any]
+```
+NewStream returns a new endpoint for streaming responses without requiring a
+type parameter.
+
+
 
 ### Methods
 
