@@ -68,6 +68,17 @@ each scan response.
 
 
 
+### Type Decodable
+```go
+type Decodable interface {
+	json.UnmarshalerFrom
+}
+```
+Decodable specifies the constraint for types that can unmarshal themselves
+from a jsontext.Decoder, matching the json.UnmarshalerFrom interface in
+encoding/json/v2.
+
+
 ### Type Encoding
 ```go
 type Encoding int
@@ -111,6 +122,13 @@ func NewEndpoint[T any](opts ...Option) *Endpoint[T]
 NewEndpoint returns a new endpoint for the specified type.
 
 
+```go
+func NewStream(opts ...Option) *Endpoint[any]
+```
+NewStream returns a new endpoint for streaming responses without requiring a
+type parameter.
+
+
 
 ### Methods
 
@@ -126,6 +144,24 @@ func (ep *Endpoint[T]) IssueRequest(ctx context.Context, req *http.Request) (T, 
 IssueRequest invokes an arbitrary request on this endpoint using the
 supplied http.Request. The Body in the http.Response has already been read
 and its contents returned as the second return value.
+
+
+```go
+func (ep *Endpoint[T]) IssueStream(ctx context.Context, req *http.Request) (*http.Response, error)
+```
+IssueStream is like IssueRequest except that it returns as soon as the
+response headers have been received, with the Body in the http.Response
+unread, for responses that are streamed. The caller must close the Body.
+A response that is not a success is read, up to a limit, and closed as for
+IssueRequest, and is returned with its error.
+
+The request is made with ctx, which also governs the Body: cancelling
+it ends the stream. Only establishing the stream is rate controlled and
+retried; the rate controller's backoff does not apply to a stream that has
+been established and then ends, so a caller that re-establishes it in a
+loop should delay between attempts. The http.Client, see WithHTTPClient,
+must not have a Timeout since that includes the time spent reading the Body.
+The type parameter of the Endpoint is not used.
 
 
 
@@ -198,6 +234,13 @@ func WithHTTPClient(client *http.Client) Option
 ```
 WithHTTPClient specifies the http.Client to use for making requests.
 If not specified, http.DefaultClient is used.
+
+
+```go
+func WithJSONTextOptions(opts ...jsontext.Options) Option
+```
+WithJSONTextOptions specifies options to configure the jsontext.Decoder used
+by streaming operations.
 
 
 ```go
@@ -424,6 +467,78 @@ signing of requests. Signer is called with the payload to be signed and the
 header to which signature information should be added.
 
 
+### Type Stream
+```go
+type Stream[T Decodable] struct {
+	// contains filtered or unexported fields
+}
+```
+Stream wraps an active HTTP response stream and decodes items of type T.
+
+### Methods
+
+```go
+func (s *Stream[T]) Close() error
+```
+Close closes the underlying HTTP response body.
+
+
+```go
+func (s *Stream[T]) Decoder() *jsontext.Decoder
+```
+Decoder returns the underlying *jsontext.Decoder.
+
+
+```go
+func (s *Stream[T]) Next(val T) error
+```
+Next reads and unmarshals the next item from the stream into val. It returns
+io.EOF when the stream terminates cleanly.
+
+
+```go
+func (s *Stream[T]) Response() *http.Response
+```
+Response returns the underlying *http.Response.
+
+
+
+
+### Type StreamEndpoint
+```go
+type StreamEndpoint[T Decodable] struct {
+	// contains filtered or unexported fields
+}
+```
+StreamEndpoint represents an API endpoint that produces a continuous stream
+of unmarshaled instances of type T.
+
+### Functions
+
+```go
+func NewStreamEndpoint[T Decodable](opts ...Option) *StreamEndpoint[T]
+```
+NewStreamEndpoint returns a new StreamEndpoint for the specified Decodable
+type.
+
+
+
+### Methods
+
+```go
+func (ep *StreamEndpoint[T]) Get(ctx context.Context, url string) (*Stream[T], error)
+```
+Get invokes a GET request on url and returns a typed Stream.
+
+
+```go
+func (ep *StreamEndpoint[T]) IssueStream(ctx context.Context, req *http.Request) (*Stream[T], error)
+```
+IssueStream issues req and, on success, returns a typed Stream.
+
+
+
+
 ### Type Unmarshal
 ```go
 type Unmarshal func([]byte, any) error
@@ -431,6 +546,17 @@ type Unmarshal func([]byte, any) error
 Unmarshal represents a function that can be used to unmarshal a response
 body.
 
+
+
+
+## Examples
+### [ExampleStreamEndpoint_singleType](https://pkg.go.dev/cloudeng.io/webapi/operations?tab=doc#example-StreamEndpoint_singleType)
+ExampleStreamEndpoint_singleType demonstrates reading a stream of
+homogeneous items.
+
+### [ExampleStreamEndpoint_unionType](https://pkg.go.dev/cloudeng.io/webapi/operations?tab=doc#example-StreamEndpoint_unionType)
+ExampleStreamEndpoint_unionType demonstrates reading a stream of
+heterogeneous items using a tagged union / envelope type.
 
 
 
