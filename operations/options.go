@@ -7,6 +7,7 @@ package operations
 import (
 	"context"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"log/slog"
 	"net"
@@ -41,6 +42,7 @@ type options struct {
 	client             *http.Client
 	signer             Signer
 	successCodes       []int
+	decOpts            []jsontext.Options
 }
 
 func handleOptions(options *options, putPost bool, opts ...Option) {
@@ -144,6 +146,14 @@ func WithMarshal(marshal Marshal, e Encoding) Option {
 	return func(o *options) {
 		o.marshal = marshal
 		o.marshalEncoding = e
+	}
+}
+
+// WithJSONTextOptions specifies options to configure the jsontext.Decoder
+// used by streaming operations.
+func WithJSONTextOptions(opts ...jsontext.Options) Option {
+	return func(o *options) {
+		o.decOpts = append(o.decOpts, opts...)
 	}
 }
 

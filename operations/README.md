@@ -68,6 +68,17 @@ each scan response.
 
 
 
+### Type Decodable
+```go
+type Decodable interface {
+	json.UnmarshalerFrom
+}
+```
+Decodable specifies the constraint for types that can unmarshal themselves
+from a jsontext.Decoder, matching the json.UnmarshalerFrom interface in
+encoding/json/v2.
+
+
 ### Type Encoding
 ```go
 type Encoding int
@@ -223,6 +234,13 @@ func WithHTTPClient(client *http.Client) Option
 ```
 WithHTTPClient specifies the http.Client to use for making requests.
 If not specified, http.DefaultClient is used.
+
+
+```go
+func WithJSONTextOptions(opts ...jsontext.Options) Option
+```
+WithJSONTextOptions specifies options to configure the jsontext.Decoder used
+by streaming operations.
 
 
 ```go
@@ -449,6 +467,78 @@ signing of requests. Signer is called with the payload to be signed and the
 header to which signature information should be added.
 
 
+### Type Stream
+```go
+type Stream[T Decodable] struct {
+	// contains filtered or unexported fields
+}
+```
+Stream wraps an active HTTP response stream and decodes items of type T.
+
+### Methods
+
+```go
+func (s *Stream[T]) Close() error
+```
+Close closes the underlying HTTP response body.
+
+
+```go
+func (s *Stream[T]) Decoder() *jsontext.Decoder
+```
+Decoder returns the underlying *jsontext.Decoder.
+
+
+```go
+func (s *Stream[T]) Next(val T) error
+```
+Next reads and unmarshals the next item from the stream into val. It returns
+io.EOF when the stream terminates cleanly.
+
+
+```go
+func (s *Stream[T]) Response() *http.Response
+```
+Response returns the underlying *http.Response.
+
+
+
+
+### Type StreamEndpoint
+```go
+type StreamEndpoint[T Decodable] struct {
+	// contains filtered or unexported fields
+}
+```
+StreamEndpoint represents an API endpoint that produces a continuous stream
+of unmarshaled instances of type T.
+
+### Functions
+
+```go
+func NewStreamEndpoint[T Decodable](opts ...Option) *StreamEndpoint[T]
+```
+NewStreamEndpoint returns a new StreamEndpoint for the specified Decodable
+type.
+
+
+
+### Methods
+
+```go
+func (ep *StreamEndpoint[T]) Get(ctx context.Context, url string) (*Stream[T], error)
+```
+Get invokes a GET request on url and returns a typed Stream.
+
+
+```go
+func (ep *StreamEndpoint[T]) IssueStream(ctx context.Context, req *http.Request) (*Stream[T], error)
+```
+IssueStream issues req and, on success, returns a typed Stream.
+
+
+
+
 ### Type Unmarshal
 ```go
 type Unmarshal func([]byte, any) error
@@ -456,6 +546,17 @@ type Unmarshal func([]byte, any) error
 Unmarshal represents a function that can be used to unmarshal a response
 body.
 
+
+
+
+## Examples
+### [ExampleStreamEndpoint_singleType](https://pkg.go.dev/cloudeng.io/webapi/operations?tab=doc#example-StreamEndpoint_singleType)
+ExampleStreamEndpoint_singleType demonstrates reading a stream of
+homogeneous items.
+
+### [ExampleStreamEndpoint_unionType](https://pkg.go.dev/cloudeng.io/webapi/operations?tab=doc#example-StreamEndpoint_unionType)
+ExampleStreamEndpoint_unionType demonstrates reading a stream of
+heterogeneous items using a tagged union / envelope type.
 
 
 

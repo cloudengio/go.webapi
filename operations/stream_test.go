@@ -7,6 +7,8 @@ package operations_test
 import (
 	"bufio"
 	"context"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -268,5 +270,120 @@ func TestIssueStreamNetworkError(t *testing.T) {
 	_, err = operations.NewStream().IssueStream(ctx, req)
 	if err == nil {
 		t.Fatal("expected network error for invalid port")
+	}
+}
+
+type streamItem struct {
+	ID   int    `json:"id"`
+	Data string `json:"data"`
+}
+
+func (item *streamItem) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	type plain streamItem
+	return json.UnmarshalDecode(dec, (*plain)(item))
+}
+
+func TestTypedStream(t *testing.T) {
+	items := []streamItem{
+		{ID: 1, Data: "alpha"},
+		{ID: 2, Data: "beta"},
+		{ID: 3, Data: "gamma"},
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		for _, item := range items {
+			b, err := json.Marshal(item)
+			if err != nil {
+				return
+			}
+			fmt.Fprintf(w, "%s\n", b)
+			w.(http.Flusher).Flush()
+		}
+	}))
+	defer srv.Close()
+
+	ctx := context.Background()
+	ep := operations.NewStreamEndpoint[*streamItem]()
+	stream, err := ep.Get(ctx, srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stream.Close()
+
+	if resp := stream.Response(); resp == nil || resp.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected response: %v", resp)
+	}
+	if stream.Decoder() == nil {
+		t.Fatal("expected non-nil decoder")
+	}
+
+	var results []streamItem
+	var item streamItem
+	for {
+		err := stream.Next(&item)
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			t.Fatalf("unexpected stream error: %v", err)
+		}
+		results = append(results, item)
+	}
+
+	if got, want := len(results), len(items); got != want {
+		t.Fatalf("got %d items, want %d", got, want)
+	}
+	for i := range items {
+		if results[i] != items[i] {
+			t.Errorf("item %d: got %+v, want %+v", i, results[i], items[i])
+		}
+	}
+}
+
+func TestTypedStreamWithJSONTextOptions(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		// Output JSON with duplicate keys
+		fmt.Fprintln(w, `{"id": 10, "data": "first", "data": "second"}`)
+	}))
+	defer srv.Close()
+
+	ctx := context.Background()
+	// With AllowDuplicateNames(true), jsontext decoder should accept duplicate names
+	ep := operations.NewStreamEndpoint[*streamItem](
+		operations.WithJSONTextOptions(jsontext.AllowDuplicateNames(true)),
+	)
+	stream, err := ep.Get(ctx, srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stream.Close()
+
+	var item streamItem
+	if err := stream.Next(&item); err != nil {
+		t.Fatalf("expected successful decode with AllowDuplicateNames: %v", err)
+	}
+	if item.ID != 10 || item.Data != "second" {
+		t.Errorf("got %+v, want ID: 10, Data: second", item)
+	}
+}
+
+func TestTypedStreamErrorStatus(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "stream not found", http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	ctx := context.Background()
+	ep := operations.NewStreamEndpoint[*streamItem]()
+	stream, err := ep.Get(ctx, srv.URL)
+	if err == nil {
+		t.Fatal("expected error for 404 status")
+	}
+	if stream != nil {
+		t.Fatal("expected nil stream on error")
+	}
+	var operr *operations.Error
+	if !errors.As(err, &operr) || operr.StatusCode != http.StatusNotFound {
+		t.Fatalf("got %v, want 404 operations.Error", err)
 	}
 }
