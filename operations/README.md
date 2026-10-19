@@ -134,8 +134,16 @@ func (ep *Endpoint[T]) IssueStream(ctx context.Context, req *http.Request) (*htt
 IssueStream is like IssueRequest except that it returns as soon as the
 response headers have been received, with the Body in the http.Response
 unread, for responses that are streamed. The caller must close the Body.
-A response that is not a success is read and closed as for IssueRequest,
-and is returned with its error.
+A response that is not a success is read, up to a limit, and closed as for
+IssueRequest, and is returned with its error.
+
+The request is made with ctx, which also governs the Body: cancelling
+it ends the stream. Only establishing the stream is rate controlled and
+retried; the rate controller's backoff does not apply to a stream that has
+been established and then ends, so a caller that re-establishes it in a
+loop should delay between attempts. The http.Client, see WithHTTPClient,
+must not have a Timeout since that includes the time spent reading the Body.
+The type parameter of the Endpoint is not used.
 
 
 
