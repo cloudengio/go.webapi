@@ -10,8 +10,7 @@ the Actions endpoints (runs, jobs, runners).
 ## Constants
 ### APIHost
 ```go
-APIHost = "https://api.github.com"
-
+const APIHost = "https://api.github.com"
 ```
 
 

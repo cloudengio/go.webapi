@@ -10,8 +10,7 @@ access the GitHub Actions API.
 ## Constants
 ### DefaultPageSize
 ```go
-DefaultPageSize = 30
-
+const DefaultPageSize = 30
 ```
 
 

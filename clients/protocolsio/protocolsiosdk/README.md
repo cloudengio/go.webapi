@@ -10,9 +10,10 @@ See https://apidoc.protocols.io for details.
 ## Constants
 ### ListProtocolsV3Endpoint, GetProtocolV4Endpoint
 ```go
-ListProtocolsV3Endpoint = "https://www.protocols.io/api/v3/protocols"
-GetProtocolV4Endpoint = "https://www.protocols.io/api/v4/protocols"
-
+const (
+	ListProtocolsV3Endpoint = "https://www.protocols.io/api/v3/protocols"
+	GetProtocolV4Endpoint   = "https://www.protocols.io/api/v4/protocols"
+)
 ```
 
 
