@@ -88,8 +88,7 @@ Encoding represents the encoding scheme used for the response body.
 ### Constants
 ### JSONEncoding
 ```go
-JSONEncoding Encoding = iota
-
+const JSONEncoding Encoding = iota
 ```
 
 

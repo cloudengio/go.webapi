@@ -11,8 +11,7 @@ medrxiv.org via api.biorxiv.org.
 ### PreprintType
 ```go
 // PreprintType is the content type for Preprints.
-PreprintType = content.Type("api.biorxiv.org/article")
-
+const PreprintType = content.Type("api.biorxiv.org/article")
 ```
 
 

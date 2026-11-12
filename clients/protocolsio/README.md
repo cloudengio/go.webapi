@@ -8,8 +8,7 @@ import cloudeng.io/webapi/clients/protocolsio
 ## Constants
 ### ContentType
 ```go
-ContentType = "protocols.io/protocol"
-
+const ContentType = "protocols.io/protocol"
 ```
 
 

@@ -8,9 +8,10 @@ import cloudeng.io/webapi/clients/papersapp
 ## Constants
 ### CollectionType, ItemType
 ```go
-CollectionType = "papersapp.com/collection"
-ItemType = "papersapp.com/item"
-
+const (
+	CollectionType = "papersapp.com/collection"
+	ItemType       = "papersapp.com/item"
+)
 ```
 
 

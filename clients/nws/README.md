@@ -11,8 +11,7 @@ Package nws provides a client for the National Weather Service API.
 ## Constants
 ### APIHost
 ```go
-APIHost = "https://api.weather.gov"
-
+const APIHost = "https://api.weather.gov"
 ```
 
 
@@ -107,18 +106,14 @@ as defined at https://www.weather.gov/bgm/forecast_terms.
 ### Constants
 ### UnknownOpaqueCloudCoverage, ClearSunny, MostlyClearSunny, PartlyCloudySunny, MostlyCloudy, Cloudy
 ```go
-UnknownOpaqueCloudCoverage OpaqueCloudCoverage = iota
-ClearSunny // 0 to 1/8 Opaque Cloud Coverage
-
-MostlyClearSunny // 1/8 to 3/8
-
-PartlyCloudySunny // 3/8 to 5/8
-
-MostlyCloudy // 5/8 to 7/8
-
-Cloudy // 7/8 to 8/8
-
-
+const (
+	UnknownOpaqueCloudCoverage OpaqueCloudCoverage = iota
+	ClearSunny                                     // 0 to 1/8 Opaque Cloud Coverage
+	MostlyClearSunny                               // 1/8 to 3/8
+	PartlyCloudySunny                              // 3/8 to 5/8
+	MostlyCloudy                                   // 5/8 to 7/8
+	Cloudy                                         // 7/8 to 8/8
+)
 ```
 
 
