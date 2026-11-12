@@ -9,12 +9,13 @@ Package benchling provides support for crawling and indexing benchling.com.
 ## Constants
 ### DocumentType, EntryType, ProjectType, FolderType, UserType
 ```go
-DocumentType = content.Type("benchling.com/document")
-EntryType = content.Type("benchling.com/entry")
-ProjectType = content.Type("benchling.com/project")
-FolderType = content.Type("benchling.com/folder")
-UserType = content.Type("benchling.com/user")
-
+const (
+	DocumentType = content.Type("benchling.com/document")
+	EntryType    = content.Type("benchling.com/entry")
+	ProjectType  = content.Type("benchling.com/project")
+	FolderType   = content.Type("benchling.com/folder")
+	UserType     = content.Type("benchling.com/user")
+)
 ```
 
 

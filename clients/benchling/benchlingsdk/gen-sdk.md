@@ -17,8 +17,7 @@ oapi-tool format --output="${formatted}" -validate=false "${spec}"
 oapi-tool transform --output="${transformed}" --config=benchling-transformations.yaml "${formatted}"
 oapi-tool validate "${transformed}"
 
-# this is the earliest usable version, v1.12.5 onward should be fine.
-# go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@f4cf8f9
-go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
-oapi-codegen --package=benchlingsdk "${transformed}" > benchlingsdk.go
+# oapi-codegen v2 supports echo v5 via the echo5-server generate option
+go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
+oapi-codegen -generate "types,client,echo5-server" --package=benchlingsdk "${transformed}" > benchlingsdk.go
 ```
