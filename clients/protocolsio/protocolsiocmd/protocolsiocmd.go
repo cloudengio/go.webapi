@@ -30,11 +30,11 @@ import (
 type GetFlags struct{}
 
 type CrawlFlags struct {
-	Save             bool               `subcmd:"save,true,'save downloaded protocols to disk'"`
-	IgnoreCheckpoint bool               `subcmd:"ignore-checkpoint,false,'ignore the checkpoint files'"`
-	Pages            flags.IntRangeSpec `subcmd:"pages,,page range to return"`
-	PageSize         int                `subcmd:"size,50,number of items in each page"`
-	Key              string             `subcmd:"key,,'string may contain any characters, numbers and special symbols. System will search around protocol name, description, authors. If the search keywords are enclosed in double quotes, then result contains only the exact match of the combined term'"`
+	Save             bool              `subcmd:"save,true,'save downloaded protocols to disk'"`
+	IgnoreCheckpoint bool              `subcmd:"ignore-checkpoint,false,'ignore the checkpoint files'"`
+	Pages            flags.IntInterval `subcmd:"pages,,'pages to return: 3..5 (inclusive), 3.. or ..5; a single number is just that page'"`
+	PageSize         int               `subcmd:"size,50,number of items in each page"`
+	Key              string            `subcmd:"key,,'string may contain any characters, numbers and special symbols. System will search around protocol name, description, authors. If the search keywords are enclosed in double quotes, then result contains only the exact match of the combined term'"`
 }
 
 type ScanFlags struct {
