@@ -89,9 +89,11 @@ func newProtocolCrawler(ctx context.Context, cfg apicrawlcmd.Crawl[Service], fs 
 
 	// Pagination options.
 	var paginatorOpts protocolsio.PaginatorOptions
-	paginatorOpts.From = fv.Pages.From
-	if fv.Pages.To != 0 && !fv.Pages.ExtendsToEnd {
-		paginatorOpts.To = fv.Pages.To
+	if from, ok := fv.Pages.From(); ok {
+		paginatorOpts.From = from
+	}
+	if to, ok := fv.Pages.To(); ok {
+		paginatorOpts.To = to - 1 // To is exclusive for an interval.
 	}
 	paginatorOpts.EndpointURL = protocolsiosdk.ListProtocolsV3Endpoint
 	paginatorOpts.Parameters = url.Values{}
