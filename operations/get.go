@@ -11,6 +11,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"time"
 
@@ -228,7 +229,7 @@ func handleResponse[T any](resp *http.Response, unmarshal Unmarshal, maxBytes in
 // greater than zero. A body whose Content-Length exceeds maxBytes is not
 // read at all, otherwise at most maxBytes+1 bytes are read.
 func readBody(resp *http.Response, maxBytes int64) ([]byte, error) {
-	if maxBytes <= 0 {
+	if maxBytes <= 0 || maxBytes == math.MaxInt64 {
 		return io.ReadAll(resp.Body)
 	}
 	if resp.ContentLength > maxBytes {

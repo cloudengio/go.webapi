@@ -26,6 +26,9 @@ func (err *Error) Error() string {
 
 // Unwrap returns Err.
 func (err *Error) Unwrap() error {
+	if err == nil {
+		return nil
+	}
 	return err.Err
 }
 

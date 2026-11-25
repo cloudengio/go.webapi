@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"net/http"
 	"reflect"
 	"testing"
@@ -382,9 +383,8 @@ func TestWithLogger(t *testing.T) {
 func TestMaxResponseBytes(t *testing.T) {
 	ctx := context.Background()
 	body := `{"Name":"foo","Value":42}`
-	chunked := false
-	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		if chunked {
+	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("chunked") == "1" {
 			// No Content-Length, so the limit is enforced while reading.
 			w.(http.Flusher).Flush()
 		}
@@ -397,15 +397,21 @@ func TestMaxResponseBytes(t *testing.T) {
 		chunked bool
 		tooBig  bool
 	}{
+		{-1, false, false},
 		{0, false, false},
+		{math.MaxInt64, false, false},
+		{math.MaxInt64, true, false},
 		{int64(len(body)), false, false},
 		{int64(len(body)), true, false},
 		{int64(len(body)) - 1, false, true},
 		{int64(len(body)) - 1, true, true},
 	} {
-		chunked = tc.chunked
+		u := srv.URL
+		if tc.chunked {
+			u += "?chunked=1"
+		}
 		ep := operations.NewEndpoint[example](operations.WithMaxResponseBytes(tc.max))
-		eg, _, _, err := ep.Get(ctx, srv.URL)
+		eg, _, _, err := ep.Get(ctx, u)
 		if got, want := errors.Is(err, operations.ErrResponseTooLarge), tc.tooBig; got != want {
 			t.Errorf("max %v, chunked %v: got %v, want %v: %v", tc.max, tc.chunked, got, want, err)
 		}
