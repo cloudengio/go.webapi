@@ -8,6 +8,8 @@ import (
 	"fmt"
 )
 
+// Error is returned for a request that fails, either because of an error,
+// Err, or because of an unsuccessful response, StatusCode.
 type Error struct {
 	Err        error
 	Status     string
@@ -20,6 +22,11 @@ func (err *Error) Error() string {
 		return err.Status
 	}
 	return fmt.Sprintf("%v: %v", err.Status, err.Err)
+}
+
+// Unwrap returns Err.
+func (err *Error) Unwrap() error {
+	return err.Err
 }
 
 func handleError(err error, status string, statusCode int, isOK func(int) bool, attempts int) error {

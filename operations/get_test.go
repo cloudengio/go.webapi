@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -375,5 +376,51 @@ func TestWithLogger(t *testing.T) {
 	}
 	if buf.Len() == 0 {
 		t.Error("expected log output, got none")
+	}
+}
+
+func TestMaxResponseBytes(t *testing.T) {
+	ctx := context.Background()
+	body := `{"Name":"foo","Value":42}`
+	chunked := false
+	srv := webapitestutil.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if chunked {
+			// No Content-Length, so the limit is enforced while reading.
+			w.(http.Flusher).Flush()
+		}
+		fmt.Fprint(w, body)
+	}))
+	defer srv.Close()
+
+	for _, tc := range []struct {
+		max     int64
+		chunked bool
+		tooBig  bool
+	}{
+		{0, false, false},
+		{int64(len(body)), false, false},
+		{int64(len(body)), true, false},
+		{int64(len(body)) - 1, false, true},
+		{int64(len(body)) - 1, true, true},
+	} {
+		chunked = tc.chunked
+		ep := operations.NewEndpoint[example](operations.WithMaxResponseBytes(tc.max))
+		eg, _, _, err := ep.Get(ctx, srv.URL)
+		if got, want := errors.Is(err, operations.ErrResponseTooLarge), tc.tooBig; got != want {
+			t.Errorf("max %v, chunked %v: got %v, want %v: %v", tc.max, tc.chunked, got, want, err)
+		}
+		var oe *operations.Error
+		if tc.tooBig && (!errors.As(err, &oe) || oe.StatusCode != http.StatusOK) {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if !tc.tooBig && (err != nil || eg.Value != 42) {
+			t.Errorf("unexpected result: %v, %v", eg, err)
+		}
+	}
+
+	// Post.
+	ep := operations.NewPutEndpoint[example, example](operations.WithMaxResponseBytes(4))
+	if _, _, _, err := ep.Post(ctx, srv.URL, example{}); !errors.Is(err, operations.ErrResponseTooLarge) {
+		t.Errorf("unexpected error: %v", err)
 	}
 }
