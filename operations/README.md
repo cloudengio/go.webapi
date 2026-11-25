@@ -7,6 +7,17 @@ import cloudeng.io/webapi/operations
 Package operations provides support for invoking various operations on web
 APIs.
 
+## Variables
+### ErrResponseTooLarge
+```go
+ErrResponseTooLarge = errors.New("response body too large")
+
+```
+ErrResponseTooLarge is wrapped by the error returned for a response whose
+body exceeds the limit set by WithMaxResponseBytes.
+
+
+
 ## Functions
 ### Func RunCrawl
 ```go
@@ -174,12 +185,20 @@ type Error struct {
 	Attempts   int
 }
 ```
+Error is returned for a request that fails, either because of an error, Err,
+or because of an unsuccessful response, StatusCode.
 
 ### Methods
 
 ```go
 func (err *Error) Error() string
 ```
+
+
+```go
+func (err *Error) Unwrap() error
+```
+Unwrap returns Err.
 
 
 
@@ -254,6 +273,18 @@ func WithMarshal(marshal Marshal, e Encoding) Option
 ```
 WithMarshal specifies a custom marshaling function to use for encoding
 request bodies. The default is json.Marshal.
+
+
+```go
+func WithMaxResponseBytes(n int64) Option
+```
+WithMaxResponseBytes limits the size of the body of a successful response
+that is read and unmarshaled, ie. by Get, Put, Post and IssueRequest;
+larger responses result in an *Error that wraps ErrResponseTooLarge, without
+the body being read in full. The body of an unsuccessful response is always
+limited to 64KiB. It does not apply to the Body returned by IssueStream,
+which is read by the caller, or to a Stream. There is no limit if n is zero
+or negative, which is the default.
 
 
 ```go

@@ -11,6 +11,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"time"
 
@@ -103,7 +104,7 @@ func (ep *Endpoint[T]) getWithResp(ctx context.Context, req *http.Request) (T, *
 // issueRequest issues req and reads and unmarshals its response.
 func issueRequest[T any](ctx context.Context, opts options, req *http.Request) (T, *http.Response, []byte, error) {
 	return doRequest(ctx, &opts, req, func(resp *http.Response, retries int) (T, *http.Response, []byte, error) {
-		return handleResponse[T](resp, opts.unmarshal, retries, opts.isSuccessCode)
+		return handleResponse[T](resp, opts.unmarshal, opts.maxResponseBytes, retries, opts.isSuccessCode)
 	})
 }
 
@@ -210,10 +211,10 @@ func handleErrorResponse[T any](resp *http.Response, steps int, isOk func(int) b
 	return result, resp, body, handleError(err, resp.Status, resp.StatusCode, isOk, steps)
 }
 
-func handleResponse[T any](resp *http.Response, unmarshal Unmarshal, steps int, isOk func(int) bool) (T, *http.Response, []byte, error) {
+func handleResponse[T any](resp *http.Response, unmarshal Unmarshal, maxBytes int64, steps int, isOk func(int) bool) (T, *http.Response, []byte, error) {
 	var result T
 	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
+	body, err := readBody(resp, maxBytes)
 	if err != nil {
 		return result, resp, body, handleError(err, resp.Status, resp.StatusCode, isOk, steps)
 	}
@@ -221,4 +222,25 @@ func handleResponse[T any](resp *http.Response, unmarshal Unmarshal, steps int, 
 		err = unmarshal(body, &result)
 	}
 	return result, resp, body, handleError(err, resp.Status, resp.StatusCode, isOk, steps)
+}
+
+// readBody reads the body of resp, or returns an error wrapping
+// ErrResponseTooLarge if it is larger than maxBytes, when maxBytes is
+// greater than zero. A body whose Content-Length exceeds maxBytes is not
+// read at all, otherwise at most maxBytes+1 bytes are read.
+func readBody(resp *http.Response, maxBytes int64) ([]byte, error) {
+	if maxBytes <= 0 || maxBytes == math.MaxInt64 {
+		return io.ReadAll(resp.Body)
+	}
+	if resp.ContentLength > maxBytes {
+		return nil, fmt.Errorf("%w: %v bytes, the limit is %v", ErrResponseTooLarge, resp.ContentLength, maxBytes)
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBytes+1))
+	if err != nil {
+		return body, err
+	}
+	if int64(len(body)) > maxBytes {
+		return nil, fmt.Errorf("%w: the limit is %v bytes", ErrResponseTooLarge, maxBytes)
+	}
+	return body, nil
 }
