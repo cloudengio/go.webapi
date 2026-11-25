@@ -43,6 +43,7 @@ type options struct {
 	signer             Signer
 	successCodes       []int
 	decOpts            []jsontext.Options
+	maxResponseBytes   int64
 }
 
 func handleOptions(options *options, putPost bool, opts ...Option) {
@@ -121,6 +122,24 @@ func WithSigner(signer Signer) Option {
 func WithSuccessCodes(codes ...int) Option {
 	return func(o *options) {
 		o.successCodes = slices.Clone(codes)
+	}
+}
+
+// ErrResponseTooLarge is wrapped by the error returned for a response
+// whose body exceeds the limit set by WithMaxResponseBytes.
+var ErrResponseTooLarge = errors.New("response body too large")
+
+// WithMaxResponseBytes limits the size of the body of a successful
+// response that is read and unmarshaled, ie. by Get, Put, Post and
+// IssueRequest; larger responses result in an *Error that wraps
+// ErrResponseTooLarge, without the body being read in full. The body of
+// an unsuccessful response is always limited to 64KiB. It does not apply
+// to the Body returned by IssueStream, which is read by the caller, or
+// to a Stream. There is no limit if n is zero or negative, which is the
+// default.
+func WithMaxResponseBytes(n int64) Option {
+	return func(o *options) {
+		o.maxResponseBytes = n
 	}
 }
 
