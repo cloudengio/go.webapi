@@ -8,6 +8,8 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+
+	"cloudeng.io/algo/container/stream"
 )
 
 // Paginator represents the ability to generate the next request (URL with optional
@@ -20,112 +22,116 @@ type Paginator[T any] interface {
 	Next(ctx context.Context, t T, r *http.Response) (req *http.Request, done bool, err error)
 }
 
-type response[T any] struct {
+// page is the result of fetching one page of a paginated API.
+type page[T any] struct {
 	req          *http.Request
 	response     T
 	httpResponse *http.Response
 	body         []byte
-	last         bool
-	nextReq      *http.Request
 	err          error
 }
 
 // Scanner provides the ability to iterate over a paginated API a page at a time.
+// The next page is fetched whilst the current one is being processed.
 type Scanner[T any] struct {
+	paginator Paginator[T]
+	opts      []Option
+	pages     *stream.Scanner[page[T]]
+	cur       page[T]
 	err       error
 	errBody   []byte
 	errReq    *http.Request
-	done      bool
-	paginator Paginator[T]
-	ep        *Endpoint[T]
-	ch        chan response[T]
-	resp      response[T]
-	opts      []Option
+
+	// Owned by pop, which is run by the goroutine that fetches pages.
+	ep   *Endpoint[T]
+	next *http.Request
 }
 
 // NewScanner creates a new Scanner using the supplied paginator. The
-// options are used to create the underlying Endpoint.
+// options are used to create the underlying Endpoint. Close must be called
+// if the Scanner is not used until Scan returns false.
 func NewScanner[T any](paginator Paginator[T], opts ...Option) *Scanner[T] {
-	return &Scanner[T]{
-		paginator: paginator,
-		ch:        make(chan response[T], 1),
-		opts:      opts,
-	}
-}
-
-func (sc *Scanner[T]) first(ctx context.Context) (bool, error) {
-	var empty T
-	req, done, err := sc.paginator.Next(ctx, empty, nil)
-	if err != nil || done {
-		return done, err
-	}
-	sc.ep = NewEndpoint[T](sc.opts...)
-	go sc.get(ctx, req)
-	return false, nil
+	return &Scanner[T]{paginator: paginator, opts: opts}
 }
 
 // Scan iterates over the paginated API. It returns true if there is another
-// page to scan, false otherwise.
+// page to scan, false otherwise. The pages being prefetched use ctx, so it
+// must remain valid for the duration of the scan.
 func (sc *Scanner[T]) Scan(ctx context.Context) bool {
-	if sc.done || sc.err != nil {
+	if sc.err != nil {
 		return false
 	}
-	if sc.ep == nil {
-		sc.done, sc.err = sc.first(ctx)
-		if sc.err != nil || sc.done {
-			return false
-		}
+	if sc.pages == nil {
+		sc.pages = stream.NewScanner(sc.pop, stream.WithBatchSize(1), stream.WithPrefetch(1))
 	}
-	resp := <-sc.ch
-	if err := resp.err; err != nil {
-		sc.err = err
-		sc.errBody = resp.body
-		sc.errReq = resp.req
+	if !sc.pages.Scan(ctx) {
+		sc.err = sc.pages.Err()
 		return false
 	}
-	sc.resp = resp
-	if resp.last {
-		sc.done = true
-	} else {
-		go sc.get(ctx, resp.nextReq)
+	pg := sc.pages.Data()
+	if pg.err != nil {
+		sc.err, sc.errBody, sc.errReq = pg.err, pg.body, pg.req
+		return false
 	}
+	sc.cur = pg
 	return true
+}
+
+// Close stops any fetching of pages that is in progress. It is only
+// required if Scan has not returned false, and may be called more than once.
+func (sc *Scanner[T]) Close() error {
+	if sc.pages == nil {
+		return nil
+	}
+	return sc.pages.Close()
+}
+
+// pop is the stream.PopN that fetches the next page. A page that failed to
+// be fetched is returned, with the details of the failure, as the last page.
+func (sc *Scanner[T]) pop(ctx context.Context, items []page[T]) (int, bool, error) {
+	req := sc.next
+	if sc.ep == nil {
+		var empty T
+		var done bool
+		var err error
+		req, done, err = sc.paginator.Next(ctx, empty, nil)
+		if err != nil {
+			items[0] = page[T]{err: err}
+			return 1, true, nil
+		}
+		if done {
+			return 0, true, nil
+		}
+		sc.ep = NewEndpoint[T](sc.opts...)
+	}
+	payload, resp, body, err := sc.ep.getWithResp(ctx, req)
+	if err != nil {
+		items[0] = page[T]{req: req, response: payload, body: body, err: err}
+		return 1, true, nil
+	}
+	next, last, err := sc.paginator.Next(ctx, payload, resp)
+	if err != nil {
+		items[0] = page[T]{response: payload, body: body, err: err}
+		return 1, true, nil
+	}
+	sc.next = next
+	items[0] = page[T]{response: payload, body: body, httpResponse: resp}
+	return 1, last, nil
 }
 
 // Response returns the response for the current page.
 func (sc *Scanner[T]) Response() T {
-	return sc.resp.response
+	return sc.cur.response
 }
 
 // HTTPResponse returns the response for the current page.
 func (sc *Scanner[T]) HTTPResponse() *http.Response {
-	return sc.resp.httpResponse
+	return sc.cur.httpResponse
 }
 
 // Body returns the body for the current page.
 func (sc *Scanner[T]) Body() []byte {
-	return sc.resp.body
-}
-
-func (sc *Scanner[T]) get(ctx context.Context, req *http.Request) {
-	payload, resp, body, err := sc.ep.getWithResp(ctx, req)
-	if err != nil {
-		sc.ch <- response[T]{req: req, response: payload, body: body, last: true, err: err}
-		return
-	}
-	req, last, err := sc.paginator.Next(ctx, payload, resp)
-	if err != nil {
-		sc.ch <- response[T]{response: payload, body: body, last: true, err: err}
-		return
-	}
-	sc.ch <- response[T]{
-		response:     payload,
-		body:         body,
-		last:         last,
-		err:          nil,
-		nextReq:      req,
-		httpResponse: resp,
-	}
+	return sc.cur.body
 }
 
 // Err returns the first error encountered during scanning.

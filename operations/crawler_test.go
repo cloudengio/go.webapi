@@ -102,3 +102,37 @@ func TestCrawler(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestRunCrawlHandlerError(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.Handle("/list", &webapitestutil.PaginatedHandler{Last: 50})
+	mux.HandleFunc("/get", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(Object{ID: r.URL.Query().Get("id")}) //nolint:errcheck
+	})
+	srv := webapitestutil.NewServer(mux)
+	defer srv.Close()
+
+	scanner := operations.NewScanner[webapitestutil.Paginated](&paginator{url: srv.URL + "/list"})
+	cr := operations.NewCrawler[webapitestutil.Paginated, Object](scanner, &fetcher{url: srv.URL, ep: operations.NewEndpoint[Object]()})
+
+	errHandler := fmt.Errorf("handler failed")
+	calls := 0
+	done := make(chan error, 1)
+	go func() {
+		done <- operations.RunCrawl(t.Context(), cr, func(context.Context, []content.Object[Object, operations.Response]) error {
+			calls++
+			return errHandler
+		})
+	}()
+	select {
+	case err := <-done:
+		if !errors.Is(err, errHandler) {
+			t.Errorf("got %v, want %v", err, errHandler)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("RunCrawl did not return")
+	}
+	if calls != 1 {
+		t.Errorf("handler called %v times, want 1", calls)
+	}
+}
