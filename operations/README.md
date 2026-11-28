@@ -425,7 +425,7 @@ type Scanner[T any] struct {
 }
 ```
 Scanner provides the ability to iterate over a paginated API a page at a
-time.
+time. The next page is fetched whilst the current one is being processed.
 
 ### Functions
 
@@ -433,7 +433,8 @@ time.
 func NewScanner[T any](paginator Paginator[T], opts ...Option) *Scanner[T]
 ```
 NewScanner creates a new Scanner using the supplied paginator. The options
-are used to create the underlying Endpoint.
+are used to create the underlying Endpoint. Close must be called if the
+Scanner is not used until Scan returns false.
 
 
 
@@ -443,6 +444,13 @@ are used to create the underlying Endpoint.
 func (sc *Scanner[T]) Body() []byte
 ```
 Body returns the body for the current page.
+
+
+```go
+func (sc *Scanner[T]) Close() error
+```
+Close stops any fetching of pages that is in progress. It is only required
+if Scan has not returned false, and may be called more than once.
 
 
 ```go
@@ -482,7 +490,8 @@ Response returns the response for the current page.
 func (sc *Scanner[T]) Scan(ctx context.Context) bool
 ```
 Scan iterates over the paginated API. It returns true if there is another
-page to scan, false otherwise.
+page to scan, false otherwise. The pages being prefetched use ctx, so it
+must remain valid for the duration of the scan.
 
 
 

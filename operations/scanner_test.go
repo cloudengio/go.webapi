@@ -235,3 +235,21 @@ func TestScannerErrorAfterN(t *testing.T) {
 		t.Errorf("got %v, want %v", got, want)
 	}
 }
+
+func TestScannerClose(t *testing.T) {
+	srv := webapitestutil.NewServer(&webapitestutil.PaginatedHandler{Last: 100})
+	defer srv.Close()
+	scanner := operations.NewScanner[webapitestutil.Paginated](&paginator{url: srv.URL})
+	if !scanner.Scan(t.Context()) {
+		t.Fatal(scanner.Err())
+	}
+	if err := scanner.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if scanner.Scan(t.Context()) {
+		t.Error("Scan returned true after Close")
+	}
+	if err := scanner.Err(); err != nil {
+		t.Errorf("got %v after Close", err)
+	}
+}

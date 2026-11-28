@@ -85,13 +85,12 @@ func NewCrawler[ScanT, EndpointT any](scanner *Scanner[ScanT], fetcher Fetcher[S
 // a Fetcher for each scan response.
 func (c *Crawler[ScanT, EndpointT]) Run(ctx context.Context, ch chan<- []content.Object[EndpointT, Response]) error {
 	defer close(ch)
-	i := 0
+	defer c.scanner.Close() //nolint:errcheck
 	for c.scanner.Scan(ctx) {
 		resp := c.scanner.Response()
 		if err := c.fetcher.Fetch(ctx, resp, ch); err != nil {
 			return err
 		}
-		i++
 	}
 	return c.scanner.Err()
 }
@@ -101,28 +100,31 @@ type CrawlHandler[EndpointT any] func(context.Context, []content.Object[Endpoint
 // RunCrawl is a convenience function that runs a crawler and calls the supplied
 // handler for each Object crawled.
 func RunCrawl[ScanT, EndpointT any](ctx context.Context, crawler *Crawler[ScanT, EndpointT], handler CrawlHandler[EndpointT]) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-	errCh := make(chan error)
+	errCh := make(chan error, 1)
 	ch := make(chan []content.Object[EndpointT, Response])
 	go func() {
 		errCh <- crawler.Run(ctx, ch)
 	}()
 
 	logger := ctxlog.Logger(ctx)
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case err := <-errCh:
-			return err
-		case objs, ok := <-ch:
-			if !ok {
-				return <-errCh
-			}
-			logger.Debug("handling crawled objects", "count", len(objs))
-			if err := handler(ctx, objs); err != nil {
-				return err
-			}
+	var herr error
+	// Always drain ch, until it is closed by Run, so that Run cannot be left
+	// blocked sending to it after the handler has failed.
+	for objs := range ch {
+		if herr != nil {
+			continue
+		}
+		logger.Debug("handling crawled objects", "count", len(objs))
+		if herr = handler(ctx, objs); herr != nil {
+			cancel()
 		}
 	}
+	runErr := <-errCh
+	if herr != nil {
+		return herr
+	}
+	return runErr
 }
